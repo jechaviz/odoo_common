@@ -7,9 +7,9 @@
   var getTransitionShell = surfaceLayerApi.getTransitionShell;
   var SURFACE_BREADCRUMB_LINK_ATTR = "data-surface-breadcrumb-link";
   var SURFACE_BREADCRUMB_ACTION_PROP = "__surfaceBreadcrumbAction";
+  var BREADCRUMB_ACTION_MENU_SELECTOR = ".o_popover.o-dropdown--menu, .o-dropdown--menu[role='menu'], .dropdown-menu";
   var transitionBreadcrumbFramesByShellId =
     shared.transitionBreadcrumbFramesByShellId || (shared.transitionBreadcrumbFramesByShellId = Object.create(null));
-  var breadcrumbActionsInspectionCounterKey = "surfaceBreadcrumbActionsInspectionCounter";
 
   function isModalRootNode(node) {
     return !!(
@@ -112,14 +112,58 @@
     return actionsNode.querySelector(".dropdown-toggle, button[aria-label], button, .btn");
   }
 
+  function collectBreadcrumbActionMenus(actionsNode, toggleNode) {
+    var menus = [];
+    var seen = [];
+    function pushMenu(node) {
+      if (!(node instanceof HTMLElement) || seen.indexOf(node) !== -1) {
+        return;
+      }
+      seen.push(node);
+      menus.push(node);
+    }
+    if (actionsNode instanceof HTMLElement) {
+      Array.prototype.slice.call(actionsNode.querySelectorAll(BREADCRUMB_ACTION_MENU_SELECTOR)).forEach(pushMenu);
+      if (actionsNode.parentElement instanceof HTMLElement) {
+        Array.prototype.slice.call(actionsNode.parentElement.querySelectorAll(BREADCRUMB_ACTION_MENU_SELECTOR)).forEach(pushMenu);
+      }
+    }
+    if (toggleNode instanceof HTMLElement) {
+      var controlledMenuId = String(toggleNode.getAttribute("aria-controls") || "").trim();
+      if (controlledMenuId) {
+        pushMenu(document.getElementById(controlledMenuId));
+      }
+      var toggleTarget = String(toggleNode.getAttribute("data-bs-target") || toggleNode.getAttribute("data-target") || "").trim();
+      if (toggleTarget && toggleTarget.charAt(0) === "#") {
+        try {
+          pushMenu(document.querySelector(toggleTarget));
+        } catch (_error) {}
+      }
+      var toggleId = String(toggleNode.id || "").trim();
+      if (toggleId) {
+        Array.prototype.slice.call(document.querySelectorAll(BREADCRUMB_ACTION_MENU_SELECTOR)).forEach(function (node) {
+          if (!(node instanceof HTMLElement)) {
+            return;
+          }
+          var labelledBy = String(node.getAttribute("aria-labelledby") || "").trim();
+          if (!labelledBy) {
+            return;
+          }
+          if (labelledBy.split(/\s+/).indexOf(toggleId) !== -1) {
+            pushMenu(node);
+          }
+        });
+      }
+    }
+    return menus;
+  }
+
   function collectVisibleBreadcrumbActionMenus(toggleNode) {
     if (!(toggleNode instanceof HTMLElement)) {
       return [];
     }
     var toggleRect = toggleNode.getBoundingClientRect();
-    return Array.prototype.slice.call(document.querySelectorAll(
-      ".o_popover.o-dropdown--menu, .o-dropdown--menu[role='menu'], .dropdown-menu"
-    )).filter(function (node) {
+    return Array.prototype.slice.call(document.querySelectorAll(BREADCRUMB_ACTION_MENU_SELECTOR)).filter(function (node) {
       return isVisibleBreadcrumbActionElement(node);
     }).map(function (node) {
       var rect = node.getBoundingClientRect();
@@ -136,14 +180,19 @@
     });
   }
 
-  function menuHasMeaningfulBreadcrumbActions(menuNode) {
+  function menuHasMeaningfulBreadcrumbActions(menuNode, options) {
     if (!(menuNode instanceof HTMLElement)) {
       return false;
     }
+    var settings = options && typeof options === "object" ? options : {};
+    var requireVisible = settings.requireVisible !== false;
     var items = Array.prototype.slice.call(menuNode.querySelectorAll(
       ".dropdown-item, .o-dropdown-item, [role='menuitem']"
     )).filter(function (node) {
-      if (!(node instanceof HTMLElement) || !isVisibleBreadcrumbActionElement(node)) {
+      if (!(node instanceof HTMLElement)) {
+        return false;
+      }
+      if (requireVisible && !isVisibleBreadcrumbActionElement(node)) {
         return false;
       }
       if (
@@ -168,22 +217,6 @@
     actionsNode.dataset.surfaceBreadcrumbActionsResolved = "1";
   }
 
-  function setBreadcrumbActionsInspectionState(active) {
-    var body = document.body;
-    if (!(body instanceof HTMLElement)) {
-      return;
-    }
-    var nextCount = Math.max(Number(shared[breadcrumbActionsInspectionCounterKey] || 0) || 0, 0);
-    nextCount += active ? 1 : -1;
-    nextCount = Math.max(nextCount, 0);
-    shared[breadcrumbActionsInspectionCounterKey] = nextCount;
-    if (nextCount > 0) {
-      body.setAttribute("data-surface-breadcrumb-actions-inspecting", "1");
-      return;
-    }
-    body.removeAttribute("data-surface-breadcrumb-actions-inspecting");
-  }
-
   function inspectBreadcrumbActionsAvailability(actionsNode, attempt) {
     if (!(actionsNode instanceof HTMLElement) || !actionsNode.isConnected) {
       return;
@@ -205,39 +238,31 @@
       setBreadcrumbActionsAvailability(actionsNode, true);
       return;
     }
-    var wasExpanded = toggleNode.getAttribute("aria-expanded") === "true";
-    setBreadcrumbActionsInspectionState(true);
-    if (!wasExpanded) {
-      toggleNode.click();
-    }
-    window.setTimeout(function () {
-      try {
-        var menus = collectVisibleBreadcrumbActionMenus(toggleNode);
-        if (!menus.length) {
-          if (!wasExpanded && toggleNode.isConnected && toggleNode.getAttribute("aria-expanded") === "true") {
-            toggleNode.click();
-          }
-          if (retryCount < 5) {
-            actionsNode._surfaceBreadcrumbActionsTimer = window.setTimeout(function () {
-              actionsNode._surfaceBreadcrumbActionsTimer = 0;
-              inspectBreadcrumbActionsAvailability(actionsNode, retryCount + 1);
-            }, 90 + (retryCount * 40));
-            return;
-          }
-          setBreadcrumbActionsAvailability(actionsNode, true);
+    try {
+      var menus = collectBreadcrumbActionMenus(actionsNode, toggleNode);
+      if (!menus.length) {
+        menus = collectVisibleBreadcrumbActionMenus(toggleNode);
+      }
+      if (!menus.length) {
+        if (retryCount < 5) {
+          actionsNode._surfaceBreadcrumbActionsTimer = window.setTimeout(function () {
+            actionsNode._surfaceBreadcrumbActionsTimer = 0;
+            inspectBreadcrumbActionsAvailability(actionsNode, retryCount + 1);
+          }, 90 + (retryCount * 40));
           return;
         }
-        var available = menus.some(menuHasMeaningfulBreadcrumbActions);
-        if (!wasExpanded && toggleNode.isConnected && toggleNode.getAttribute("aria-expanded") === "true") {
-          toggleNode.click();
-        }
-        setBreadcrumbActionsAvailability(actionsNode, available);
-      } catch (_error) {
         setBreadcrumbActionsAvailability(actionsNode, true);
-      } finally {
-        setBreadcrumbActionsInspectionState(false);
+        return;
       }
-    }, 90);
+      var available = menus.some(function (menuNode) {
+        return menuHasMeaningfulBreadcrumbActions(menuNode, {
+          requireVisible: isVisibleBreadcrumbActionElement(menuNode),
+        });
+      });
+      setBreadcrumbActionsAvailability(actionsNode, available);
+    } catch (_error) {
+      setBreadcrumbActionsAvailability(actionsNode, true);
+    }
   }
 
   function scheduleBreadcrumbActionsAvailabilitySync(actionsNode) {

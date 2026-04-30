@@ -16,10 +16,12 @@
     "title": "Transactional Form Capture",
     "components": [
       "surface-workspace-shell",
+      "form-section-layout",
+      "form-layout-state",
       "many2x-parent-form-autosave",
       "many2x-parent-form-autosave-python",
       "form-defaults",
-      "customer-defaults-web",
+      "commercial-policy-surface",
       "form-totals",
       "partner-defaults",
       "default-persistence"
@@ -35,13 +37,15 @@
     "key": "adaptive_form_layout",
     "title": "Adaptive Form Layout",
     "components": [
-      "form-section-layout"
+      "form-section-layout",
+      "form-layout-state"
     ],
     "use_cases": [
       "section collapse",
       "section visibility controls",
       "chatter collapse",
-      "subtotals editor"
+      "subtotals editor shell",
+      "server-side layout state seeding"
     ]
   },
   {
@@ -50,7 +54,7 @@
     "components": [
       "default-persistence",
       "partner-defaults",
-      "customer-defaults-web",
+      "commercial-policy-surface",
       "taxation-helpers"
     ],
     "use_cases": [

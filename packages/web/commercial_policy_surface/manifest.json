@@ -1,0 +1,20 @@
+{
+  "key": "commercial-policy-surface",
+  "title": "Commercial Policy Surface Bridge",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "commercial_policy_surface.js"
+  ],
+  "publish_order": [
+    "commercial_policy_surface.js"
+  ],
+  "capabilities": [
+    "policy-assignment-sync",
+    "preview-field-hydration",
+    "server-action-handoff"
+  ]
+}

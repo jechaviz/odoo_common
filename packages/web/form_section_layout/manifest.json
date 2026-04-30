@@ -1,7 +1,7 @@
 {
   "key": "form-section-layout",
   "title": "Adaptive Form Section Layout",
-  "status": "canonical",
+  "status": "source-derived",
   "language": "web",
   "origin_project": "odoo_rpp",
   "sync_root": "sources",
@@ -28,7 +28,7 @@
     "section-collapse",
     "section-visibility",
     "settings-panel",
-    "subtotals-runtime",
+    "subtotals-layout-shell",
     "chatter-collapse"
   ]
 }

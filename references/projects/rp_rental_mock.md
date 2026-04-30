@@ -6,6 +6,7 @@ Rol principal en `common`:
 - previews de branch/series/document type
 - tax breakdown de forms
 - descuento comercial por cliente
+- puente web de politica comercial
 
 Origen principal:
 
@@ -14,3 +15,4 @@ Origen principal:
 Nivel actual:
 
 - fuente derivada para `form_defaults`, `form_totals` y `customer_defaults`
+- base canonica para `packages/web/commercial_policy_surface`

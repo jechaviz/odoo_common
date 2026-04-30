@@ -14,7 +14,8 @@ Origen principal:
 
 Nivel actual:
 
-- base canonica para `packages/web/form_section_layout`
+- base source-derived para `packages/web/form_section_layout`
+- base canonica para `packages/python/form_layout_state`
 - base canonica para `packages/python/default_persistence`
 - base canonica para `packages/python/partner_defaults`
 - base canonica para `packages/python/taxation`

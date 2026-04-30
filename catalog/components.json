@@ -25,7 +25,7 @@
     "key": "form-section-layout",
     "title": "Adaptive Form Section Layout",
     "runtime": "web",
-    "status": "canonical",
+    "status": "source-derived",
     "package_path": "packages/web/form_section_layout",
     "origins": [
       {
@@ -38,8 +38,26 @@
       "section visibility",
       "layout persistence",
       "settings panel",
-      "subtotals runtime",
+      "subtotal editor shell",
       "chatter collapse"
+    ]
+  },
+  {
+    "key": "form-layout-state",
+    "title": "Form Layout State Persistence",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/form_layout_state",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/form_layout_state.py"
+      }
+    ],
+    "features": [
+      "layout state normalization",
+      "shared form layout persistence",
+      "statusbar label seeding"
     ]
   },
   {
@@ -85,7 +103,7 @@
   },
   {
     "key": "customer-defaults-web",
-    "title": "Customer Discount And Commercial Defaults Surface",
+    "title": "Rental Customer Discount Surface",
     "runtime": "web",
     "status": "source-derived",
     "package_path": "packages/web/customer_defaults",
@@ -97,8 +115,26 @@
     ],
     "features": [
       "customer discount sync",
-      "commercial defaults preview",
-      "discount assignment hydration"
+      "discount assignment hydration",
+      "server action bridge"
+    ]
+  },
+  {
+    "key": "commercial-policy-surface",
+    "title": "Commercial Policy Surface Bridge",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/commercial_policy_surface",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/customer_discount.js"
+      }
+    ],
+    "features": [
+      "policy assignment sync",
+      "preview field hydration",
+      "server action handoff"
     ]
   },
   {

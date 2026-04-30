@@ -1,29 +1,27 @@
-# Form Section Layout Runtime
+# Form Section Layout Sources
+
+Implementacion modular del runtime `form_section_layout` dentro de `common`.
+
+La persistencia server-side complementaria vive en el paquete Python `form-layout-state`.
 
 ## Source Of Truth
-- Published bundle graph manifest: `lib/manifest.json`
-- Runtime module manifest: `lib/odoo/web/form_section_layout/runtime/manifest.json`
-- Published JS fallback artifact: `lib/odoo/web/form_section_layout.runtime.js`
-- Published CSS asset: `lib/odoo/web/form_section_layout.css`
-- Runtime source modules: `lib/odoo/web/form_section_layout/runtime/**/*.js`
-- CSS source modules: `lib/odoo/web/form_section_layout/styles/**/*.css`
 
-## Hard-Cut Rule
-- `api.js`, `ui_builder.js`, and `subtotals.js` were retired.
-- Do not reintroduce source extraction from legacy aggregate files.
-- The modular `runtime/` tree is the only JS source of truth.
+- `constants.js`, `state.js`, `drag_drop.js`
+- `runtime/**/*.js`
+- `styles/**/*.css`
 
-## Build And Audit
-1. `uv run python scripts/build_form_section_layout_runtime.py`
-2. `uv run python scripts/build_form_section_layout_css.py`
-3. `uv run python scripts/check_form_section_layout_runtime_parity.py`
-4. `uv run python scripts/check_form_section_layout_css_parity.py`
-5. `uv run python scripts/audit_form_section_layout_preview.py`
+## Arbol
 
-## Publication
-- Publication to Odoo must happen only after the preview audit passes.
-- `src/setup/views/web_client_patches.py` rebuilds runtime/CSS before sync.
-- Odoo publication is now manifest-driven:
-  - `lib/manifest.json` defines atomic bundle members and sub-bundle `include` graphs.
-  - `form_section_layout.runtime.js` is generated for parity/fallback, not the primary unit of change.
-  - avoid dual loading: either publish atomic bundle members or bootstrap-only payloads, never both for the same feature slice.
+- `runtime/`
+  - `api/`: accesos a sesion y opciones relacionales
+  - `ui/`: secciones, layouts, settings panel, statusbar y chatter
+  - `subtotals/`: editor de subtotales y persistencia asociada
+- `styles/`
+  - hojas CSS por responsabilidad
+- `preview/`
+  - sandbox HTML de verificacion manual
+
+## Nota de clasificacion
+
+- la capa de secciones, visibilidad, settings panel y statusbar es reusable
+- `runtime/subtotals/` todavia conserva presets de negocio y debe pasar por adapters o una extraccion adicional antes de tratarse como `canonical`

@@ -1,6 +1,6 @@
 {
   "key": "customer-defaults-web",
-  "title": "Customer Defaults And Discounts",
+  "title": "Rental Customer Discount Surface",
   "status": "source-derived",
   "language": "web",
   "origin_project": "rp-rental-mock",
@@ -14,7 +14,7 @@
   ],
   "capabilities": [
     "customer-discount-sync",
-    "commercial-defaults-preview",
-    "discount-assignment-hydration"
+    "discount-assignment-hydration",
+    "server-action-bridge"
   ]
 }

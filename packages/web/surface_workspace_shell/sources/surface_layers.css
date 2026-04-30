@@ -1044,6 +1044,16 @@ body.o_surface_workspace_active .o_surface_workspace_toolbar__console [role="tab
   gap: 0.28rem;
 }
 
+.o_surface_record_preview_actions_slot {
+  align-items: inherit;
+  display: inline-flex;
+  gap: inherit;
+}
+
+.o_surface_record_preview_actions--placeholder {
+  min-height: 1.85rem;
+}
+
 .o_surface_record_preview_button {
   align-items: center;
   background: rgba(255, 255, 255, 0.03);

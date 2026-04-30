@@ -3,6 +3,13 @@
 
   var surfaceLayerApi = window.OdooSurfaceLayers || {};
   var MANAGED_ATTR = "data-surface-managed";
+  var DEFAULT_PREVIEW_HEADER_CLASS_NAME = "o_surface_record_preview_header";
+  var DEFAULT_PREVIEW_CELL_CLASS_NAME = "o_surface_record_preview_cell o_surface_action_cell";
+  var DEFAULT_PREVIEW_ACTIONS_CLASS_NAME = "o_surface_record_preview_actions";
+  var DEFAULT_PREVIEW_BUTTON_CLASS_NAME = "o_surface_record_preview_button";
+  var PREVIEW_BUTTON_SELECTOR = "." + DEFAULT_PREVIEW_BUTTON_CLASS_NAME;
+  var managedPreviewBridges = Object.create(null);
+  var managedPreviewBridgeListenerInstalled = false;
 
   function syncClassName(node, nextClassName) {
     if (!(node instanceof HTMLElement)) {
@@ -52,6 +59,42 @@
   function getPrimaryClassToken(value) {
     var normalized = String(value || "").trim();
     return normalized ? normalized.split(/\s+/)[0] : "";
+  }
+
+  function normalizeArray(value) {
+    return Array.isArray(value) ? value : [];
+  }
+
+  function normalizePreviewActions(value) {
+    return Array.isArray(value) ? value.slice() : [];
+  }
+
+  function applyPreviewButtonAttributes(target, config) {
+    var attributes = target && typeof target === "object" ? Object.assign({}, target) : {};
+    var settings = config && typeof config === "object" ? config : {};
+    var previewKey = String(settings.previewKey || settings.action || settings.key || "").trim();
+    var ownerKey = String(settings.ownerKey || "").trim();
+    var url = String(settings.url || "").trim();
+    var surfacePreviewValue = Object.prototype.hasOwnProperty.call(settings, "surfacePreview")
+      ? settings.surfacePreview
+      : previewKey;
+    if (
+      surfacePreviewValue !== false &&
+      previewKey &&
+      !Object.prototype.hasOwnProperty.call(attributes, "data-surface-preview")
+    ) {
+      attributes["data-surface-preview"] = String(surfacePreviewValue || previewKey);
+    }
+    if (ownerKey && !Object.prototype.hasOwnProperty.call(attributes, "data-surface-preview-owner")) {
+      attributes["data-surface-preview-owner"] = ownerKey;
+    }
+    if (settings.recordId != null && !Object.prototype.hasOwnProperty.call(attributes, "data-record-id")) {
+      attributes["data-record-id"] = String(settings.recordId);
+    }
+    if (url && !Object.prototype.hasOwnProperty.call(attributes, "data-url")) {
+      attributes["data-url"] = url;
+    }
+    return attributes;
   }
 
   function getListRendererNode(config) {
@@ -229,6 +272,341 @@
     }
   }
 
+  function buildManagedPreviewButtonMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var previewKey = String(settings.previewKey || settings.action || settings.key || "").trim();
+    if (!previewKey) {
+      return "";
+    }
+    var attributes = applyPreviewButtonAttributes(settings.attributes, Object.assign({}, settings, {
+      previewKey: previewKey,
+    }));
+    if (typeof surfaceLayerApi.buildPreviewActionButtonMarkup === "function") {
+      return surfaceLayerApi.buildPreviewActionButtonMarkup({
+        action: previewKey,
+        iconClass: String(settings.iconClass || "").trim(),
+        label: String(settings.label || settings.title || "").trim(),
+        className: String(settings.className || DEFAULT_PREVIEW_BUTTON_CLASS_NAME).trim(),
+        data: settings.data && typeof settings.data === "object"
+          ? Object.assign({}, settings.data)
+          : {},
+        attributes: attributes,
+        surfacePreview: Object.prototype.hasOwnProperty.call(settings, "surfacePreview")
+          ? settings.surfacePreview
+          : previewKey,
+        surfaceAction: Object.prototype.hasOwnProperty.call(settings, "surfaceAction")
+          ? settings.surfaceAction
+          : true,
+      });
+    }
+    if (typeof surfaceLayerApi.buildIconActionButtonMarkup !== "function") {
+      return "";
+    }
+    var data = settings.data && typeof settings.data === "object"
+      ? Object.assign({}, settings.data)
+      : {};
+    if (!Object.prototype.hasOwnProperty.call(data, "surfacePreview")) {
+      data.surfacePreview = previewKey;
+    }
+    if (!Object.prototype.hasOwnProperty.call(data, "surfacePreviewOwner")) {
+      data.surfacePreviewOwner = String(settings.ownerKey || "").trim();
+    }
+    if (!Object.prototype.hasOwnProperty.call(data, "recordId") && settings.recordId != null) {
+      data.recordId = String(settings.recordId);
+    }
+    if (!Object.prototype.hasOwnProperty.call(data, "url") && String(settings.url || "").trim()) {
+      data.url = String(settings.url || "").trim();
+    }
+    return surfaceLayerApi.buildIconActionButtonMarkup({
+      action: previewKey,
+      iconClass: String(settings.iconClass || "").trim(),
+      label: String(settings.label || settings.title || "").trim(),
+      className: String(settings.className || DEFAULT_PREVIEW_BUTTON_CLASS_NAME).trim(),
+      data: data,
+    });
+  }
+
+  function buildManagedPreviewActionsMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var actions = normalizePreviewActions(settings.actions).filter(function (item) {
+      return item && item.visible !== false;
+    });
+    var ownerKey = String(settings.ownerKey || "").trim();
+    var buttonClassName = String(
+      settings.buttonClassName || DEFAULT_PREVIEW_BUTTON_CLASS_NAME
+    ).trim();
+    var buttonDefaults = settings.buttonDefaults && typeof settings.buttonDefaults === "object"
+      ? settings.buttonDefaults
+      : {};
+    var actionButtons = actions.map(function (item) {
+      if (typeof item === "string") {
+        return item;
+      }
+      if (!(item && typeof item === "object")) {
+        return "";
+      }
+      if (item.markup != null) {
+        return String(item.markup || "");
+      }
+      return buildManagedPreviewButtonMarkup(Object.assign({}, buttonDefaults, item, {
+        previewKey: item.previewKey || item.action || item.key,
+        iconClass: item.iconClass,
+        label: item.label || item.title,
+        className: String(item.className || buttonClassName).trim(),
+        data: item.data,
+        attributes: item.attributes,
+        ownerKey: item.ownerKey != null ? item.ownerKey : ownerKey,
+        recordId: item.recordId,
+        surfaceAction: item.surfaceAction,
+        surfacePreview: Object.prototype.hasOwnProperty.call(item, "surfacePreview")
+          ? item.surfacePreview
+          : undefined,
+        url: item.url,
+      }));
+    }).filter(Boolean);
+    if (typeof surfaceLayerApi.buildPreviewActionGroupMarkup === "function") {
+      return surfaceLayerApi.buildPreviewActionGroupMarkup({
+        actions: actionButtons,
+        className: String(settings.className || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim(),
+        emptyMarkup: String(settings.emptyMarkup || "").trim(),
+        wrap: settings.wrap,
+      });
+    }
+    if (!actionButtons.length) {
+      return String(settings.emptyMarkup || "");
+    }
+    return (
+      '<div class="' +
+      String(settings.className || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim() +
+      '">' +
+      actionButtons.join("") +
+      "</div>"
+    );
+  }
+
+  function ensureManagedPreviewActionColumn(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    if (typeof surfaceLayerApi.ensureManagedActionColumn !== "function") {
+      return null;
+    }
+    return surfaceLayerApi.ensureManagedActionColumn({
+      table: settings.table,
+      rows: settings.rows,
+      headerLabel: String(settings.headerLabel || "Vistas").trim(),
+      headerClassName: String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim(),
+      cellClassName: String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim(),
+      renderCell: function (row, index) {
+        var actionResolver = typeof settings.buildActions === "function"
+          ? settings.buildActions
+          : null;
+        var actions = actionResolver ? actionResolver(row, index, settings) : settings.actions;
+        return buildManagedPreviewActionsMarkup({
+          actions: actions,
+          ownerKey: String(settings.ownerKey || settings.bridgeKey || settings.key || "").trim(),
+          className: String(settings.actionsClassName || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim(),
+          buttonClassName: String(settings.buttonClassName || DEFAULT_PREVIEW_BUTTON_CLASS_NAME).trim(),
+        });
+      },
+    });
+  }
+
+  function clearManagedPreviewActionColumn(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    if (typeof surfaceLayerApi.clearManagedActionColumn !== "function") {
+      return;
+    }
+    surfaceLayerApi.clearManagedActionColumn({
+      table: settings.table,
+      headerClassName: String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim(),
+      cellClassName: String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim(),
+    });
+  }
+
+  function installManagedPreviewBridgeListener() {
+    if (managedPreviewBridgeListenerInstalled) {
+      return;
+    }
+    managedPreviewBridgeListenerInstalled = true;
+    document.addEventListener("click", function (event) {
+      var target = event.target instanceof HTMLElement
+        ? event.target.closest(PREVIEW_BUTTON_SELECTOR)
+        : null;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      var ownerKey = String(
+        target.getAttribute("data-surface-preview-owner") || target.dataset.surfacePreviewOwner || ""
+      ).trim();
+      if (!ownerKey) {
+        return;
+      }
+      var bridge = managedPreviewBridges[ownerKey];
+      if (!bridge) {
+        return;
+      }
+      if (typeof bridge.matchesTarget === "function") {
+        try {
+          if (!bridge.matchesTarget(target, event, bridge.settings)) {
+            return;
+          }
+        } catch (_error) {
+          return;
+        }
+      }
+      var previewKey = String(
+        target.getAttribute("data-surface-preview") || target.dataset.surfacePreview || target.getAttribute("data-action") || ""
+      ).trim();
+      var recordId = Number.parseInt(
+        String(target.getAttribute("data-record-id") || target.dataset.recordId || 0),
+        10
+      ) || 0;
+      var url = String(target.getAttribute("data-url") || target.dataset.url || "").trim();
+      var previewHandlers = bridge.previewHandlers && typeof bridge.previewHandlers === "object"
+        ? bridge.previewHandlers
+        : {};
+      var previewHandler = typeof previewHandlers[previewKey] === "function"
+        ? previewHandlers[previewKey]
+        : null;
+      if (!(previewHandler || (previewKey === "web" && typeof bridge.openWebPreview === "function") || url)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+      var context = {
+        previewKey: previewKey,
+        recordId: recordId,
+        url: url,
+        target: target,
+        event: event,
+        settings: bridge.settings,
+      };
+      if (previewHandler) {
+        try {
+          var previewResult = previewHandler(context);
+          if (previewResult && typeof previewResult.catch === "function") {
+            previewResult.catch(function () {});
+          }
+        } catch (_error) {}
+        return;
+      }
+      if (previewKey === "web" && typeof bridge.openWebPreview === "function") {
+        try {
+          var openResult = bridge.openWebPreview(recordId, target, event, bridge.settings);
+          if (openResult && typeof openResult.catch === "function") {
+            openResult.catch(function () {});
+          }
+        } catch (_error) {}
+        return;
+      }
+      if (url && typeof surfaceLayerApi.openSurfaceUrl === "function") {
+        surfaceLayerApi.openSurfaceUrl(url, false);
+      }
+    }, true);
+  }
+
+  function buildManagedPreviewColumnController(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var bridgeKey = String(settings.bridgeKey || settings.key || "").trim();
+    var tableSelector = String(settings.tableSelector || "table.o_list_table").trim();
+    var headerLabel = String(settings.headerLabel || "Vistas").trim();
+    var headerClassName = String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim();
+    var cellClassName = String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim();
+    var actionsClassName = String(settings.actionsClassName || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim();
+    var buttonClassName = String(settings.buttonClassName || DEFAULT_PREVIEW_BUTTON_CLASS_NAME).trim();
+    var resolveTable = typeof settings.resolveTable === "function"
+      ? settings.resolveTable
+      : function (runtimeState) {
+          return runtimeState && runtimeState.listTable instanceof HTMLTableElement
+            ? runtimeState.listTable
+            : null;
+        };
+    var resolveRows = typeof settings.resolveRows === "function"
+      ? settings.resolveRows
+      : function (table) {
+          return Array.prototype.slice.call(table.querySelectorAll("tbody tr.o_data_row")).filter(function (row) {
+            return row instanceof HTMLTableRowElement;
+          });
+        };
+    var hydrateRows = typeof settings.hydrateRows === "function"
+      ? settings.hydrateRows
+      : null;
+    var buildActions = typeof settings.buildActions === "function"
+      ? settings.buildActions
+      : function () { return []; };
+
+    function clear() {
+      Array.prototype.slice.call(document.querySelectorAll(tableSelector)).forEach(function (table) {
+        if (table instanceof HTMLTableElement) {
+          clearManagedPreviewActionColumn({
+            table: table,
+            headerClassName: headerClassName,
+            cellClassName: cellClassName,
+          });
+        }
+      });
+    }
+
+    async function sync(runtimeState) {
+      var table = resolveTable(runtimeState, settings);
+      if (!(table instanceof HTMLTableElement)) {
+        clear();
+        return false;
+      }
+      var rows = resolveRows(table, runtimeState, settings);
+      if (hydrateRows) {
+        await Promise.resolve(hydrateRows(rows, runtimeState, settings));
+      }
+      ensureManagedPreviewActionColumn({
+        table: table,
+        rows: rows,
+        headerLabel: headerLabel,
+        headerClassName: headerClassName,
+        cellClassName: cellClassName,
+        ownerKey: bridgeKey,
+        actionsClassName: actionsClassName,
+        buttonClassName: buttonClassName,
+        buildActions: function (row, index) {
+          return buildActions(row, index, runtimeState, settings);
+        },
+      });
+      return true;
+    }
+
+    function installBridge() {
+      if (!bridgeKey) {
+        return false;
+      }
+      managedPreviewBridges[bridgeKey] = {
+        settings: settings,
+        matchesTarget: typeof settings.matchesTarget === "function" ? settings.matchesTarget : null,
+        openWebPreview: typeof settings.openWebPreview === "function" ? settings.openWebPreview : null,
+        previewHandlers: settings.previewHandlers && typeof settings.previewHandlers === "object"
+          ? settings.previewHandlers
+          : null,
+      };
+      installManagedPreviewBridgeListener();
+      return true;
+    }
+
+    return {
+      bridgeKey: bridgeKey,
+      clear: clear,
+      sync: sync,
+      installBridge: installBridge,
+      buildActionsMarkup: function (actions) {
+        return buildManagedPreviewActionsMarkup({
+          actions: actions,
+          ownerKey: bridgeKey,
+          className: actionsClassName,
+          buttonClassName: buttonClassName,
+        });
+      },
+    };
+  }
+
   Object.assign(surfaceLayerApi, {
     getListRendererNode: getListRendererNode,
     getVisibleTableHeaders: getVisibleTableHeaders,
@@ -237,6 +615,11 @@
     syncTrailingActionColumns: syncTrailingActionColumns,
     ensureManagedActionColumn: ensureManagedActionColumn,
     clearManagedActionColumn: clearManagedActionColumn,
+    ensureManagedPreviewActionColumn: ensureManagedPreviewActionColumn,
+    clearManagedPreviewActionColumn: clearManagedPreviewActionColumn,
+    buildManagedPreviewButtonMarkup: buildManagedPreviewButtonMarkup,
+    buildManagedPreviewActionsMarkup: buildManagedPreviewActionsMarkup,
+    buildManagedPreviewColumnController: buildManagedPreviewColumnController,
   });
   window.OdooSurfaceLayers = surfaceLayerApi;
 })();

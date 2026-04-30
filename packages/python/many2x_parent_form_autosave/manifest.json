@@ -1,0 +1,19 @@
+{
+  "key": "many2x-parent-form-autosave-python",
+  "title": "Many2X Parent Form Autosave Builder",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "many2x_parent_form_autosave_patch.py",
+    "text_templates.py",
+    "templates"
+  ],
+  "capabilities": [
+    "patch-builder",
+    "template-based-web-patch"
+  ]
+}

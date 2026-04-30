@@ -1,0 +1,17 @@
+{
+  "key": "default-persistence",
+  "title": "Default Value Persistence Helpers",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "default_value_persistence.py"
+  ],
+  "capabilities": [
+    "ir-default-upsert",
+    "config-parameter-read-write"
+  ]
+}

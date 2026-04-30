@@ -1,0 +1,34 @@
+{
+  "key": "form-section-layout",
+  "title": "Adaptive Form Section Layout",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "constants.js",
+    "drag_drop.js",
+    "form_section_layout.css",
+    "form_section_layout.runtime.js",
+    "state.js",
+    "runtime",
+    "styles"
+  ],
+  "publish_order": [
+    "constants.js",
+    "state.js",
+    "drag_drop.js",
+    "runtime",
+    "form_section_layout.runtime.js",
+    "styles",
+    "form_section_layout.css"
+  ],
+  "capabilities": [
+    "section-collapse",
+    "section-visibility",
+    "settings-panel",
+    "subtotals-runtime",
+    "chatter-collapse"
+  ]
+}

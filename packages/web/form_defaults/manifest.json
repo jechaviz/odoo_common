@@ -1,0 +1,23 @@
+{
+  "key": "form-defaults",
+  "title": "Managed Form Defaults",
+  "status": "source-derived",
+  "language": "web",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_context.js",
+    "form_preview.js"
+  ],
+  "publish_order": [
+    "form_context.js",
+    "form_preview.js"
+  ],
+  "capabilities": [
+    "default-get",
+    "branch-defaults",
+    "series-defaults",
+    "preview-hydration"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "key": "partner-defaults",
+  "title": "Partner Defaults Autofill",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "partner_defaults_autofill.py",
+    "partner_child_defaults.py",
+    "text_templates.py",
+    "templates"
+  ],
+  "capabilities": [
+    "defaults-per-customer",
+    "invoice-delivery-contact-autofill",
+    "partner-address-default-builders"
+  ]
+}

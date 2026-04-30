@@ -1,0 +1,20 @@
+{
+  "key": "form-totals",
+  "title": "Form Tax Breakdown",
+  "status": "source-derived",
+  "language": "web",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_totals.js"
+  ],
+  "publish_order": [
+    "form_totals.js"
+  ],
+  "capabilities": [
+    "tax-breakdown",
+    "fallback-tax-row",
+    "totals-preview"
+  ]
+}

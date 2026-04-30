@@ -1,0 +1,16 @@
+{
+  "key": "taxation-helpers",
+  "title": "Reusable Taxation Helpers",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "taxation.py"
+  ],
+  "capabilities": [
+    "server-taxation-helpers"
+  ]
+}

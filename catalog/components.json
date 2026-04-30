@@ -1,0 +1,212 @@
+[
+  {
+    "key": "surface-workspace-shell",
+    "title": "Native Surface Workspace Shell",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/surface_workspace_shell",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers"
+      }
+    ],
+    "features": [
+      "sidebar shell",
+      "breadcrumb runtime",
+      "workspace lifecycle",
+      "table shell",
+      "record context shell",
+      "line picker",
+      "route slug settings"
+    ]
+  },
+  {
+    "key": "form-section-layout",
+    "title": "Adaptive Form Section Layout",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_section_layout",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/form_section_layout"
+      }
+    ],
+    "features": [
+      "section collapse",
+      "section visibility",
+      "layout persistence",
+      "settings panel",
+      "subtotals runtime",
+      "chatter collapse"
+    ]
+  },
+  {
+    "key": "form-defaults",
+    "title": "Managed Form Defaults",
+    "runtime": "web",
+    "status": "source-derived",
+    "package_path": "packages/web/form_defaults",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_context.js"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_preview.js"
+      }
+    ],
+    "features": [
+      "default_get hydration",
+      "branch defaults",
+      "series/document type defaults",
+      "preview defaults"
+    ]
+  },
+  {
+    "key": "form-totals",
+    "title": "Tax Breakdown And Totals Surface",
+    "runtime": "web",
+    "status": "source-derived",
+    "package_path": "packages/web/form_totals",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_totals.js"
+      }
+    ],
+    "features": [
+      "tax_totals normalization",
+      "tax group rendering",
+      "fallback tax rows"
+    ]
+  },
+  {
+    "key": "customer-defaults-web",
+    "title": "Customer Discount And Commercial Defaults Surface",
+    "runtime": "web",
+    "status": "source-derived",
+    "package_path": "packages/web/customer_defaults",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/customer_discount.js"
+      }
+    ],
+    "features": [
+      "customer discount sync",
+      "commercial defaults preview",
+      "discount assignment hydration"
+    ]
+  },
+  {
+    "key": "default-persistence",
+    "title": "Default Value Persistence Helpers",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/default_persistence",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/default_value_persistence.py"
+      }
+    ],
+    "features": [
+      "ir.default upsert",
+      "ir.config_parameter read/write"
+    ]
+  },
+  {
+    "key": "partner-defaults",
+    "title": "Partner Defaults Autofill",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/partner_defaults",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/partner_defaults_autofill.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/partner_child_defaults.py"
+      }
+    ],
+    "features": [
+      "defaults per customer",
+      "invoice/delivery/contact autofill",
+      "partner address default builders"
+    ]
+  },
+  {
+    "key": "taxation-helpers",
+    "title": "Reusable Taxation Helpers",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/taxation",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/core/taxation.py"
+      }
+    ],
+    "features": [
+      "tax helper utilities",
+      "server-side taxation support"
+    ]
+  },
+  {
+    "key": "many2x-parent-form-autosave",
+    "title": "Many2X Parent Form Autosave",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/many2x_parent_form_autosave",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/many2x_parent_form_autosave.js"
+      }
+    ],
+    "features": [
+      "parent-form-autosave",
+      "many2x-relational-safety",
+      "line-editing support"
+    ]
+  },
+  {
+    "key": "many2x-parent-form-autosave-python",
+    "title": "Many2X Parent Form Autosave Builder",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/many2x_parent_form_autosave",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/many2x_parent_form_autosave_patch.py"
+      }
+    ],
+    "features": [
+      "patch builder",
+      "template-based web patch"
+    ]
+  },
+  {
+    "key": "terms-and-conditions",
+    "title": "Terms And Conditions Schema Pattern",
+    "runtime": "schema",
+    "status": "planned",
+    "package_path": "packages/schema/terms_conditions",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/catalog_views.py"
+      }
+    ],
+    "features": [
+      "template-level terms field",
+      "printable conditions payload"
+    ]
+  }
+]

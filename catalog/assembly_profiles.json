@@ -1,0 +1,62 @@
+[
+  {
+    "key": "native_workspace_shell",
+    "title": "Native Workspace Shell",
+    "components": [
+      "surface-workspace-shell"
+    ],
+    "use_cases": [
+      "sidebar-first navigation",
+      "workspace lists",
+      "breadcrumb navigation"
+    ]
+  },
+  {
+    "key": "transactional_form_capture",
+    "title": "Transactional Form Capture",
+    "components": [
+      "surface-workspace-shell",
+      "many2x-parent-form-autosave",
+      "many2x-parent-form-autosave-python",
+      "form-defaults",
+      "customer-defaults-web",
+      "form-totals",
+      "partner-defaults",
+      "default-persistence"
+    ],
+    "use_cases": [
+      "sales orders",
+      "quotations",
+      "invoices",
+      "documents with lines"
+    ]
+  },
+  {
+    "key": "adaptive_form_layout",
+    "title": "Adaptive Form Layout",
+    "components": [
+      "form-section-layout"
+    ],
+    "use_cases": [
+      "section collapse",
+      "section visibility controls",
+      "chatter collapse",
+      "subtotals editor"
+    ]
+  },
+  {
+    "key": "native_commercial_policy",
+    "title": "Native Commercial Policy",
+    "components": [
+      "default-persistence",
+      "partner-defaults",
+      "customer-defaults-web",
+      "taxation-helpers"
+    ],
+    "use_cases": [
+      "defaults per customer",
+      "payment terms defaults",
+      "commercial policy sync"
+    ]
+  }
+]

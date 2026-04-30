@@ -1,0 +1,19 @@
+{
+  "key": "many2x-parent-form-autosave",
+  "title": "Many2X Parent Form Autosave",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "many2x_parent_form_autosave.js"
+  ],
+  "publish_order": [
+    "many2x_parent_form_autosave.js"
+  ],
+  "capabilities": [
+    "parent-form-autosave",
+    "safe-line-editing"
+  ]
+}

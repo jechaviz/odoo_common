@@ -1,0 +1,16 @@
+{
+  "key": "terms-and-conditions",
+  "title": "Terms And Conditions Schema Pattern",
+  "status": "planned",
+  "language": "schema",
+  "origin_project": "odoo_fiax",
+  "sync_root": ".",
+  "sync_mode": "tree",
+  "exports": [
+    "README.md"
+  ],
+  "capabilities": [
+    "template-level-terms-field",
+    "printable-conditions-payload"
+  ]
+}

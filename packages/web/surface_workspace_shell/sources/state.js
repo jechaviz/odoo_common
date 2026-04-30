@@ -272,15 +272,40 @@
       { allowedValues: allowedValues },
       settings.fallbackValue || allowedValues[0] || ""
     );
+    var workspaceHint = String(settings.workspaceHint || "").trim();
+    var tabSelector = String(settings.tabSelector || "[data-surface-tab='1']").trim() || "[data-surface-tab='1']";
 
-    function getEntry(value) {
+    function findEntry(value) {
       var normalized = sanitizeAllowedSessionValue(
         { allowedValues: allowedValues },
         value
-      ) || fallbackValue;
+      );
+      if (!normalized) {
+        return null;
+      }
       return entries.find(function (entry) {
         return String(entry && entry[valueKey] || "").trim() === normalized;
-      }) || entries[0] || null;
+      }) || null;
+    }
+
+    function resolveEntryActionId(entry) {
+      var matchedActionId = 0;
+      if (!(entry && typeof entry === "object")) {
+        return matchedActionId;
+      }
+      actionKeys.some(function (actionKey) {
+        var nextActionId = Number.parseInt(String(entry[actionKey] || 0), 10) || 0;
+        if (nextActionId > 0) {
+          matchedActionId = nextActionId;
+          return true;
+        }
+        return false;
+      });
+      return matchedActionId;
+    }
+
+    function getEntry(value) {
+      return findEntry(value) || findEntry(fallbackValue) || entries[0] || null;
     }
 
     function readFromAction() {
@@ -316,6 +341,73 @@
       return normalized;
     }
 
+    function readToolbarTabValue(target) {
+      if (!(target instanceof HTMLElement)) {
+        return "";
+      }
+      return sanitizeAllowedSessionValue(
+        { allowedValues: allowedValues },
+        target.getAttribute("data-surface-tab-key") || target.dataset.surfaceTabKey || ""
+      );
+    }
+
+    function getActionId(value) {
+      return resolveEntryActionId(findEntry(value));
+    }
+
+    function buildActionRequest(value, rawConfig) {
+      var interaction = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
+      var entry = findEntry(value);
+      var normalized = entry ? String(entry[valueKey] || "").trim() : "";
+      if (!(entry && normalized)) {
+        return null;
+      }
+      if (typeof settings.buildActionRequest === "function") {
+        try {
+          return settings.buildActionRequest(entry, normalized, interaction, settings) || null;
+        } catch (_error) {
+          return null;
+        }
+      }
+      var actionId = resolveEntryActionId(entry);
+      return actionId > 0 ? actionId : null;
+    }
+
+    function handleToolbarInteraction(rawConfig) {
+      var interaction = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
+      var target = interaction.target instanceof HTMLElement ? interaction.target : null;
+      var event = interaction.event || null;
+      if (!(target instanceof HTMLElement) || !event || !target.matches(tabSelector)) {
+        return false;
+      }
+      if (event.type !== "click") {
+        return true;
+      }
+      event.preventDefault();
+      var selectedValue = readToolbarTabValue(target);
+      if (!selectedValue) {
+        return true;
+      }
+      var normalized = write(selectedValue);
+      var nextWorkspaceHint = String(
+        interaction.workspaceHint ||
+        workspaceHint ||
+        (interaction.config && interaction.config.key) ||
+        ""
+      ).trim();
+      if (nextWorkspaceHint && typeof interaction.writeWorkspaceHint === "function") {
+        interaction.writeWorkspaceHint(nextWorkspaceHint);
+      }
+      var actionRequest = buildActionRequest(normalized, interaction);
+      if (actionRequest != null && typeof interaction.performAction === "function") {
+        var nextAction = interaction.performAction(actionRequest);
+        if (nextAction && typeof nextAction.catch === "function") {
+          nextAction.catch(function () {});
+        }
+      }
+      return true;
+    }
+
     return {
       entries: entries.slice(),
       valueKey: valueKey,
@@ -325,10 +417,17 @@
       readFromAction: readFromAction,
       read: read,
       write: write,
+      getActionId: getActionId,
+      buildActionRequest: buildActionRequest,
+      handleToolbarInteraction: handleToolbarInteraction,
       getAllowedValues: function () {
         return allowedValues.slice();
       },
     };
+  }
+
+  function buildActionBackedToolbarSelectionController(config) {
+    return buildActionBackedSelectionController(config);
   }
 
   function buildTabbedMonthListStateController(config) {
@@ -669,6 +768,7 @@
     resolveActionMappedSelection: resolveActionMappedSelection,
     loadActionBackedAllowedSessionKey: loadActionBackedAllowedSessionKey,
     buildActionBackedSelectionController: buildActionBackedSelectionController,
+    buildActionBackedToolbarSelectionController: buildActionBackedToolbarSelectionController,
     buildTabbedMonthListStateController: buildTabbedMonthListStateController,
     saveTimedSessionPayload: saveTimedSessionPayload,
     readTimedSessionPayload: readTimedSessionPayload,

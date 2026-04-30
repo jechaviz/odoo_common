@@ -331,6 +331,227 @@
     };
   }
 
+  function buildTabbedMonthListStateController(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var storageKey = String(settings.key || "").trim();
+    var monthConfig = settings.monthConfig && typeof settings.monthConfig === "object"
+      ? Object.assign({}, settings.monthConfig)
+      : {};
+
+    function normalizeTab(value) {
+      if (typeof settings.resolveTab === "function") {
+        try {
+          return String(settings.resolveTab(value, settings) || "").trim();
+        } catch (_error) {
+          return "";
+        }
+      }
+      return String(value || "").trim();
+    }
+
+    function sanitizeMonth(value) {
+      if (typeof surfaceLayerApi.sanitizeYearMonthKey === "function") {
+        return String(surfaceLayerApi.sanitizeYearMonthKey(value) || "").trim();
+      }
+      return /^\d{4}-\d{2}$/.test(String(value || "").trim()) ? String(value || "").trim() : "";
+    }
+
+    function readTabFromAction() {
+      if (typeof settings.readTabFromAction === "function") {
+        try {
+          return normalizeTab(settings.readTabFromAction(settings) || "");
+        } catch (_error) {
+          return "";
+        }
+      }
+      return "";
+    }
+
+    function buildFallbackState(applyActionTab) {
+      var fallbackState = settings.fallbackState && typeof settings.fallbackState === "object"
+        ? Object.assign({}, settings.fallbackState)
+        : {
+            tab: settings.fallbackTab,
+            month: settings.fallbackMonth,
+          };
+      fallbackState.tab = normalizeTab(fallbackState.tab);
+      fallbackState.month = sanitizeMonth(fallbackState.month);
+      var actionTab = applyActionTab !== false ? readTabFromAction() : "";
+      if (actionTab) {
+        fallbackState.tab = actionTab;
+      }
+      return {
+        tab: fallbackState.tab,
+        month: fallbackState.month,
+      };
+    }
+
+    function normalizeState(state, fallbackState, options) {
+      var nextFallback = fallbackState && typeof fallbackState === "object"
+        ? Object.assign({}, fallbackState)
+        : buildFallbackState(options && options.applyActionTab !== false);
+      var actionTab = options && options.applyActionTab !== false ? readTabFromAction() : "";
+      return {
+        tab: normalizeTab(actionTab || (state && state.tab)) || nextFallback.tab,
+        month: sanitizeMonth(state && state.month),
+      };
+    }
+
+    function read() {
+      var fallbackState = buildFallbackState(true);
+      if (typeof surfaceLayerApi.loadSessionJsonState === "function") {
+        return surfaceLayerApi.loadSessionJsonState({
+          key: storageKey,
+          fallback: fallbackState,
+          normalize: function (parsed, normalizedFallback) {
+            return normalizeState(parsed, normalizedFallback, { applyActionTab: true });
+          },
+        });
+      }
+      return fallbackState;
+    }
+
+    function readPersisted() {
+      var fallbackState = buildFallbackState(false);
+      if (typeof surfaceLayerApi.loadSessionJsonState === "function") {
+        return surfaceLayerApi.loadSessionJsonState({
+          key: storageKey,
+          fallback: fallbackState,
+          normalize: function (parsed, normalizedFallback) {
+            return normalizeState(parsed, normalizedFallback, { applyActionTab: false });
+          },
+        });
+      }
+      return fallbackState;
+    }
+
+    function write(nextState) {
+      var fallbackState = buildFallbackState(false);
+      if (typeof surfaceLayerApi.saveSessionJsonState === "function") {
+        return surfaceLayerApi.saveSessionJsonState({
+          key: storageKey,
+          fallback: fallbackState,
+          state: nextState,
+          normalize: function (parsed, normalizedFallback) {
+            return normalizeState(parsed, normalizedFallback, { applyActionTab: false });
+          },
+          onSave: function (normalizedState) {
+            if (typeof settings.onWriteTab === "function") {
+              try {
+                settings.onWriteTab(normalizedState.tab, settings);
+              } catch (_error) {}
+            }
+          },
+        });
+      }
+      return normalizeState(nextState, fallbackState);
+    }
+
+    function update(patch) {
+      var currentState = readPersisted();
+      var nextPatch = patch && typeof patch === "object" ? patch : {};
+      return write(Object.assign({}, currentState, nextPatch));
+    }
+
+    function readTab() {
+      return String(readPersisted().tab || "").trim();
+    }
+
+    function readMonth() {
+      return String(readPersisted().month || "").trim();
+    }
+
+    function writeMonth(monthKey) {
+      return update({ month: monthKey });
+    }
+
+    function buildMonthOptions() {
+      return typeof surfaceLayerApi.buildRecentYearMonthOptions === "function"
+        ? surfaceLayerApi.buildRecentYearMonthOptions(monthConfig)
+        : [{ value: "", label: "Todo periodo" }];
+    }
+
+    function getMonthLabel(monthKey) {
+      return typeof surfaceLayerApi.resolveRecentYearMonthLabel === "function"
+        ? surfaceLayerApi.resolveRecentYearMonthLabel(
+            Object.assign({}, monthConfig, {
+              monthKey: sanitizeMonth(monthKey),
+            })
+          )
+        : sanitizeMonth(monthKey);
+    }
+
+    function handleToolbarInteraction(rawConfig) {
+      var interaction = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
+      var target = interaction.target instanceof HTMLElement ? interaction.target : null;
+      var event = interaction.event || null;
+      if (!(target instanceof HTMLElement) || !event) {
+        return false;
+      }
+      if (target.matches("[data-surface-tab='1']")) {
+        if (event.type !== "click") {
+          return true;
+        }
+        event.preventDefault();
+        var nextTabState = read();
+        nextTabState.tab = normalizeTab(
+          target.getAttribute("data-surface-tab-key") ||
+          target.dataset.surfaceTabKey ||
+          target.getAttribute("data-surface-tab")
+        ) || nextTabState.tab;
+        nextTabState = write(nextTabState);
+        if (typeof interaction.writeWorkspaceHint === "function") {
+          interaction.writeWorkspaceHint(String(interaction.workspaceHint || "").trim());
+        }
+        if (typeof interaction.buildAction === "function" && typeof interaction.performAction === "function") {
+          var nextTabAction = interaction.performAction(interaction.buildAction(nextTabState, interaction));
+          if (nextTabAction && typeof nextTabAction.catch === "function") {
+            nextTabAction.catch(function () {});
+          }
+        }
+        return true;
+      }
+      if (target.matches("select[data-surface-filter='month']")) {
+        if (event.type !== "change") {
+          return true;
+        }
+        var nextMonthState = read();
+        nextMonthState.month = sanitizeMonth(target.value);
+        nextMonthState = write(nextMonthState);
+        if (typeof interaction.writeWorkspaceHint === "function") {
+          interaction.writeWorkspaceHint(String(interaction.workspaceHint || "").trim());
+        }
+        if (typeof interaction.buildAction === "function" && typeof interaction.performAction === "function") {
+          var nextMonthAction = interaction.performAction(interaction.buildAction(nextMonthState, interaction));
+          if (nextMonthAction && typeof nextMonthAction.catch === "function") {
+            nextMonthAction.catch(function () {});
+          }
+        }
+        return true;
+      }
+      return false;
+    }
+
+    return {
+      key: storageKey,
+      monthConfig: Object.assign({}, monthConfig),
+      read: read,
+      readPersisted: readPersisted,
+      write: write,
+      update: update,
+      readTab: readTab,
+      readMonth: readMonth,
+      writeMonth: writeMonth,
+      normalizeTab: normalizeTab,
+      sanitizeMonth: sanitizeMonth,
+      readTabFromAction: readTabFromAction,
+      buildFallbackState: buildFallbackState,
+      buildMonthOptions: buildMonthOptions,
+      getMonthLabel: getMonthLabel,
+      handleToolbarInteraction: handleToolbarInteraction,
+    };
+  }
+
   function saveTimedSessionPayload(config) {
     var settings = config && typeof config === "object" ? config : {};
     var storageKey = String(settings.key || "").trim();
@@ -448,6 +669,7 @@
     resolveActionMappedSelection: resolveActionMappedSelection,
     loadActionBackedAllowedSessionKey: loadActionBackedAllowedSessionKey,
     buildActionBackedSelectionController: buildActionBackedSelectionController,
+    buildTabbedMonthListStateController: buildTabbedMonthListStateController,
     saveTimedSessionPayload: saveTimedSessionPayload,
     readTimedSessionPayload: readTimedSessionPayload,
     captureInitialQueryState: captureInitialQueryState,

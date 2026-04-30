@@ -1,0 +1,320 @@
+action = False
+if env.context.get('__SKIP_CONTEXT_KEY__'):
+    result = False
+else:
+    def _fields_map(record_value):
+        try:
+            fields = record_value._fields
+        except Exception:
+            fields = {}
+        return fields or {}
+
+    def _has_field(record_value, field_name):
+        return bool(record_value and field_name in _fields_map(record_value))
+
+    def _read_field(record_value, field_name, default=None):
+        if not _has_field(record_value, field_name):
+            return default
+        try:
+            return record_value[field_name]
+        except Exception:
+            return default
+
+    def _m2o_id(value):
+        if not value:
+            return 0
+        try:
+            return int(value.id or 0)
+        except Exception:
+            pass
+        if isinstance(value, (list, tuple)) and value:
+            try:
+                return int(value[0] or 0)
+            except Exception:
+                return 0
+        try:
+            return int(value or 0)
+        except Exception:
+            return 0
+
+    def _first(recordset_value):
+        if not recordset_value:
+            return False
+        try:
+            return recordset_value[:1]
+        except Exception:
+            return False
+
+    def _commercial_partner(partner_value):
+        partner_rec = _first(partner_value)
+        if not partner_rec:
+            return False
+        commercial = _read_field(partner_rec, 'commercial_partner_id', False)
+        return _first(commercial) or partner_rec
+
+    def _partner_children(partner_value):
+        commercial = _commercial_partner(partner_value)
+        if not commercial:
+            return []
+        child_ids = _read_field(commercial, 'child_ids', False)
+        if not child_ids:
+            return []
+        try:
+            return list(child_ids)
+        except Exception:
+            try:
+                return [row for row in child_ids]
+            except Exception:
+                return []
+
+    def _pick_child_by_type(partner_value, partner_type):
+        for child in _partner_children(partner_value):
+            if str(_read_field(child, 'type', '') or '').strip().lower() != str(partner_type or '').strip().lower():
+                continue
+            child_id = _m2o_id(child)
+            if child_id:
+                return child_id
+        return 0
+
+    def _pick_customer_contact(partner_value):
+        partner_rec = _first(partner_value)
+        if partner_rec:
+            parent_rec = _first(_read_field(partner_rec, 'parent_id', False))
+            if parent_rec:
+                partner_type = str(_read_field(partner_rec, 'type', '') or '').strip().lower()
+                if partner_type not in ('invoice', 'delivery'):
+                    partner_id = _m2o_id(partner_rec)
+                    if partner_id:
+                        return partner_id
+
+        for child in _partner_children(partner_value):
+            partner_type = str(_read_field(child, 'type', '') or '').strip().lower()
+            if partner_type == 'contact':
+                child_id = _m2o_id(child)
+                if child_id:
+                    return child_id
+
+        for child in _partner_children(partner_value):
+            partner_type = str(_read_field(child, 'type', '') or '').strip().lower()
+            if partner_type in ('invoice', 'delivery'):
+                continue
+            child_id = _m2o_id(child)
+            if child_id:
+                return child_id
+
+        for child in _partner_children(partner_value):
+            child_id = _m2o_id(child)
+            if child_id:
+                return child_id
+        return 0
+
+    def _partner_default_id(partner_value, field_name):
+        commercial = _commercial_partner(partner_value)
+        if not commercial:
+            return 0
+        default_value = _read_field(commercial, field_name, False)
+        return _m2o_id(_first(default_value) or default_value)
+
+    def _fallback_address_map(partner_value):
+        commercial = _commercial_partner(partner_value)
+        if not commercial:
+            return {}
+        try:
+            return commercial.address_get(['invoice', 'delivery', 'contact']) or {}
+        except Exception:
+            return {}
+
+    def _resolve_partner_defaults(partner_value):
+        commercial = _commercial_partner(partner_value)
+        if not commercial:
+            return {
+                'customer_id': 0,
+                'invoice_id': 0,
+                'delivery_id': 0,
+                'contact_id': 0,
+            }
+        address_map = _fallback_address_map(commercial)
+        customer_id = _m2o_id(commercial)
+        invoice_id = _partner_default_id(commercial, '__PARTNER_DEFAULT_INVOICE_FIELD_NAME__') or int(address_map.get('invoice') or 0) or customer_id
+        delivery_id = _partner_default_id(commercial, '__PARTNER_DEFAULT_DELIVERY_FIELD_NAME__') or int(address_map.get('delivery') or 0) or customer_id
+        contact_id = (
+            _partner_default_id(commercial, '__PARTNER_DEFAULT_CONTACT_FIELD_NAME__')
+            or int(address_map.get('contact') or 0)
+            or _pick_customer_contact(partner_value)
+        )
+        return {
+            'customer_id': customer_id,
+            'invoice_id': invoice_id,
+            'delivery_id': delivery_id,
+            'contact_id': contact_id,
+        }
+
+    def _contact_name(contact_id):
+        if not contact_id:
+            return ''
+        try:
+            contact_rec = env['__PARTNER_MODEL_NAME__'].browse(int(contact_id))
+        except Exception:
+            return ''
+        try:
+            if not contact_rec.exists():
+                return ''
+        except Exception:
+            return ''
+        return str(_read_field(contact_rec, 'name', '') or '').strip()
+
+    def _same_commercial_tree(candidate_id, partner_value):
+        if not candidate_id or not partner_value:
+            return False
+        try:
+            candidate = env['__PARTNER_MODEL_NAME__'].browse(int(candidate_id))
+        except Exception:
+            return False
+        try:
+            if not candidate.exists():
+                return False
+        except Exception:
+            return False
+        commercial_partner = _commercial_partner(partner_value)
+        candidate_commercial = _commercial_partner(candidate)
+        return bool(
+            commercial_partner
+            and candidate_commercial
+            and _m2o_id(commercial_partner) == _m2o_id(candidate_commercial)
+        )
+
+    def _linked_sale_order(move_rec):
+        invoice_lines = _read_field(move_rec, 'invoice_line_ids', False)
+        sale_lines = False
+        try:
+            sale_lines = invoice_lines.mapped('sale_line_ids')
+        except Exception:
+            sale_lines = False
+        order_lines = False
+        try:
+            order_lines = sale_lines and sale_lines.mapped('order_id') or False
+        except Exception:
+            order_lines = False
+        linked = _first(order_lines)
+        if linked:
+            return linked
+
+        invoice_origin = str(_read_field(move_rec, '__LINKED_SALE_ORDER_FIELD_NAME__', '') or '').strip()
+        if invoice_origin:
+            try:
+                linked = env['__SALE_MODEL_NAME__'].search([('name', '=', invoice_origin)], limit=1)
+            except Exception:
+                linked = False
+            linked = _first(linked)
+            if linked:
+                return linked
+        return False
+
+    def _sync_sale_order(order_rec):
+        partner_rec = _first(_read_field(order_rec, '__SALE_CUSTOMER_FIELD_NAME__', False))
+        if not partner_rec:
+            return False
+
+        resolved = _resolve_partner_defaults(partner_rec)
+        contact_name = _contact_name(resolved.get('contact_id'))
+        updates = {}
+
+        if _has_field(order_rec, '__SALE_INVOICE_FIELD_NAME__'):
+            current_invoice_id = _m2o_id(_read_field(order_rec, '__SALE_INVOICE_FIELD_NAME__', False))
+            if resolved.get('invoice_id') and (not current_invoice_id or not _same_commercial_tree(current_invoice_id, partner_rec)):
+                updates['__SALE_INVOICE_FIELD_NAME__'] = resolved['invoice_id']
+        if _has_field(order_rec, '__SALE_DELIVERY_FIELD_NAME__'):
+            current_delivery_id = _m2o_id(_read_field(order_rec, '__SALE_DELIVERY_FIELD_NAME__', False))
+            if resolved.get('delivery_id') and (not current_delivery_id or not _same_commercial_tree(current_delivery_id, partner_rec)):
+                updates['__SALE_DELIVERY_FIELD_NAME__'] = resolved['delivery_id']
+        if _has_field(order_rec, '__SALE_CONTACT_FIELD_NAME__'):
+            current_contact_id = _m2o_id(_read_field(order_rec, '__SALE_CONTACT_FIELD_NAME__', False))
+            desired_contact_id = int(resolved.get('contact_id') or 0)
+            if current_contact_id != desired_contact_id and (not current_contact_id or not _same_commercial_tree(current_contact_id, partner_rec)):
+                updates['__SALE_CONTACT_FIELD_NAME__'] = desired_contact_id or False
+        if _has_field(order_rec, '__SALE_REP_FIELD_NAME__'):
+            current_rep = str(_read_field(order_rec, '__SALE_REP_FIELD_NAME__', '') or '').strip()
+            desired_rep = contact_name or current_rep
+            if desired_rep != current_rep and ('__SALE_CONTACT_FIELD_NAME__' in updates or not current_rep):
+                updates['__SALE_REP_FIELD_NAME__'] = desired_rep
+
+        if updates:
+            order_rec.with_context(__SKIP_CONTEXT_KEY__=True).write(updates)
+        return bool(updates)
+
+    def _sync_account_move(move_rec):
+        move_type = str(_read_field(move_rec, 'move_type', '') or '').strip().lower()
+        if move_type not in ('out_invoice', 'out_refund', 'out_receipt'):
+            return False
+
+        source_order = _linked_sale_order(move_rec)
+        if source_order:
+            base_partner = _first(_read_field(source_order, '__SALE_CUSTOMER_FIELD_NAME__', False))
+        else:
+            partner_rec = _first(_read_field(move_rec, '__INVOICE_CUSTOMER_FIELD_NAME__', False))
+            base_partner = _commercial_partner(partner_rec) or partner_rec
+        if not base_partner:
+            return False
+
+        resolved = _resolve_partner_defaults(base_partner)
+        source_invoice_id = _m2o_id(_read_field(source_order, '__SALE_INVOICE_FIELD_NAME__', False)) if source_order else 0
+        source_delivery_id = _m2o_id(_read_field(source_order, '__SALE_DELIVERY_FIELD_NAME__', False)) if source_order else 0
+        source_contact_id = _m2o_id(_read_field(source_order, '__SALE_CONTACT_FIELD_NAME__', False)) if source_order and _has_field(source_order, '__SALE_CONTACT_FIELD_NAME__') else 0
+
+        desired_invoice_id = source_invoice_id or int(resolved.get('invoice_id') or 0)
+        desired_delivery_id = source_delivery_id or int(resolved.get('delivery_id') or 0)
+        desired_contact_id = source_contact_id or int(resolved.get('contact_id') or 0)
+        desired_rep = ''
+        if source_order and _has_field(source_order, '__SALE_REP_FIELD_NAME__'):
+            desired_rep = str(_read_field(source_order, '__SALE_REP_FIELD_NAME__', '') or '').strip()
+        if not desired_rep:
+            desired_rep = _contact_name(desired_contact_id)
+
+        updates = {}
+        if _has_field(move_rec, '__INVOICE_INVOICE_FIELD_NAME__'):
+            current_invoice_id = _m2o_id(_read_field(move_rec, '__INVOICE_INVOICE_FIELD_NAME__', False))
+            if current_invoice_id != desired_invoice_id and (not current_invoice_id or not _same_commercial_tree(current_invoice_id, base_partner)):
+                updates['__INVOICE_INVOICE_FIELD_NAME__'] = desired_invoice_id or False
+        if _has_field(move_rec, '__INVOICE_DELIVERY_FIELD_NAME__'):
+            current_delivery_id = _m2o_id(_read_field(move_rec, '__INVOICE_DELIVERY_FIELD_NAME__', False))
+            if current_delivery_id != desired_delivery_id and (not current_delivery_id or not _same_commercial_tree(current_delivery_id, base_partner)):
+                updates['__INVOICE_DELIVERY_FIELD_NAME__'] = desired_delivery_id or False
+        if _has_field(move_rec, '__INVOICE_CONTACT_FIELD_NAME__'):
+            current_contact_id = _m2o_id(_read_field(move_rec, '__INVOICE_CONTACT_FIELD_NAME__', False))
+            if current_contact_id != desired_contact_id and (not current_contact_id or not _same_commercial_tree(current_contact_id, base_partner)):
+                updates['__INVOICE_CONTACT_FIELD_NAME__'] = desired_contact_id or False
+        if _has_field(move_rec, '__INVOICE_REP_FIELD_NAME__'):
+            current_rep = str(_read_field(move_rec, '__INVOICE_REP_FIELD_NAME__', '') or '').strip()
+            desired_rep = desired_rep or current_rep
+            if desired_rep != current_rep and ('__INVOICE_CONTACT_FIELD_NAME__' in updates or not current_rep):
+                updates['__INVOICE_REP_FIELD_NAME__'] = desired_rep
+
+        if updates:
+            move_rec.with_context(__SKIP_CONTEXT_KEY__=True).write(updates)
+        return bool(updates)
+
+    target_records = records
+    if not target_records:
+        active_ids = env.context.get('active_ids') or []
+        active_id = env.context.get('active_id')
+        if active_ids:
+            try:
+                target_records = env[env.context.get('active_model')].browse(active_ids)
+            except Exception:
+                target_records = False
+        elif active_id and env.context.get('active_model'):
+            try:
+                target_records = env[env.context.get('active_model')].browse([active_id])
+            except Exception:
+                target_records = False
+
+    if target_records:
+        for target_record in target_records:
+            try:
+                model_name = str(target_record._name or '')
+            except Exception:
+                model_name = ''
+            if model_name == '__SALE_MODEL_NAME__':
+                _sync_sale_order(target_record)
+            elif model_name == '__INVOICE_MODEL_NAME__':
+                _sync_account_move(target_record)

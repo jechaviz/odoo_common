@@ -1,7 +1,10 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  var surfaceLayerApi = window.OdooSurfaceLayers;
+  if (!(surfaceLayerApi && typeof surfaceLayerApi === "object")) {
+    throw new Error("surface table runtime requires the canonical OdooSurfaceLayers bootstrap.");
+  }
   var MANAGED_ATTR = "data-surface-managed";
   var DEFAULT_PREVIEW_HEADER_CLASS_NAME = "o_surface_record_preview_header";
   var DEFAULT_PREVIEW_CELL_CLASS_NAME = "o_surface_record_preview_cell o_surface_action_cell";

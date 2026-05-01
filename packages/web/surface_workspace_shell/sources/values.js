@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  var surfaceLayerApi = window.OdooSurfaceLayers;
 
   function escapeHtml(value) {
     return String(value || "")

@@ -1,7 +1,28 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  function requireSurfaceLayerApi() {
+    var api = window.OdooSurfaceLayers;
+    if (!(api && typeof api === "object")) {
+      throw new Error("OdooSurfaceLayers runtime is required before record_context_sources.js.");
+    }
+    return api;
+  }
+
+  function requireSurfaceLayerMethod(api, methodName) {
+    var method = api && api[methodName];
+    if (typeof method !== "function") {
+      throw new Error("OdooSurfaceLayers." + methodName + " is required by record_context_sources.js.");
+    }
+    return method;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var normalizeMany2oneValue = requireSurfaceLayerMethod(surfaceLayerApi, "normalizeMany2oneValue");
+  var resolveOdooService = requireSurfaceLayerMethod(surfaceLayerApi, "resolveOdooService");
+  var buildRecordContextSource = requireSurfaceLayerMethod(surfaceLayerApi, "buildRecordContextSource");
+  var buildRecordContextPanelConfig = requireSurfaceLayerMethod(surfaceLayerApi, "buildRecordContextPanelConfig");
+  var readFieldText = requireSurfaceLayerMethod(surfaceLayerApi, "readFieldText");
 
   function normalizeRelationalText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
@@ -19,7 +40,7 @@
   }
 
   function normalizeRelationalMany2oneValue(value) {
-    var normalized = surfaceLayerApi.normalizeMany2oneValue(value) || {};
+    var normalized = normalizeMany2oneValue(value) || {};
     return {
       id: Number.parseInt(String(normalized.id || 0), 10) || 0,
       label: normalizeRelationalText(normalized.label || normalized.displayName || ""),
@@ -252,7 +273,7 @@
   }
 
   async function resolvePartnerCommercialRecordContextData(spec, runtimeContext, fieldReader) {
-    var ormService = await surfaceLayerApi.resolveOdooService("orm");
+    var ormService = await resolveOdooService("orm");
     if (!ormService || typeof ormService.searchRead !== "function") {
       return {};
     }
@@ -426,7 +447,7 @@
     if (typeof buildData !== "function") {
       return {};
     }
-    var ormService = await surfaceLayerApi.resolveOdooService("orm");
+    var ormService = await resolveOdooService("orm");
     if (!ormService || typeof ormService.searchRead !== "function") {
       return {};
     }
@@ -471,7 +492,7 @@
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : surfaceLayerApi.readFieldText;
+      : readFieldText;
     var sourceConfig = {
       cacheScopeKey: spec.cacheScopeKey,
       recordIdResolver: function (runtimeContext) {
@@ -482,15 +503,15 @@
         return resolveRelationalRecordContextData(spec, runtimeContext, fieldReader);
       },
     };
-    return surfaceLayerApi.buildRecordContextSource(sourceConfig);
+    return buildRecordContextSource(sourceConfig);
   }
 
   function buildRelationalRecordContextAdapter(rawSpec) {
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : surfaceLayerApi.readFieldText;
-    return surfaceLayerApi.buildRecordContextPanelConfig({
+      : readFieldText;
+    return buildRecordContextPanelConfig({
       cacheScopeKey: spec.cacheScopeKey,
       panelSelector: spec.panelSelector,
       slots: spec.slots,
@@ -507,7 +528,7 @@
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : surfaceLayerApi.readFieldText;
+      : readFieldText;
     var formFieldMap = normalizePartnerCommercialFieldMap(spec.formFieldMap, {
       billing: "partner_id",
       shipping: "partner_shipping_id",
@@ -533,15 +554,15 @@
         return resolvePartnerCommercialRecordContextData(spec, runtimeContext, fieldReader);
       },
     };
-    return surfaceLayerApi.buildRecordContextSource(sourceConfig);
+    return buildRecordContextSource(sourceConfig);
   }
 
   function buildPartnerCommercialRecordContextAdapter(rawSpec) {
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : surfaceLayerApi.readFieldText;
-    return surfaceLayerApi.buildRecordContextPanelConfig({
+      : readFieldText;
+    return buildRecordContextPanelConfig({
       cacheScopeKey: spec.cacheScopeKey,
       panelSelector: spec.panelSelector,
       slots: spec.slots,
@@ -563,5 +584,4 @@
     buildRecordContextSummarySlotRenderer: buildRecordContextSummarySlotRenderer,
     buildRecordContextOverrideSlotRenderer: buildRecordContextOverrideSlotRenderer,
   });
-  window.OdooSurfaceLayers = surfaceLayerApi;
 })();

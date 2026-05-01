@@ -1,8 +1,14 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var shared = surfaceLayerApi._shared || (surfaceLayerApi._shared = {});
+  var surfaceLayerApi = window.OdooSurfaceLayers;
+  if (!(surfaceLayerApi && typeof surfaceLayerApi === "object")) {
+    throw new Error("OdooSurfaceLayers must be initialized before surface_workspace_shell debug runtime.");
+  }
+  var shared = surfaceLayerApi._shared;
+  if (!(shared && typeof shared === "object")) {
+    throw new Error("OdooSurfaceLayers._shared must be initialized before surface_workspace_shell debug runtime.");
+  }
   var debugServicePromisesByKey =
     shared.debugServicePromisesByKey || (shared.debugServicePromisesByKey = Object.create(null));
   var cachedActionPromisesByKey =
@@ -311,5 +317,4 @@
     suppressRenderedEmailLimitNotifications: suppressRenderedEmailLimitNotifications,
     installSuppressedNotificationService: installSuppressedNotificationService,
   });
-  window.OdooSurfaceLayers = surfaceLayerApi;
 })();

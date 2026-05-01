@@ -1,8 +1,33 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var shared = surfaceLayerApi._shared || (surfaceLayerApi._shared = {});
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("Missing required OdooSurfaceLayers runtime before surface workspace menu.");
+    }
+    return window.OdooSurfaceLayers;
+  }
+
+  function requireSharedState(surfaceLayerApi) {
+    if (!(surfaceLayerApi._shared && typeof surfaceLayerApi._shared === "object")) {
+      throw new Error("OdooSurfaceLayers._shared must be initialized before surface workspace menu.");
+    }
+    return surfaceLayerApi._shared;
+  }
+
+  function requireSurfaceLayerFunction(surfaceLayerApi, name) {
+    var candidate = surfaceLayerApi && surfaceLayerApi[name];
+    if (typeof candidate !== "function") {
+      throw new Error(
+        "Missing required OdooSurfaceLayers." + String(name || "").trim() +
+        " before surface workspace menu."
+      );
+    }
+    return candidate;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var shared = requireSharedState(surfaceLayerApi);
   var menuContextRefreshStatesByKey =
     shared.menuContextRefreshStatesByKey || (shared.menuContextRefreshStatesByKey = Object.create(null));
 
@@ -83,7 +108,7 @@
         return null;
       }
     }
-    return surfaceLayerApi.resolveOdooService("menu");
+    return requireSurfaceLayerFunction(surfaceLayerApi, "resolveOdooService")("menu");
   }
 
   function isMenuContextReady(config) {

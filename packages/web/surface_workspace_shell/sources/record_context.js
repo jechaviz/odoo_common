@@ -1,10 +1,33 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var shared = surfaceLayerApi._shared && typeof surfaceLayerApi._shared === "object"
-    ? surfaceLayerApi._shared
-    : (surfaceLayerApi._shared = {});
+  function requireSurfaceLayerApi() {
+    var api = window.OdooSurfaceLayers;
+    if (!(api && typeof api === "object")) {
+      throw new Error("OdooSurfaceLayers runtime is required before record_context.js.");
+    }
+    return api;
+  }
+
+  function ensureSharedRegistry(api) {
+    if (!(api._shared && typeof api._shared === "object")) {
+      api._shared = Object.create(null);
+    }
+    return api._shared;
+  }
+
+  function requireSurfaceLayerMethod(api, methodName) {
+    var method = api && api[methodName];
+    if (typeof method !== "function") {
+      throw new Error("OdooSurfaceLayers." + methodName + " is required by record_context.js.");
+    }
+    return method;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var shared = ensureSharedRegistry(surfaceLayerApi);
+  var readFieldText = requireSurfaceLayerMethod(surfaceLayerApi, "readFieldText");
+  var registerManagedFormEnhancer = requireSurfaceLayerMethod(surfaceLayerApi, "registerManagedFormEnhancer");
   var RECORD_CONTEXT_PANEL_ENHANCER_KEY = "recordContextPanel";
   var RECORD_CONTEXT_SOURCE_MARKER = "__surfaceRecordContextSource";
   var DEFAULT_RECORD_CONTEXT_PANEL_SELECTOR = "[data-surface-record-context-panel='1']";
@@ -227,7 +250,7 @@
     var formRoot = resolveRecordContextFormRoot(settings);
     var fieldReader = typeof settings.fieldReader === "function"
       ? settings.fieldReader
-      : surfaceLayerApi.readFieldText;
+      : readFieldText;
     var source = settings.source && typeof settings.source === "object"
       ? settings.source
       : buildRecordContextSource({});
@@ -412,7 +435,7 @@
     var raw = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
     var fieldReader = typeof raw.fieldReader === "function"
       ? raw.fieldReader
-      : surfaceLayerApi.readFieldText;
+      : readFieldText;
     var rawSource = raw.source && typeof raw.source === "object" ? raw.source : {};
     var source = buildRecordContextSource(
       rawSource[RECORD_CONTEXT_SOURCE_MARKER] === true
@@ -543,9 +566,8 @@
     syncRecordContextPanel: syncRecordContextPanel,
     syncManagedRecordContextPanels: syncManagedRecordContextPanels,
   });
-  surfaceLayerApi.registerManagedFormEnhancer({
+  registerManagedFormEnhancer({
     key: RECORD_CONTEXT_PANEL_ENHANCER_KEY,
     sync: syncManagedRecordContextPanels,
   });
-  window.OdooSurfaceLayers = surfaceLayerApi;
 })();

@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  var surfaceLayerApi = window.OdooSurfaceLayers;
 
   function clampNumber(value, minimum, maximum) {
     var numericValue = Number(value || 0) || 0;

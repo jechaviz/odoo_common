@@ -1,10 +1,28 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var resolveElement = surfaceLayerApi.resolveElement;
-  var escapeHtml = surfaceLayerApi.escapeHtml;
-  var toDataAttributeName = surfaceLayerApi.toDataAttributeName;
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("Missing required OdooSurfaceLayers runtime before surface workspace chrome.");
+    }
+    return window.OdooSurfaceLayers;
+  }
+
+  function requireSurfaceLayerFunction(surfaceLayerApi, name) {
+    var candidate = surfaceLayerApi && surfaceLayerApi[name];
+    if (typeof candidate !== "function") {
+      throw new Error(
+        "Missing required OdooSurfaceLayers." + String(name || "").trim() +
+        " before surface workspace chrome."
+      );
+    }
+    return candidate;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var resolveElement = requireSurfaceLayerFunction(surfaceLayerApi, "resolveElement");
+  var escapeHtml = requireSurfaceLayerFunction(surfaceLayerApi, "escapeHtml");
+  var toDataAttributeName = requireSurfaceLayerFunction(surfaceLayerApi, "toDataAttributeName");
   var SURFACE_BREADCRUMB_TOPBAR_HOST_CLASS = "o_surface_topbar_breadcrumb_host";
 
   function buildEscapedDataAttributes(attributeMap) {

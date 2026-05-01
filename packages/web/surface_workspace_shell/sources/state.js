@@ -1,7 +1,10 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  var surfaceLayerApi = window.OdooSurfaceLayers;
+  if (!(surfaceLayerApi && typeof surfaceLayerApi === "object")) {
+    throw new Error("surface state runtime requires the canonical OdooSurfaceLayers bootstrap.");
+  }
 
   function clearSessionStorageKey(key) {
     var storageKey = String(key || "").trim();

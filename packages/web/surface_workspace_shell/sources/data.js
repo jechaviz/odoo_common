@@ -1,7 +1,27 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("Missing required OdooSurfaceLayers runtime before surface workspace data.");
+    }
+    return window.OdooSurfaceLayers;
+  }
+
+  function requireSurfaceLayerFunction(surfaceLayerApi, name) {
+    var candidate = surfaceLayerApi && surfaceLayerApi[name];
+    if (typeof candidate !== "function") {
+      throw new Error(
+        "Missing required OdooSurfaceLayers." + String(name || "").trim() +
+        " before surface workspace data."
+      );
+    }
+    return candidate;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var getDataRecordId = requireSurfaceLayerFunction(surfaceLayerApi, "getDataRecordId");
+  var resolveOdooService = requireSurfaceLayerFunction(surfaceLayerApi, "resolveOdooService");
 
   function buildScopedStateCacheKey(config) {
     var settings = config && typeof config === "object" ? config : {};
@@ -131,7 +151,6 @@
     var kinds = Array.isArray(settings.kinds) && settings.kinds.length
       ? settings.kinds.map(function (kind) { return String(kind || "").trim().toLowerCase(); }).filter(Boolean)
       : ["pdf", "xml"];
-    var getDataRecordId = surfaceLayerApi.getDataRecordId;
     var recordIds = rows.map(function (row) {
       return getDataRecordId(row);
     }).filter(function (recordId) {
@@ -163,7 +182,7 @@
         }
       });
     });
-    var ormService = await surfaceLayerApi.resolveOdooService("orm");
+    var ormService = await resolveOdooService("orm");
     if (!ormService || typeof ormService.searchRead !== "function") {
       return cache;
     }

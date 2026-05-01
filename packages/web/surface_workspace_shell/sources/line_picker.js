@@ -1,10 +1,27 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var shared = surfaceLayerApi._shared && typeof surfaceLayerApi._shared === "object"
-    ? surfaceLayerApi._shared
-    : {};
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("Missing required OdooSurfaceLayers runtime before surface workspace line picker.");
+    }
+    return window.OdooSurfaceLayers;
+  }
+
+  function requireSurfaceLayerFunction(surfaceLayerApi, name) {
+    var candidate = surfaceLayerApi && surfaceLayerApi[name];
+    if (typeof candidate !== "function") {
+      throw new Error(
+        "Missing required OdooSurfaceLayers." + String(name || "").trim() +
+        " before surface workspace line picker."
+      );
+    }
+    return candidate;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var normalizeSurfaceLabel = requireSurfaceLayerFunction(surfaceLayerApi, "normalizeLabel");
+  var registerManagedFormEnhancer = requireSurfaceLayerFunction(surfaceLayerApi, "registerManagedFormEnhancer");
   var AUTO_OPEN_DELAY_MS = 70;
   var AUTO_OPEN_TIMEOUT_MS = 3200;
   var ENTRY_PICKER_ENHANCER_KEY = "entryPicker";
@@ -29,7 +46,7 @@
   }
 
   function normalizeLabel(value) {
-    return String(surfaceLayerApi.normalizeLabel(value) || "");
+    return String(normalizeSurfaceLabel(value) || "");
   }
 
   function readText(node) {
@@ -298,10 +315,9 @@
     buildLinePickerConfig: buildLinePickerConfig,
     syncManagedLinePickers: syncManagedLinePickers,
   });
-  surfaceLayerApi.registerManagedFormEnhancer({
+  registerManagedFormEnhancer({
     key: ENTRY_PICKER_ENHANCER_KEY,
     sync: syncManagedLinePickers,
   });
-  surfaceLayerApi._shared = shared;
   window.OdooSurfaceLayers = surfaceLayerApi;
 })();

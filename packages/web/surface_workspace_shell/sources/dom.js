@@ -1,7 +1,14 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("Missing required OdooSurfaceLayers runtime before surface workspace dom.");
+    }
+    return window.OdooSurfaceLayers;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
 
   function asElement(value) {
     return value instanceof HTMLElement ? value : null;

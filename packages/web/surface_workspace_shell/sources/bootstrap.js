@@ -1,7 +1,12 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = Object.assign({}, window.OdooSurfaceLayers || {});
+  var surfaceLayerApi = window.OdooSurfaceLayers;
+  if (!(surfaceLayerApi && typeof surfaceLayerApi === "object")) {
+    surfaceLayerApi = {};
+  } else {
+    surfaceLayerApi = Object.assign({}, surfaceLayerApi);
+  }
   var SURFACE_ASSET_FINGERPRINT = String("__ODOO_SURFACE_ASSET_FINGERPRINT__" || "").trim();
   var ASSET_FINGERPRINT_STORAGE_KEY = "odoo.surface.assetFingerprint";
   var ASSET_FINGERPRINT_RELOAD_KEY = "odoo.surface.assetFingerprint.reload";

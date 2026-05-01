@@ -1,8 +1,34 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var shared = surfaceLayerApi._shared || (surfaceLayerApi._shared = {});
+  function requireSurfaceLayerApi() {
+    var api = window.OdooSurfaceLayers;
+    if (!(api && typeof api === "object")) {
+      throw new Error("OdooSurfaceLayers runtime is required before rows.js.");
+    }
+    return api;
+  }
+
+  function ensureSharedRegistry(api) {
+    if (!(api._shared && typeof api._shared === "object")) {
+      api._shared = Object.create(null);
+    }
+    return api._shared;
+  }
+
+  function requireSurfaceLayerMethod(api, methodName) {
+    var method = api && api[methodName];
+    if (typeof method !== "function") {
+      throw new Error("OdooSurfaceLayers." + methodName + " is required by rows.js.");
+    }
+    return method;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var shared = ensureSharedRegistry(surfaceLayerApi);
+  var clearSessionStorageKey = requireSurfaceLayerMethod(surfaceLayerApi, "clearSessionStorageKey");
+  var saveTimedSessionPayload = requireSurfaceLayerMethod(surfaceLayerApi, "saveTimedSessionPayload");
+  var readTimedSessionPayload = requireSurfaceLayerMethod(surfaceLayerApi, "readTimedSessionPayload");
   var DEFAULT_LIST_RETURN_STATE_IGNORE_SELECTORS = [
     "input",
     "select",
@@ -293,10 +319,10 @@
   function clearListReturnState(config) {
     var settings = config && typeof config === "object" ? config : {};
     var storageKey = String(settings.storageKey || settings.key || "").trim();
-    if (!storageKey || typeof surfaceLayerApi.clearSessionStorageKey !== "function") {
+    if (!storageKey) {
       return;
     }
-    surfaceLayerApi.clearSessionStorageKey(storageKey);
+    clearSessionStorageKey(storageKey);
   }
 
   function rememberListReturnState(config) {
@@ -319,12 +345,10 @@
       return null;
     }
     payload.armed = true;
-    if (typeof surfaceLayerApi.saveTimedSessionPayload === "function") {
-      surfaceLayerApi.saveTimedSessionPayload({
-        key: storageKey,
-        payload: payload,
-      });
-    }
+    saveTimedSessionPayload({
+      key: storageKey,
+      payload: payload,
+    });
     return payload;
   }
 
@@ -403,14 +427,10 @@
     var overrideReference = normalizeRowReference(settings.reference);
     var overrideRowIndex = normalizeRowIndex(settings.rowIndex);
     var overrideSignature = normalizeRowReference(settings.signature);
-    if (
-      !storageKey ||
-      typeof surfaceLayerApi.readTimedSessionPayload !== "function" ||
-      typeof surfaceLayerApi.saveTimedSessionPayload !== "function"
-    ) {
+    if (!storageKey) {
       return null;
     }
-    var payload = surfaceLayerApi.readTimedSessionPayload({
+    var payload = readTimedSessionPayload({
       key: storageKey,
       maxAgeMs: Number(settings.maxAgeMs || 20 * 60 * 1000) || (20 * 60 * 1000),
       clearOnInvalid: false,
@@ -451,7 +471,7 @@
     ) {
       return payload;
     }
-    surfaceLayerApi.saveTimedSessionPayload({
+    saveTimedSessionPayload({
       key: storageKey,
       payload: {
         recordId: nextRecordId,
@@ -479,8 +499,7 @@
     var signature = normalizeRowReference(settings.signature);
     if (
       !storageKey ||
-      (!(recordId > 0) && !reference && rowIndex < 0 && !signature) ||
-      typeof surfaceLayerApi.saveTimedSessionPayload !== "function"
+      (!(recordId > 0) && !reference && rowIndex < 0 && !signature)
     ) {
       return null;
     }
@@ -491,7 +510,7 @@
       signature: signature,
       armed: true,
     };
-    surfaceLayerApi.saveTimedSessionPayload({
+    saveTimedSessionPayload({
       key: storageKey,
       payload: payload,
     });
@@ -501,10 +520,10 @@
   function restoreListReturnState(config) {
     var settings = config && typeof config === "object" ? config : {};
     var storageKey = String(settings.storageKey || settings.key || "").trim();
-    if (!storageKey || typeof surfaceLayerApi.readTimedSessionPayload !== "function") {
+    if (!storageKey) {
       return null;
     }
-    var payload = surfaceLayerApi.readTimedSessionPayload({
+    var payload = readTimedSessionPayload({
       key: storageKey,
       maxAgeMs: Number(settings.maxAgeMs || 20 * 60 * 1000) || (20 * 60 * 1000),
       validate: function (entry) {
@@ -605,5 +624,4 @@
     restoreListReturnState: restoreListReturnState,
     syncFocusedDataRow: syncFocusedDataRow,
   });
-  window.OdooSurfaceLayers = surfaceLayerApi;
 })();

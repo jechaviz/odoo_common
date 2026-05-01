@@ -1,9 +1,27 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var escapeHtml = surfaceLayerApi.escapeHtml;
-  var toDataAttributeName = surfaceLayerApi.toDataAttributeName;
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("Missing required OdooSurfaceLayers runtime before surface workspace markup.");
+    }
+    return window.OdooSurfaceLayers;
+  }
+
+  function requireSurfaceLayerFunction(surfaceLayerApi, name) {
+    var candidate = surfaceLayerApi && surfaceLayerApi[name];
+    if (typeof candidate !== "function") {
+      throw new Error(
+        "Missing required OdooSurfaceLayers." + String(name || "").trim() +
+        " before surface workspace markup."
+      );
+    }
+    return candidate;
+  }
+
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var escapeHtml = requireSurfaceLayerFunction(surfaceLayerApi, "escapeHtml");
+  var toDataAttributeName = requireSurfaceLayerFunction(surfaceLayerApi, "toDataAttributeName");
 
   function buildDataAttributes(attributes) {
     var source = attributes && typeof attributes === "object" ? attributes : {};

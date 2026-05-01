@@ -1,10 +1,14 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = Object.assign({}, window.OdooSurfaceLayers || {});
-  var shared = surfaceLayerApi._shared && typeof surfaceLayerApi._shared === "object"
-    ? surfaceLayerApi._shared
-    : {};
+  var surfaceLayerApi = window.OdooSurfaceLayers;
+  if (!(surfaceLayerApi && typeof surfaceLayerApi === "object")) {
+    throw new Error("OdooSurfaceLayers must be initialized before surface_workspace_shell sidebar runtime.");
+  }
+  var shared = surfaceLayerApi._shared;
+  if (!(shared && typeof shared === "object")) {
+    throw new Error("OdooSurfaceLayers._shared must be initialized before surface_workspace_shell sidebar runtime.");
+  }
   var SIDEBAR_SHELL_BODY_CLASS = "o_surface_sidebar_shell_active";
   var SIDEBAR_SHELL_COLLAPSED_CLASS = "o_surface_sidebar_shell_collapsed";
   var SIDEBAR_SHELL_COLLAPSED_STORAGE_KEY = "odoo.surface.sidebarCollapsed";
@@ -1417,7 +1421,5 @@
   }
 
   installSidebarShellHoverBridge();
-  surfaceLayerApi._shared = shared;
-  window.OdooSurfaceLayers = surfaceLayerApi;
   installSidebarShellLifecycle();
 })();

@@ -1,17 +1,17 @@
 (function () {
   "use strict";
 
-  var surfaceLayers = window.OdooSurfaceLayers || {};
-  var shared = surfaceLayers._shared && typeof surfaceLayers._shared === "object"
-    ? surfaceLayers._shared
-    : (surfaceLayers._shared = {});
-  var workspaceApi = surfaceLayers.workspaceRuntime && typeof surfaceLayers.workspaceRuntime === "object"
-    ? surfaceLayers.workspaceRuntime
-    : {};
+  var surfaceLayers = window.OdooSurfaceLayers;
+  if (!(surfaceLayers && typeof surfaceLayers === "object")) {
+    throw new Error("surface workspace runtime requires the canonical OdooSurfaceLayers bootstrap.");
+  }
+  var shared = surfaceLayers._shared;
+  if (!(shared && typeof shared === "object")) {
+    throw new Error("surface workspace runtime requires the canonical shared surface state.");
+  }
+  var workspaceApi = Object.create(null);
   var resolveSurfaceWorkspaceOwnership = surfaceLayers.resolveSurfaceWorkspaceOwnership;
-  var handlesByKey = workspaceApi._handlesByKey && typeof workspaceApi._handlesByKey === "object"
-    ? workspaceApi._handlesByKey
-    : Object.create(null);
+  var handlesByKey = Object.create(null);
   var MANAGED_ATTR = "data-surface-managed";
   var BREADCRUMB_LINK_ATTR = "data-surface-breadcrumb-link";
   var SURFACE_BREADCRUMB_TOPBAR_HOST_CLASS = "o_surface_topbar_breadcrumb_host";

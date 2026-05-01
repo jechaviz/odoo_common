@@ -1,6 +1,13 @@
 (function () {
   "use strict";
 
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("commercial policy surface requires the canonical OdooSurfaceLayers bootstrap.");
+    }
+    return window.OdooSurfaceLayers;
+  }
+
   function normalizeText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
@@ -39,7 +46,7 @@
     if (typeof window.resolveOrmService === "function") {
       return window.resolveOrmService();
     }
-    var surfaceLayerApi = window.OdooSurfaceLayers || {};
+    var surfaceLayerApi = requireSurfaceLayerApi();
     if (typeof surfaceLayerApi.resolveOdooService === "function") {
       return surfaceLayerApi.resolveOdooService("orm");
     }
@@ -543,12 +550,11 @@
     return api;
   }
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
+  var surfaceLayerApi = requireSurfaceLayerApi();
   surfaceLayerApi.buildCommercialPolicySurfaceBridge = buildCommercialPolicySurfaceBridge;
   surfaceLayerApi.installCommercialPolicySurfaceBridge = function (spec) {
     var bridge = buildCommercialPolicySurfaceBridge(spec);
     bridge.install();
     return bridge;
   };
-  window.OdooSurfaceLayers = surfaceLayerApi;
 })();

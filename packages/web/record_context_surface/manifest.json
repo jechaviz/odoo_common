@@ -1,0 +1,26 @@
+{
+  "key": "record-context-surface",
+  "title": "Record Context Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_fiax",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "record_context.js",
+    "record_context_sources.js"
+  ],
+  "publish_order": [
+    "record_context.js",
+    "record_context_sources.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
+  "capabilities": [
+    "record-context-panel",
+    "record-context-slot-registry",
+    "relational-record-adapters",
+    "partner-commercial-record-adapter"
+  ]
+}

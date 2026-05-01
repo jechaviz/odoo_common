@@ -16,9 +16,31 @@
       "breadcrumb runtime",
       "workspace lifecycle",
       "table shell",
-      "record context shell",
       "line picker",
       "route slug settings"
+    ]
+  },
+  {
+    "key": "record-context-surface",
+    "title": "Record Context Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/record_context_surface",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers/record_context.js"
+      },
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers/record_context_sources.js"
+      }
+    ],
+    "features": [
+      "record context panel shell",
+      "schema-driven slot registry",
+      "relational record readers",
+      "commercial partner context adapters"
     ]
   },
   {

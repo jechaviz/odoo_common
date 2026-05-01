@@ -221,7 +221,7 @@
     };
   }
 
-  function normalizePartnerCommercialFieldMap(rawFieldMap, defaults) {
+  function normalizeRelationalFieldAliasMap(rawFieldMap, defaults) {
     var source = rawFieldMap && typeof rawFieldMap === "object" ? rawFieldMap : {};
     var normalized = Object.create(null);
     Object.keys(defaults || {}).forEach(function (key) {
@@ -231,18 +231,82 @@
     return normalized;
   }
 
-  function buildPartnerCommercialRecordFields(recordFieldMap, extraFields) {
-    return mergeRelationalFieldNames(
-      extraFields,
-      Object.keys(recordFieldMap || {}).map(function (key) {
-        return recordFieldMap[key];
-      }).filter(Boolean)
-    );
+  function normalizeRelationalEntitySchema(rawFieldMap, defaults, extraFields, requiredFields) {
+    var aliases = normalizeRelationalFieldAliasMap(rawFieldMap, defaults);
+    var aliasFields = Object.keys(aliases).map(function (key) {
+      return aliases[key];
+    }).filter(Boolean);
+    return {
+      aliases: aliases,
+      fields: mergeRelationalFieldNames(
+        extraFields,
+        [].concat(Array.isArray(requiredFields) ? requiredFields : [], aliasFields)
+      ),
+    };
   }
 
-  function buildPartnerCommercialPartnerFields(partnerFieldMap, extraFields) {
-    return mergeRelationalFieldNames(
-      extraFields,
+  function normalizeRelationalWatchSchema(rawWatch, fallbackFields, includeRecordIdByDefault) {
+    var watch = rawWatch && typeof rawWatch === "object" ? rawWatch : {};
+    var values = [];
+    (Array.isArray(watch.values) ? watch.values : []).forEach(function (entry) {
+      if (entry !== null && entry !== undefined) {
+        values.push(entry);
+      }
+    });
+    return {
+      recordId: Object.prototype.hasOwnProperty.call(watch, "recordId")
+        ? watch.recordId
+        : includeRecordIdByDefault,
+      fields: mergeRelationalFieldNames(
+        watch.fields || watch.fieldNames,
+        fallbackFields
+      ),
+      values: values,
+      partsResolver: typeof watch.partsResolver === "function" ? watch.partsResolver : null,
+    };
+  }
+
+  function normalizeRelationalSourceSchema(rawSpec) {
+    var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
+    return {
+      spec: spec,
+      cacheScopeKey: spec.cacheScopeKey,
+      fieldReader: typeof spec.fieldReader === "function"
+        ? spec.fieldReader
+        : readFieldText,
+      buildData: typeof spec.buildData === "function" ? spec.buildData : null,
+      watch: normalizeRelationalWatchSchema(
+        spec.watch,
+        spec.watchFieldNames,
+        spec.includeRecordIdInWatch === false ? false : true
+      ),
+      resolveRecordId: function (runtimeContext) {
+        return resolveRelationalRecordContextRecordId(spec, runtimeContext);
+      },
+    };
+  }
+
+  function normalizePartnerCommercialSourceSchema(rawSpec) {
+    var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
+    var recordSchema = normalizeRelationalEntitySchema(
+      spec.recordFieldMap,
+      {
+        commercialPartner: "commercial_partner_id",
+        billingPartner: "partner_id",
+        shippingPartner: "partner_shipping_id",
+        currentCondition: "",
+      },
+      spec.recordFields,
+      []
+    );
+    var partnerSchema = normalizeRelationalEntitySchema(
+      spec.partnerFieldMap,
+      {
+        identifier: "vat",
+        reference: "property_product_pricelist",
+        defaultCondition: "property_payment_term_id",
+      },
+      spec.partnerFields,
       [
         "commercial_partner_id",
         "display_name",
@@ -253,12 +317,43 @@
         "zip",
         "state_id",
         "country_id",
-      ].concat(
-        Object.keys(partnerFieldMap || {}).map(function (key) {
-          return partnerFieldMap[key];
-        }).filter(Boolean)
-      )
+      ]
     );
+    var formAliases = normalizeRelationalFieldAliasMap(
+      spec.formFieldMap,
+      {
+        billing: "partner_id",
+        shipping: "partner_shipping_id",
+        currentCondition: "",
+      }
+    );
+    var watchFields = mergeRelationalFieldNames(
+      spec.watchFieldNames,
+      [formAliases.billing, formAliases.shipping, formAliases.currentCondition]
+    );
+    return {
+      spec: spec,
+      cacheScopeKey: spec.cacheScopeKey,
+      fieldReader: typeof spec.fieldReader === "function"
+        ? spec.fieldReader
+        : readFieldText,
+      recordModel: normalizeRelationalText(spec.recordModel),
+      enrichData: typeof spec.enrichData === "function" ? spec.enrichData : null,
+      record: recordSchema,
+      partner: partnerSchema,
+      form: {
+        aliases: formAliases,
+        watchFields: watchFields,
+      },
+      watch: normalizeRelationalWatchSchema(
+        spec.watch,
+        watchFields,
+        spec.includeRecordIdInWatch === false ? false : true
+      ),
+      resolveRecordId: function (runtimeContext) {
+        return resolveRelationalRecordContextRecordId(spec, runtimeContext);
+      },
+    };
   }
 
   function readMany2oneFieldValue(record, fieldName, helpers) {
@@ -272,42 +367,45 @@
     return fieldName ? normalizeRelationalText(record && record[fieldName]) : "";
   }
 
-  async function resolvePartnerCommercialRecordContextData(spec, runtimeContext, fieldReader) {
+  async function resolvePartnerCommercialRecordContextData(sourceSchema, runtimeContext) {
     var ormService = await resolveOdooService("orm");
     if (!ormService || typeof ormService.searchRead !== "function") {
       return {};
     }
 
     var helpers = createRecordContextSourceHelpers(ormService);
-    var recordFieldMap = normalizePartnerCommercialFieldMap(spec.recordFieldMap, {
-      commercialPartner: "commercial_partner_id",
-      billingPartner: "partner_id",
-      shippingPartner: "partner_shipping_id",
-      currentCondition: "",
-    });
-    var partnerFieldMap = normalizePartnerCommercialFieldMap(spec.partnerFieldMap, {
-      identifier: "vat",
-      reference: "property_product_pricelist",
-      defaultCondition: "property_payment_term_id",
-    });
-    var formFieldMap = normalizePartnerCommercialFieldMap(spec.formFieldMap, {
-      billing: "partner_id",
-      shipping: "partner_shipping_id",
-      currentCondition: "",
-    });
-    var recordFields = buildPartnerCommercialRecordFields(recordFieldMap, spec.recordFields);
-    var partnerFields = buildPartnerCommercialPartnerFields(partnerFieldMap, spec.partnerFields);
+    var fieldReader = sourceSchema && typeof sourceSchema.fieldReader === "function"
+      ? sourceSchema.fieldReader
+      : readFieldText;
+    var spec = sourceSchema && sourceSchema.spec && typeof sourceSchema.spec === "object"
+      ? sourceSchema.spec
+      : {};
+    var recordFieldMap = sourceSchema && sourceSchema.record && sourceSchema.record.aliases
+      ? sourceSchema.record.aliases
+      : Object.create(null);
+    var partnerFieldMap = sourceSchema && sourceSchema.partner && sourceSchema.partner.aliases
+      ? sourceSchema.partner.aliases
+      : Object.create(null);
+    var formFieldMap = sourceSchema && sourceSchema.form && sourceSchema.form.aliases
+      ? sourceSchema.form.aliases
+      : Object.create(null);
+    var recordFields = sourceSchema && sourceSchema.record && Array.isArray(sourceSchema.record.fields)
+      ? sourceSchema.record.fields
+      : [];
+    var partnerFields = sourceSchema && sourceSchema.partner && Array.isArray(sourceSchema.partner.fields)
+      ? sourceSchema.partner.fields
+      : [];
     var recordId = runtimeContext && runtimeContext.recordId
       ? runtimeContext.recordId
-      : resolveRelationalRecordContextRecordId(spec, runtimeContext);
+      : sourceSchema.resolveRecordId(runtimeContext);
     var formRoot = runtimeContext && runtimeContext.formRoot instanceof HTMLElement
       ? runtimeContext.formRoot
       : null;
 
     var recordRow = null;
-    if (spec.recordModel && recordId > 0) {
+    if (sourceSchema.recordModel && recordId > 0) {
       recordRow = await helpers.readRecordById(
-        String(spec.recordModel || "").trim(),
+        sourceSchema.recordModel,
         recordId,
         recordFields,
         { limit: 1, order: "id asc" }
@@ -374,11 +472,12 @@
       shippingPartnerId: shippingValue.id || 0,
     };
 
-    if (typeof spec.enrichData !== "function") {
+    if (typeof sourceSchema.enrichData !== "function") {
       return baseData;
     }
-    var extraData = await spec.enrichData({
+    var extraData = await sourceSchema.enrichData({
       spec: spec,
+      schema: sourceSchema,
       runtimeContext: runtimeContext,
       ormService: ormService,
       helpers: helpers,
@@ -419,31 +518,13 @@
     return readSurfaceRecordIdFromLocation();
   }
 
-  function buildRelationalRecordContextWatch(spec) {
-    var watch = spec.watch && typeof spec.watch === "object" ? spec.watch : {};
-    var values = [];
-    (Array.isArray(watch.values) ? watch.values : []).forEach(function (entry) {
-      if (entry !== null && entry !== undefined) {
-        values.push(entry);
-      }
-    });
-    return {
-      recordId: Object.prototype.hasOwnProperty.call(watch, "recordId")
-        ? watch.recordId
-        : spec.includeRecordIdInWatch === false
-        ? false
-        : true,
-      fields: mergeRelationalFieldNames(
-        watch.fields || watch.fieldNames,
-        spec.watchFieldNames
-      ),
-      values: values,
-      partsResolver: typeof watch.partsResolver === "function" ? watch.partsResolver : null,
-    };
-  }
-
-  async function resolveRelationalRecordContextData(spec, runtimeContext, fieldReader) {
-    var buildData = typeof spec.buildData === "function" ? spec.buildData : null;
+  async function resolveRelationalRecordContextData(sourceSchema, runtimeContext) {
+    var buildData = sourceSchema && typeof sourceSchema.buildData === "function"
+      ? sourceSchema.buildData
+      : null;
+    var fieldReader = sourceSchema && typeof sourceSchema.fieldReader === "function"
+      ? sourceSchema.fieldReader
+      : readFieldText;
     if (typeof buildData !== "function") {
       return {};
     }
@@ -452,7 +533,8 @@
       return {};
     }
     return buildData({
-      spec: spec,
+      spec: sourceSchema.spec,
+      schema: sourceSchema,
       config: runtimeContext && runtimeContext.settings ? runtimeContext.settings : {},
       settings: runtimeContext && runtimeContext.settings ? runtimeContext.settings : {},
       state: runtimeContext && runtimeContext.state ? runtimeContext.state : {},
@@ -480,96 +562,71 @@
                 ),
               };
             });
-          },
+        },
       recordId: runtimeContext && runtimeContext.recordId
         ? runtimeContext.recordId
-        : resolveRelationalRecordContextRecordId(spec, runtimeContext),
+        : sourceSchema.resolveRecordId(runtimeContext),
       helpers: createRecordContextSourceHelpers(ormService),
     });
   }
 
   function buildRelationalRecordContextSource(rawSpec) {
-    var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
-    var fieldReader = typeof spec.fieldReader === "function"
-      ? spec.fieldReader
-      : readFieldText;
+    var sourceSchema = normalizeRelationalSourceSchema(rawSpec);
     var sourceConfig = {
-      cacheScopeKey: spec.cacheScopeKey,
+      cacheScopeKey: sourceSchema.cacheScopeKey,
       recordIdResolver: function (runtimeContext) {
-        return resolveRelationalRecordContextRecordId(spec, runtimeContext);
+        return sourceSchema.resolveRecordId(runtimeContext);
       },
-      watch: buildRelationalRecordContextWatch(spec),
+      watch: sourceSchema.watch,
       load: function (runtimeContext) {
-        return resolveRelationalRecordContextData(spec, runtimeContext, fieldReader);
+        return resolveRelationalRecordContextData(sourceSchema, runtimeContext);
       },
     };
     return buildRecordContextSource(sourceConfig);
   }
 
   function buildRelationalRecordContextAdapter(rawSpec) {
-    var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
-    var fieldReader = typeof spec.fieldReader === "function"
-      ? spec.fieldReader
-      : readFieldText;
+    var sourceSchema = normalizeRelationalSourceSchema(rawSpec);
     return buildRecordContextPanelConfig({
-      cacheScopeKey: spec.cacheScopeKey,
-      panelSelector: spec.panelSelector,
-      slots: spec.slots,
-      fieldReader: fieldReader,
+      cacheScopeKey: sourceSchema.cacheScopeKey,
+      panelSelector: sourceSchema.spec.panelSelector,
+      slots: sourceSchema.spec.slots,
+      fieldReader: sourceSchema.fieldReader,
       source: buildRelationalRecordContextSource(
-        Object.assign({}, spec, {
-          fieldReader: fieldReader,
+        Object.assign({}, sourceSchema.spec, {
+          fieldReader: sourceSchema.fieldReader,
         })
       ),
     });
   }
 
   function buildPartnerCommercialRecordContextSource(rawSpec) {
-    var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
-    var fieldReader = typeof spec.fieldReader === "function"
-      ? spec.fieldReader
-      : readFieldText;
-    var formFieldMap = normalizePartnerCommercialFieldMap(spec.formFieldMap, {
-      billing: "partner_id",
-      shipping: "partner_shipping_id",
-      currentCondition: "",
-    });
+    var sourceSchema = normalizePartnerCommercialSourceSchema(rawSpec);
     var sourceConfig = {
-      cacheScopeKey: spec.cacheScopeKey,
+      cacheScopeKey: sourceSchema.cacheScopeKey,
       recordIdResolver: function (runtimeContext) {
-        return resolveRelationalRecordContextRecordId(spec, runtimeContext);
+        return sourceSchema.resolveRecordId(runtimeContext);
       },
-      watch: {
-        recordId: spec.includeRecordIdInWatch === false ? false : true,
-        fields: mergeRelationalFieldNames(
-          spec.watchFieldNames,
-          [formFieldMap.billing, formFieldMap.shipping, formFieldMap.currentCondition]
-        ),
-        values: [],
-        partsResolver: spec.watch && typeof spec.watch === "object" && typeof spec.watch.partsResolver === "function"
-          ? spec.watch.partsResolver
-          : null,
-      },
+      watch: Object.assign({}, sourceSchema.watch, {
+        fields: sourceSchema.form.watchFields,
+      }),
       load: function (runtimeContext) {
-        return resolvePartnerCommercialRecordContextData(spec, runtimeContext, fieldReader);
+        return resolvePartnerCommercialRecordContextData(sourceSchema, runtimeContext);
       },
     };
     return buildRecordContextSource(sourceConfig);
   }
 
   function buildPartnerCommercialRecordContextAdapter(rawSpec) {
-    var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
-    var fieldReader = typeof spec.fieldReader === "function"
-      ? spec.fieldReader
-      : readFieldText;
+    var sourceSchema = normalizePartnerCommercialSourceSchema(rawSpec);
     return buildRecordContextPanelConfig({
-      cacheScopeKey: spec.cacheScopeKey,
-      panelSelector: spec.panelSelector,
-      slots: spec.slots,
-      fieldReader: fieldReader,
+      cacheScopeKey: sourceSchema.cacheScopeKey,
+      panelSelector: sourceSchema.spec.panelSelector,
+      slots: sourceSchema.spec.slots,
+      fieldReader: sourceSchema.fieldReader,
       source: buildPartnerCommercialRecordContextSource(
-        Object.assign({}, spec, {
-          fieldReader: fieldReader,
+        Object.assign({}, sourceSchema.spec, {
+          fieldReader: sourceSchema.fieldReader,
         })
       ),
     });

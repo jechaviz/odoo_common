@@ -148,44 +148,105 @@
   }
 
   function buildDefaultRecordContextSlots() {
-    var normalized = Object.create(null);
-    RECORD_CONTEXT_SLOT_KEYS.forEach(function (slotKey) {
-      var defaults = DEFAULT_RECORD_CONTEXT_SLOT_DEFINITIONS[slotKey];
-      normalized[slotKey] = {
-        key: slotKey,
-        selector: defaults.selector,
-        fallback: defaults.fallback,
-        valueKey: slotKey,
-        render: null,
-      };
+    return buildDefaultRecordContextSlotRegistry().byKey;
+  }
+
+  function buildDefaultRecordContextSlotEntry(slotKey) {
+    var defaults = DEFAULT_RECORD_CONTEXT_SLOT_DEFINITIONS[slotKey];
+    return {
+      key: slotKey,
+      selector: defaults.selector,
+      fallback: defaults.fallback,
+      valueKey: slotKey,
+      render: null,
+    };
+  }
+
+  function buildDefaultRecordContextSlotRegistry() {
+    var byKey = Object.create(null);
+    var entries = RECORD_CONTEXT_SLOT_KEYS.map(function (slotKey) {
+      var entry = buildDefaultRecordContextSlotEntry(slotKey);
+      byKey[slotKey] = entry;
+      return entry;
     });
-    return normalized;
+    return {
+      keys: RECORD_CONTEXT_SLOT_KEYS.slice(),
+      entries: entries,
+      byKey: byKey,
+    };
+  }
+
+  function forEachRawRecordContextSlot(rawSlots, visitor) {
+    if (typeof visitor !== "function") {
+      return;
+    }
+    if (Array.isArray(rawSlots)) {
+      rawSlots.forEach(function (slot) {
+        if (!(slot && typeof slot === "object")) {
+          return;
+        }
+        visitor(normalizeText(slot.key), slot);
+      });
+      return;
+    }
+    if (!(rawSlots && typeof rawSlots === "object")) {
+      return;
+    }
+    Object.keys(rawSlots).forEach(function (slotKey) {
+      var slot = rawSlots[slotKey];
+      if (!(slot && typeof slot === "object")) {
+        return;
+      }
+      visitor(normalizeText(slotKey), slot);
+    });
+  }
+
+  function normalizeRecordContextSlotEntry(slotKey, rawSlot) {
+    var defaults = DEFAULT_RECORD_CONTEXT_SLOT_DEFINITIONS[slotKey];
+    var slot = rawSlot && typeof rawSlot === "object" ? rawSlot : {};
+    var selector = normalizeText(slot.selector);
+    var fallback = normalizeScalarText(slot.fallback);
+    var valueKey = normalizeText(slot.valueKey);
+    var render = typeof slot.render === "function" ? slot.render : null;
+    return {
+      key: slotKey,
+      selector: selector || defaults.selector,
+      fallback: fallback || defaults.fallback,
+      valueKey: valueKey || slotKey,
+      render: render,
+    };
+  }
+
+  function normalizeRecordContextSlotRegistry(rawSlots) {
+    var registry = buildDefaultRecordContextSlotRegistry();
+    forEachRawRecordContextSlot(rawSlots, function (slotKey, slot) {
+      if (!slotKey || RECORD_CONTEXT_SLOT_KEYS.indexOf(slotKey) === -1) {
+        return;
+      }
+      registry.byKey[slotKey] = normalizeRecordContextSlotEntry(slotKey, slot);
+    });
+    registry.entries = registry.keys.map(function (slotKey) {
+      return registry.byKey[slotKey];
+    });
+    return registry;
   }
 
   function normalizeRecordContextSlots(rawSlots) {
-    var slotSource = rawSlots && typeof rawSlots === "object" ? rawSlots : {};
-    var normalized = buildDefaultRecordContextSlots();
+    return normalizeRecordContextSlotRegistry(rawSlots).byKey;
+  }
 
-    RECORD_CONTEXT_SLOT_KEYS.forEach(function (slotKey) {
-      var defaults = DEFAULT_RECORD_CONTEXT_SLOT_DEFINITIONS[slotKey];
-      var slot = slotSource[slotKey] && typeof slotSource[slotKey] === "object"
-        ? slotSource[slotKey]
-        : {};
-      var selector = normalizeText(slot.selector);
-      var fallback = normalizeScalarText(slot.fallback);
-      var valueKey = normalizeText(slot.valueKey || slot.dataKey);
-      var render = typeof slot.render === "function" ? slot.render : null;
-
-      normalized[slotKey] = {
-        key: slotKey,
-        selector: selector || defaults.selector,
-        fallback: fallback || defaults.fallback,
-        valueKey: valueKey || slotKey,
-        render: render,
-      };
-    });
-
-    return normalized;
+  function resolveRecordContextSlotRegistry(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    if (
+      settings.slotRegistry &&
+      typeof settings.slotRegistry === "object" &&
+      Array.isArray(settings.slotRegistry.entries) &&
+      settings.slotRegistry.byKey &&
+      typeof settings.slotRegistry.byKey === "object"
+    ) {
+      return settings.slotRegistry;
+    }
+    return normalizeRecordContextSlotRegistry(settings.slots);
   }
 
   function normalizeRecordContextWatch(rawWatch) {
@@ -452,7 +513,8 @@
               : raw.recordIdResolver,
           })
     );
-    var slots = normalizeRecordContextSlots(raw.slots);
+    var slotRegistry = normalizeRecordContextSlotRegistry(raw.slots);
+    var slots = slotRegistry.byKey;
 
     return Object.assign({}, raw, {
       enhancerKey: RECORD_CONTEXT_PANEL_ENHANCER_KEY,
@@ -465,28 +527,27 @@
       }),
       recordIdResolver: source.recordIdResolver,
       source: source,
+      slotRegistry: slotRegistry,
       slots: slots,
     });
   }
 
-  function resolveRenderedSlotValue(slotKey, data, settings) {
-    var slots = settings.slots && typeof settings.slots === "object"
-      ? settings.slots
-      : buildDefaultRecordContextSlots();
-    var slot = slots[slotKey] && typeof slots[slotKey] === "object"
-      ? slots[slotKey]
-      : buildDefaultRecordContextSlots()[slotKey];
-    var fallback = normalizeScalarText(slot && slot.fallback)
-      || DEFAULT_RECORD_CONTEXT_SLOT_DEFINITIONS[slotKey].fallback;
-    var runtimeContext = buildRecordContextRuntimeContext(settings);
-    if (slot && typeof slot.render === "function") {
-      return slot.render(
+  function resolveRenderedSlotValue(slot, data, runtimeContext) {
+    var entry = slot && typeof slot === "object"
+      ? slot
+      : null;
+    var entryKey = normalizeText(entry && entry.key);
+    var defaults = entryKey ? DEFAULT_RECORD_CONTEXT_SLOT_DEFINITIONS[entryKey] : null;
+    var fallback = normalizeScalarText(entry && entry.fallback)
+      || normalizeScalarText(defaults && defaults.fallback);
+    if (entry && typeof entry.render === "function") {
+      return entry.render(
         data || buildDefaultRecordContextData(),
         runtimeContext,
         fallback
       );
     }
-    var valueKey = normalizeText(slot && slot.valueKey) || slotKey;
+    var valueKey = normalizeText(entry && entry.valueKey) || entryKey;
     return data && typeof data === "object" ? data[valueKey] : "";
   }
 
@@ -503,18 +564,14 @@
     var data = normalizeRecordContextData(
       await readRecordContextData(Object.assign({}, settings, { formRoot: formRoot }))
     );
-    var slots = settings.slots && typeof settings.slots === "object"
-      ? settings.slots
-      : buildDefaultRecordContextSlots();
+    var slotRegistry = resolveRecordContextSlotRegistry(settings);
+    var runtimeContext = buildRecordContextRuntimeContext(settings);
 
-    RECORD_CONTEXT_SLOT_KEYS.forEach(function (slotKey) {
-      var slot = slots[slotKey] && typeof slots[slotKey] === "object"
-        ? slots[slotKey]
-        : buildDefaultRecordContextSlots()[slotKey];
+    slotRegistry.entries.forEach(function (slot) {
       setPanelNodeText(
         panelRoot,
         slot.selector,
-        resolveRenderedSlotValue(slotKey, data, settings),
+        resolveRenderedSlotValue(slot, data, runtimeContext),
         slot.fallback
       );
     });
@@ -555,7 +612,9 @@
 
   Object.assign(surfaceLayerApi, {
     buildDefaultRecordContextData: buildDefaultRecordContextData,
+    buildDefaultRecordContextSlotRegistry: buildDefaultRecordContextSlotRegistry,
     buildDefaultRecordContextSlots: buildDefaultRecordContextSlots,
+    normalizeRecordContextSlotRegistry: normalizeRecordContextSlotRegistry,
     normalizeRecordContextData: normalizeRecordContextData,
     normalizeRecordContextSlots: normalizeRecordContextSlots,
     buildRecordContextSource: buildRecordContextSource,

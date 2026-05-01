@@ -12,10 +12,25 @@
     ]
   },
   {
+    "key": "record_context_capture",
+    "title": "Record Context Capture",
+    "components": [
+      "record-context-surface",
+      "commercial-policy-surface",
+      "partner-defaults"
+    ],
+    "use_cases": [
+      "customer context panel",
+      "billing and shipping sidebars",
+      "commercial context hydration"
+    ]
+  },
+  {
     "key": "transactional_form_capture",
     "title": "Transactional Form Capture",
     "components": [
       "surface-workspace-shell",
+      "record-context-surface",
       "form-section-layout",
       "form-layout-state",
       "many2x-parent-form-autosave",
@@ -54,6 +69,7 @@
     "components": [
       "default-persistence",
       "partner-defaults",
+      "record-context-surface",
       "commercial-policy-surface",
       "taxation-helpers"
     ],

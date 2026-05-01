@@ -18,8 +18,6 @@
     "line_picker.js",
     "markup.js",
     "menu.js",
-    "record_context.js",
-    "record_context_sources.js",
     "route.js",
     "rows.js",
     "sidebar_shell.js",
@@ -49,8 +47,6 @@
     "actions.js",
     "markup.js",
     "table.js",
-    "record_context.js",
-    "record_context_sources.js",
     "line_picker.js",
     "surface_layers.css"
   ],
@@ -58,7 +54,6 @@
     "sidebar-shell",
     "breadcrumb",
     "workspace-runtime",
-    "record-context-shell",
     "line-picker",
     "route-state"
   ]

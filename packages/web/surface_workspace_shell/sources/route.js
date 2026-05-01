@@ -1,8 +1,14 @@
 (function () {
   "use strict";
 
-  var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var shared = surfaceLayerApi._shared || (surfaceLayerApi._shared = {});
+  var surfaceLayerApi = window.OdooSurfaceLayers;
+  if (!(surfaceLayerApi && typeof surfaceLayerApi === "object")) {
+    throw new Error("surface route runtime requires the canonical OdooSurfaceLayers bootstrap.");
+  }
+  var shared = surfaceLayerApi._shared;
+  if (!(shared && typeof shared === "object")) {
+    throw new Error("surface route runtime requires the canonical shared surface state.");
+  }
   var historyPatchBindingsByKey = shared.historyPatchBindingsByKey || (shared.historyPatchBindingsByKey = Object.create(null));
   var SURFACE_ROUTE_PRESENTATION_STORAGE_KEY = "odoo.surface.routePresentation";
 
@@ -104,6 +110,7 @@
     var resolvedUrl = null;
     var pathname = "";
     var searchParams = null;
+    var hashParams = null;
     if (sourceUrl instanceof URL) {
       resolvedUrl = sourceUrl;
     } else if (typeof sourceUrl === "string" && String(sourceUrl || "").trim()) {
@@ -116,19 +123,100 @@
     if (resolvedUrl instanceof URL) {
       pathname = String(resolvedUrl.pathname || "");
       searchParams = resolvedUrl.searchParams;
+      hashParams = parseSearchParams(String(resolvedUrl.hash || "").replace(/^#/, ""));
     } else {
       pathname = String(window.location.pathname || "");
       searchParams = readSurfaceUrlParams();
+      hashParams = parseSearchParams(String(window.location.hash || "").replace(/^#/, ""));
     }
     var pathnameActionId = resolveLastActionIdFromPathname(pathname);
-    if (pathnameActionId > 0) {
-      return pathnameActionId;
-    }
-    return Number.parseInt(String(searchParams && searchParams.get("action") || 0), 10) || 0;
+    var searchActionId = Number.parseInt(String(searchParams && searchParams.get("action") || 0), 10) || 0;
+    var hashActionId = Number.parseInt(String(hashParams && hashParams.get("action") || 0), 10) || 0;
+    return hashActionId || searchActionId || pathnameActionId || 0;
   }
 
   function readCurrentSurfaceActionId() {
     return resolveCurrentActionIdFromUrl(null);
+  }
+
+  function normalizeSurfaceActionIdList(actionIds) {
+    return (Array.isArray(actionIds) ? actionIds : []).map(function (actionId) {
+      return Number.parseInt(String(actionId || 0), 10) || 0;
+    }).filter(function (actionId) {
+      return actionId > 0;
+    });
+  }
+
+  function extractActionIdsFromUrl(sourceUrl) {
+    var resolvedUrl = null;
+    var pathname = "";
+    var searchParams = null;
+    var hashParams = null;
+    if (sourceUrl instanceof URL) {
+      resolvedUrl = sourceUrl;
+    } else if (typeof sourceUrl === "string" && String(sourceUrl || "").trim()) {
+      try {
+        resolvedUrl = new URL(String(sourceUrl || "").trim(), window.location.origin);
+      } catch (_error) {
+        resolvedUrl = null;
+      }
+    }
+    if (resolvedUrl instanceof URL) {
+      pathname = String(resolvedUrl.pathname || "");
+      searchParams = resolvedUrl.searchParams;
+      hashParams = parseSearchParams(String(resolvedUrl.hash || "").replace(/^#/, ""));
+    } else {
+      pathname = String(window.location.pathname || "");
+      searchParams = readSurfaceUrlParams();
+      hashParams = parseSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+    }
+    var actionIds = extractActionIdsFromPathname(pathname);
+    [searchParams, hashParams].forEach(function (params) {
+      var actionId = Number.parseInt(String(params && params.get("action") || 0), 10) || 0;
+      if (actionId > 0) {
+        actionIds.push(actionId);
+      }
+    });
+    return normalizeSurfaceActionIdList(actionIds);
+  }
+
+  function resolveSurfaceWorkspaceOwnership(config, options) {
+    var settings = config && typeof config === "object" ? config : {};
+    var routeOptions = options && typeof options === "object" ? options : {};
+    var sourceUrl = routeOptions.url instanceof URL ? routeOptions.url : null;
+    var currentActionId = Number.parseInt(
+      String(routeOptions.currentActionId || resolveCurrentActionIdFromUrl(sourceUrl || undefined) || 0),
+      10
+    ) || 0;
+    var configuredActionIds = normalizeSurfaceActionIdList(settings.actionIds);
+    var currentActionIds = normalizeSurfaceActionIdList(routeOptions.actionIds);
+    if (!currentActionIds.length) {
+      currentActionIds = extractActionIdsFromUrl(sourceUrl || undefined);
+    }
+    var hasExplicitRoute = currentActionIds.length > 0;
+    var matchesAction = configuredActionIds.some(function (actionId) {
+      return currentActionId > 0 && actionId === currentActionId;
+    });
+    var currentBreadcrumbWorkspaceKey = String(routeOptions.currentBreadcrumbWorkspaceKey || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    var hasManagedTrail = routeOptions.hasManagedTrail === true;
+    var workspaceKey = String(settings.key || "").trim();
+    var owned = currentActionId > 0 && configuredActionIds.length
+      ? !!matchesAction
+      : hasExplicitRoute && hasManagedTrail && currentBreadcrumbWorkspaceKey
+      ? currentBreadcrumbWorkspaceKey === workspaceKey
+      : !!matchesAction;
+    return {
+      currentActionId: currentActionId,
+      configuredActionIds: configuredActionIds,
+      currentActionIds: currentActionIds,
+      hasExplicitRoute: hasExplicitRoute,
+      matchesAction: matchesAction,
+      currentBreadcrumbWorkspaceKey: currentBreadcrumbWorkspaceKey,
+      hasManagedTrail: hasManagedTrail,
+      owned: owned,
+    };
   }
 
   function normalizeSurfaceRoutePresentationMode(mode) {
@@ -329,14 +417,7 @@
         return String(settings.slugify(value, settings) || "").trim();
       } catch (_error) {}
     }
-    var normalized = typeof surfaceLayerApi.normalizeLabel === "function"
-      ? String(surfaceLayerApi.normalizeLabel(value) || "")
-      : String(value || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase();
+    var normalized = String(surfaceLayerApi.normalizeLabel(value) || "");
     return normalized
       .replace(/&/g, " and ")
       .replace(/[^a-z0-9]+/g, "-")
@@ -397,9 +478,7 @@
   function stripSurfaceRouteTail(pathname, config) {
     var settings = normalizeSurfaceRoutePresentationConfig(config);
     var marker = settings.pathMarker;
-    var normalizedPath = typeof surfaceLayerApi.normalizePathname === "function"
-      ? surfaceLayerApi.normalizePathname(pathname)
-      : String(pathname || "").replace(/[?#].*$/, "").replace(/\/+$/, "").trim() || "/";
+    var normalizedPath = surfaceLayerApi.normalizePathname(pathname);
     var segments = normalizedPath.split("/").filter(Boolean);
     var markerIndex = segments.indexOf(marker);
     if (markerIndex > 0) {
@@ -915,6 +994,7 @@
     readSurfaceUrlParams: readSurfaceUrlParams,
     resolveCurrentActionIdFromUrl: resolveCurrentActionIdFromUrl,
     readCurrentActionId: readCurrentSurfaceActionId,
+    resolveSurfaceWorkspaceOwnership: resolveSurfaceWorkspaceOwnership,
     normalizeSurfaceRoutePresentationConfig: normalizeSurfaceRoutePresentationConfig,
     readSurfaceRoutePresentationConfig: readSurfaceRoutePresentationConfig,
     writeSurfaceRoutePresentationConfig: writeSurfaceRoutePresentationConfig,

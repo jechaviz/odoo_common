@@ -8,6 +8,7 @@
   var workspaceApi = surfaceLayers.workspaceRuntime && typeof surfaceLayers.workspaceRuntime === "object"
     ? surfaceLayers.workspaceRuntime
     : {};
+  var resolveSurfaceWorkspaceOwnership = surfaceLayers.resolveSurfaceWorkspaceOwnership;
   var handlesByKey = workspaceApi._handlesByKey && typeof workspaceApi._handlesByKey === "object"
     ? workspaceApi._handlesByKey
     : Object.create(null);
@@ -15,9 +16,12 @@
   var BREADCRUMB_LINK_ATTR = "data-surface-breadcrumb-link";
   var SURFACE_BREADCRUMB_TOPBAR_HOST_CLASS = "o_surface_topbar_breadcrumb_host";
   var SURFACE_RETURN_FOCUS_CLASS = "o_surface_return_focus";
-  var WORKSPACE_HINT_STORAGE_KEY = "odoo.surface.workspaceHint";
   var LIST_RETURN_STORAGE_KEY_PREFIX = "odoo.surface.return.";
   var breadcrumbBridgeInstalled = false;
+
+  if (typeof resolveSurfaceWorkspaceOwnership !== "function") {
+    throw new Error("surface workspace runtime requires the canonical route ownership resolver.");
+  }
 
   function getManagedFormEnhancerRegistry() {
     if (!Array.isArray(shared.surfaceManagedFormEnhancers)) {
@@ -224,48 +228,6 @@
     return Number.parseInt(String(hashParams.get("id") || searchParams.get("id") || 0), 10) || 0;
   }
 
-  function hasExplicitWorkspaceRoute(url) {
-    return getActionIdsFromUrl(url).length > 0;
-  }
-
-  function getActionIdsFromUrl(url) {
-    var sourceUrl = url || readCurrentUrl();
-    var ids = [];
-    var pathname = normalizePathname(sourceUrl ? sourceUrl.pathname : window.location.pathname || "");
-    if (typeof surfaceLayers.extractActionIdsFromPathname === "function") {
-      ids = ids.concat(surfaceLayers.extractActionIdsFromPathname(pathname));
-    } else {
-      ids = ids.concat(
-        Array.from(String(pathname || "").matchAll(/action-(\d+)/g)).map(function (entry) {
-          return Number.parseInt(String(entry && entry[1] || ""), 10) || 0;
-        })
-      );
-    }
-    [sourceUrl ? sourceUrl.searchParams : parseSearchParams(window.location.search || ""), parseSearchParams(String(window.location.hash || "").replace(/^#/, ""))]
-      .forEach(function (searchParams) {
-        var actionId = Number.parseInt(String(searchParams.get("action") || ""), 10) || 0;
-        if (actionId > 0) {
-          ids.push(actionId);
-        }
-      });
-    return ids.filter(function (actionId) {
-      return actionId > 0;
-    });
-  }
-
-  function getCurrentActionIdFromUrl(url) {
-    var sourceUrl = url || readCurrentUrl();
-    var pathname = normalizePathname(sourceUrl ? sourceUrl.pathname : window.location.pathname || "");
-    var searchParams = sourceUrl ? sourceUrl.searchParams : parseSearchParams(window.location.search || "");
-    var hashParams = parseSearchParams(String(window.location.hash || "").replace(/^#/, ""));
-    var pathnameActionId = typeof surfaceLayers.resolveCurrentActionIdFromUrl === "function"
-      ? Number.parseInt(String(surfaceLayers.resolveCurrentActionIdFromUrl(sourceUrl || undefined) || 0), 10) || 0
-      : 0;
-    var searchActionId = Number.parseInt(String(searchParams.get("action") || 0), 10) || 0;
-    var hashActionId = Number.parseInt(String(hashParams.get("action") || 0), 10) || 0;
-    return hashActionId || searchActionId || pathnameActionId || 0;
-  }
-
   function isElementVisible(node) {
     if (typeof surfaceLayers.isElementVisible === "function") {
       return !!surfaceLayers.isElementVisible(node);
@@ -309,9 +271,33 @@
   }
 
   function resolveHostNode(rootNode) {
-    return rootNode instanceof HTMLElement
-      ? (rootNode.closest(".o_action, .o_view_controller, .o_content, .o_action_manager") || rootNode)
-      : null;
+    if (!(rootNode instanceof HTMLElement)) {
+      return null;
+    }
+    var actionHost = rootNode.closest(".o_action");
+    if (actionHost instanceof HTMLElement) {
+      return actionHost;
+    }
+    var controllerHost = rootNode.closest(".o_view_controller");
+    if (controllerHost instanceof HTMLElement) {
+      return controllerHost;
+    }
+    var managerHost = rootNode.closest(".o_action_manager");
+    if (managerHost instanceof HTMLElement) {
+      return managerHost;
+    }
+    var contentHost = rootNode.closest(".o_content");
+    if (contentHost instanceof HTMLElement) {
+      var promotedHost = contentHost.parentElement;
+      while (promotedHost instanceof HTMLElement) {
+        if (promotedHost.matches(".o_action, .o_view_controller, .o_action_manager")) {
+          return promotedHost;
+        }
+        promotedHost = promotedHost.parentElement;
+      }
+      return contentHost;
+    }
+    return rootNode;
   }
 
   function resolveControlPanel(hostNode) {
@@ -319,30 +305,10 @@
       return surfaceLayers.resolveScopedControlPanel({
         hostNode: hostNode,
         selector: ".o_control_panel",
-        fallbackSelector: ".o_control_panel",
       });
     }
     var scoped = hostNode instanceof HTMLElement ? hostNode.querySelector(".o_control_panel") : null;
-    return scoped instanceof HTMLElement ? scoped : document.querySelector(".o_control_panel");
-  }
-
-  function readWorkspaceHint() {
-    try {
-      return String(window.sessionStorage.getItem(WORKSPACE_HINT_STORAGE_KEY) || "").trim().toLowerCase();
-    } catch (_error) {
-      return "";
-    }
-  }
-
-  function writeWorkspaceHint(value) {
-    try {
-      var normalized = String(value || "").trim().toLowerCase();
-      if (!normalized) {
-        window.sessionStorage.removeItem(WORKSPACE_HINT_STORAGE_KEY);
-        return;
-      }
-      window.sessionStorage.setItem(WORKSPACE_HINT_STORAGE_KEY, normalized);
-    } catch (_error) {}
+    return scoped instanceof HTMLElement ? scoped : null;
   }
 
   function hasManagedBreadcrumb(controlPanel) {
@@ -368,22 +334,12 @@
     }).filter(Boolean);
   }
 
-  function matchesActionTrail(config, breadcrumbTrail) {
-    var labels = (Array.isArray(config.actionLabels) ? config.actionLabels : []).map(function (label) {
-      return String(label || "").replace(/\s+/g, " ").trim();
-    }).filter(Boolean);
-    var trail = Array.isArray(breadcrumbTrail) ? breadcrumbTrail : [];
-    if (!labels.length || !trail.length) {
-      return false;
-    }
-    var lastLabel = String(trail[trail.length - 1] || "").trim();
-    if (labels.indexOf(lastLabel) !== -1) {
-      return true;
-    }
-    if (trail.length < 2) {
-      return false;
-    }
-    return labels.indexOf(String(trail[trail.length - 2] || "").trim()) !== -1;
+  function readCurrentBreadcrumbWorkspaceKey(controlPanel) {
+    var root = controlPanel instanceof HTMLElement ? controlPanel : document;
+    var currentItem = root.querySelector(".o_last_breadcrumb_item");
+    return currentItem instanceof HTMLElement
+      ? normalizeBreadcrumbText(currentItem.dataset.surfaceBreadcrumbWorkspaceKey || "")
+      : "";
   }
 
   function findNativeCreateButton(controlPanel, toolbarId) {
@@ -558,14 +514,14 @@
     if (explicitHref) {
       return explicitHref;
     }
-    if (actionRequest != null && typeof workspaceApi.buildWorkspaceActionHref === "function") {
+    if (actionRequest != null) {
       var hrefOptions = entry.hrefOptions && typeof entry.hrefOptions === "object"
         ? entry.hrefOptions
         : {
             viewType: entry.viewType,
             resId: entry.resId,
           };
-      return String(workspaceApi.buildWorkspaceActionHref(actionRequest, {
+      return String(buildWorkspaceActionHref(actionRequest, {
         viewType: hrefOptions.viewType,
         resId: hrefOptions.resId,
       }) || "").trim();
@@ -577,7 +533,7 @@
     if (!(item && typeof item === "object") || Array.isArray(item)) {
       var primitiveLabel = normalizeBreadcrumbText(item);
       return primitiveLabel
-        ? { label: primitiveLabel, href: "", action: null, workspaceHint: "", target: "" }
+        ? { label: primitiveLabel, href: "", action: null, workspaceKey: "", sectionKey: "", target: "" }
         : null;
     }
     var label = "";
@@ -615,7 +571,8 @@
       label: label,
       href: href,
       action: actionRequest,
-      workspaceHint: normalizeBreadcrumbText(item.workspaceHint),
+      workspaceKey: normalizeBreadcrumbText(item.workspaceKey),
+      sectionKey: normalizeBreadcrumbText(item.sectionKey),
       target: String(item.target || "").trim(),
       current: !!item.current,
       menu: Array.isArray(item.menu)
@@ -699,10 +656,6 @@
       if (!(target instanceof HTMLElement)) {
         return;
       }
-      var workspaceHint = normalizeBreadcrumbText(target.dataset.surfaceBreadcrumbHint || "");
-      if (workspaceHint) {
-        writeWorkspaceHint(workspaceHint);
-      }
       var actionRequest = target.__surfaceBreadcrumbAction;
       if (actionRequest == null) {
         return;
@@ -784,7 +737,6 @@
         event: event,
         performAction: performAction,
         buildActionFromFactory: buildActionFromFactory,
-        writeWorkspaceHint: writeWorkspaceHint,
         workspaceApi: workspaceApi,
       }) === true;
     } catch (_error) {
@@ -817,13 +769,11 @@
         var intent = String(target.dataset.surfaceIntent || "").trim();
         if (intent === "create") {
           event.preventDefault();
-          writeWorkspaceHint(config.key);
           performAction(buildActionFromFactory(config.buildCreateAction, handle.lastState || state, config)).catch(function () {});
           return;
         }
         if (intent === "list") {
           event.preventDefault();
-          writeWorkspaceHint(config.key);
           performAction(buildActionFromFactory(config.buildListAction, handle.lastState || state, config)).catch(function () {});
           return;
         }
@@ -833,7 +783,6 @@
         }
         var navActions = config.navActions && typeof config.navActions === "object" ? config.navActions : {};
         event.preventDefault();
-        writeWorkspaceHint(navKey);
         removeToolbar(config);
         performAction(buildActionFromFactory(navActions[navKey], handle.lastState || state, config)).catch(function () {});
       };
@@ -999,39 +948,24 @@
 
   function deriveRouteState(config) {
     var url = readCurrentUrl();
-    var href = String((url && url.href) || window.location.href || "");
-    var pathname = normalizePathname(url ? url.pathname : window.location.pathname || "");
-    var currentActionId = getCurrentActionIdFromUrl(url);
     var controlPanel = resolveControlPanel(null);
     var breadcrumbTrail = readBreadcrumbTrail(controlPanel);
-    var workspaceHint = readWorkspaceHint();
+    var currentBreadcrumbWorkspaceKey = readCurrentBreadcrumbWorkspaceKey(controlPanel);
     var hasManagedTrail = hasManagedBreadcrumb(controlPanel);
-    var configuredActionIds = (Array.isArray(config.actionIds) ? config.actionIds : []).filter(function (actionId) {
-      return Number(actionId || 0) > 0;
-    }).map(function (actionId) {
-      return Number.parseInt(String(actionId || 0), 10) || 0;
+    var routeOwnership = resolveSurfaceWorkspaceOwnership(config, {
+      url: url,
+      breadcrumbTrail: breadcrumbTrail,
+      currentBreadcrumbWorkspaceKey: currentBreadcrumbWorkspaceKey,
+      hasManagedTrail: hasManagedTrail,
     });
-    var matchesAction = configuredActionIds.some(function (actionId) {
-      return currentActionId > 0 && actionId === currentActionId;
-    });
-    var modelName = String(config.model || "").trim();
-    var matchesModel = modelName
-      ? href.indexOf("model=" + modelName) >= 0 || pathname.indexOf("/" + modelName) >= 0
-      : false;
-    var hasWorkspaceRoute = hasExplicitWorkspaceRoute(url) || matchesModel;
-    var matchesTrail = matchesActionTrail(config, breadcrumbTrail);
-    var actionScoped = currentActionId > 0 && configuredActionIds.length
-      ? !!matchesAction
-      : hasWorkspaceRoute && hasManagedTrail && workspaceHint
-      ? workspaceHint === config.key
-      : hasWorkspaceRoute && breadcrumbTrail.length
-      ? !!matchesTrail
-      : !!(matchesAction || matchesModel);
+    var href = routeOwnership.href;
+    var currentActionId = routeOwnership.currentActionId;
+    var actionScoped = routeOwnership.owned;
     var formRoot = findVisibleForm(config, { allowFallback: actionScoped });
     var listTable = findVisibleListTable();
     var implicitFormAllowed =
       config.allowImplicitFormActivation !== false &&
-      (!(formRoot instanceof HTMLElement) || !currentActionId || !configuredActionIds.length || !!matchesAction);
+      (!(formRoot instanceof HTMLElement) || !currentActionId || !routeOwnership.configuredActionIds.length || !!routeOwnership.matchesAction);
     var active = !!(
       actionScoped ||
       (formRoot instanceof HTMLElement && implicitFormAllowed)
@@ -1118,13 +1052,18 @@
       var sectionKey = normalizeBreadcrumbText(config.sidebarSectionKey);
       if (sectionKey) {
         shared.sidebarShellCurrentSectionKey = sectionKey.toLowerCase();
+        shared.surfaceBreadcrumbSectionKey = sectionKey.toLowerCase();
       } else if (shared.sidebarShellCurrentSectionKey && state.isForm === false && state.isList === false) {
         delete shared.sidebarShellCurrentSectionKey;
+        delete shared.surfaceBreadcrumbSectionKey;
       }
       return;
     }
     if (!aggregate.active && shared.sidebarShellCurrentSectionKey) {
       delete shared.sidebarShellCurrentSectionKey;
+    }
+    if (!aggregate.active && shared.surfaceBreadcrumbSectionKey) {
+      delete shared.surfaceBreadcrumbSectionKey;
     }
   }
 
@@ -1232,6 +1171,47 @@
         }
       },
     });
+  }
+
+  function buildManagedPreviewWorkspaceHooks(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var previewController = settings.previewController && typeof settings.previewController === "object"
+      ? settings.previewController
+      : null;
+    if (!(previewController && typeof previewController.sync === "function" && typeof previewController.clear === "function" && typeof previewController.installBridge === "function")) {
+      throw new Error("buildManagedPreviewWorkspaceHooks requires a previewController with sync, clear, and installBridge.");
+    }
+    function callPreviewController(methodName, state, handle, runtimeApi) {
+      var result = previewController[methodName](
+        state,
+        handle,
+        runtimeApi && typeof runtimeApi === "object" ? runtimeApi : workspaceApi
+      );
+      if (result && typeof result.catch === "function") {
+        result.catch(function () {});
+      }
+      return result;
+    }
+
+    function clearPreviewWorkspace(state, handle, runtimeApi) {
+      return callPreviewController("clear", state, handle, runtimeApi);
+    }
+
+    function syncPreviewWorkspace(state, handle, runtimeApi) {
+      callPreviewController("installBridge", state, handle, runtimeApi);
+      if (!(state && state.isList)) {
+        clearPreviewWorkspace(state, handle, runtimeApi);
+        return null;
+      }
+      return callPreviewController("sync", state, handle, runtimeApi);
+    }
+
+    return {
+      previewController: previewController,
+      clear: clearPreviewWorkspace,
+      onSync: syncPreviewWorkspace,
+      onInactive: clearPreviewWorkspace,
+    };
   }
 
   function syncWorkspace(config, handle) {
@@ -1413,6 +1393,7 @@
     syncManagedFormEnhancers: syncManagedFormEnhancers,
     syncWorkspaceToolbarConsole: syncWorkspaceToolbarConsole,
     clearWorkspaceToolbarConsole: clearWorkspaceToolbarConsole,
+    buildManagedPreviewWorkspaceHooks: buildManagedPreviewWorkspaceHooks,
     registerWorkspace: registerWorkspace,
   });
   surfaceLayers._shared = shared;

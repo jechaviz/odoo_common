@@ -54,13 +54,14 @@
       }
     }
     if (Array.isArray(settings.allowedValues) && settings.allowedValues.length) {
-      if (typeof surfaceLayerApi.sanitizeAllowedKey === "function") {
-        return String(surfaceLayerApi.sanitizeAllowedKey({
-          value: value,
-          allowedValues: settings.allowedValues,
-        }) || "");
+      var normalized = String(surfaceLayerApi.sanitizeAllowedKey({
+        value: value,
+        allowedValues: settings.allowedValues,
+      }) || "");
+      if (normalized) {
+        return normalized;
       }
-      var normalized = String(value || "").trim().toLowerCase();
+      normalized = String(value || "").trim().toLowerCase();
       return settings.allowedValues.some(function (allowedValue) {
         return String(allowedValue || "").trim().toLowerCase() === normalized;
       })
@@ -189,11 +190,9 @@
 
   function resolveRecentYearMonthLabel(config) {
     var settings = config && typeof config === "object" ? config : {};
-    var sanitizeYearMonthKey = typeof surfaceLayerApi.sanitizeYearMonthKey === "function"
-      ? surfaceLayerApi.sanitizeYearMonthKey
-      : function (value) {
-          return /^\d{4}-\d{2}$/.test(String(value || "").trim()) ? String(value || "").trim() : "";
-        };
+    var sanitizeYearMonthKey = function (value) {
+      return /^\d{4}-\d{2}$/.test(String(value || "").trim()) ? String(value || "").trim() : "";
+    };
     var normalized = sanitizeYearMonthKey(settings.monthKey);
     if (!normalized) {
       return "";
@@ -210,7 +209,7 @@
     var currentActionId = Number.parseInt(
       String(
         settings.currentActionId ||
-        (typeof surfaceLayerApi.readCurrentActionId === "function" ? surfaceLayerApi.readCurrentActionId() : 0) ||
+        surfaceLayerApi.readCurrentActionId() ||
         0
       ),
       10
@@ -272,7 +271,6 @@
       { allowedValues: allowedValues },
       settings.fallbackValue || allowedValues[0] || ""
     );
-    var workspaceHint = String(settings.workspaceHint || "").trim();
     var tabSelector = String(settings.tabSelector || "[data-surface-tab='1']").trim() || "[data-surface-tab='1']";
 
     function findEntry(value) {
@@ -389,15 +387,6 @@
         return true;
       }
       var normalized = write(selectedValue);
-      var nextWorkspaceHint = String(
-        interaction.workspaceHint ||
-        workspaceHint ||
-        (interaction.config && interaction.config.key) ||
-        ""
-      ).trim();
-      if (nextWorkspaceHint && typeof interaction.writeWorkspaceHint === "function") {
-        interaction.writeWorkspaceHint(nextWorkspaceHint);
-      }
       var actionRequest = buildActionRequest(normalized, interaction);
       if (actionRequest != null && typeof interaction.performAction === "function") {
         var nextAction = interaction.performAction(actionRequest);
@@ -428,6 +417,36 @@
 
   function buildActionBackedToolbarSelectionController(config) {
     return buildActionBackedSelectionController(config);
+  }
+
+  function buildWorkspaceToolbarInteractionHandler(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var controller = settings.controller && typeof settings.controller === "object"
+      ? settings.controller
+      : null;
+    if (!(controller && typeof controller.handleToolbarInteraction === "function")) {
+      throw new Error("buildWorkspaceToolbarInteractionHandler requires a controller with handleToolbarInteraction.");
+    }
+    if (typeof settings.buildAction !== "function") {
+      throw new Error("buildWorkspaceToolbarInteractionHandler requires buildAction.");
+    }
+    return function handleWorkspaceToolbarInteraction(rawConfig) {
+      var interaction = Object.assign({}, rawConfig && typeof rawConfig === "object" ? rawConfig : {});
+      interaction.controller = controller;
+      interaction.buildAction = function (nextState, nextInteraction) {
+        try {
+          return settings.buildAction(
+            nextState,
+            nextInteraction && typeof nextInteraction === "object" ? nextInteraction : interaction,
+            controller,
+            settings
+          );
+        } catch (_error) {
+          return null;
+        }
+      };
+      return controller.handleToolbarInteraction(interaction) === true;
+    };
   }
 
   function buildTabbedMonthListStateController(config) {
@@ -498,52 +517,43 @@
 
     function read() {
       var fallbackState = buildFallbackState(true);
-      if (typeof surfaceLayerApi.loadSessionJsonState === "function") {
-        return surfaceLayerApi.loadSessionJsonState({
-          key: storageKey,
-          fallback: fallbackState,
-          normalize: function (parsed, normalizedFallback) {
-            return normalizeState(parsed, normalizedFallback, { applyActionTab: true });
-          },
-        });
-      }
-      return fallbackState;
+      return loadSessionJsonState({
+        key: storageKey,
+        fallback: fallbackState,
+        normalize: function (parsed, normalizedFallback) {
+          return normalizeState(parsed, normalizedFallback, { applyActionTab: true });
+        },
+      });
     }
 
     function readPersisted() {
       var fallbackState = buildFallbackState(false);
-      if (typeof surfaceLayerApi.loadSessionJsonState === "function") {
-        return surfaceLayerApi.loadSessionJsonState({
-          key: storageKey,
-          fallback: fallbackState,
-          normalize: function (parsed, normalizedFallback) {
-            return normalizeState(parsed, normalizedFallback, { applyActionTab: false });
-          },
-        });
-      }
-      return fallbackState;
+      return loadSessionJsonState({
+        key: storageKey,
+        fallback: fallbackState,
+        normalize: function (parsed, normalizedFallback) {
+          return normalizeState(parsed, normalizedFallback, { applyActionTab: false });
+        },
+      });
     }
 
     function write(nextState) {
       var fallbackState = buildFallbackState(false);
-      if (typeof surfaceLayerApi.saveSessionJsonState === "function") {
-        return surfaceLayerApi.saveSessionJsonState({
-          key: storageKey,
-          fallback: fallbackState,
-          state: nextState,
-          normalize: function (parsed, normalizedFallback) {
-            return normalizeState(parsed, normalizedFallback, { applyActionTab: false });
-          },
-          onSave: function (normalizedState) {
-            if (typeof settings.onWriteTab === "function") {
-              try {
-                settings.onWriteTab(normalizedState.tab, settings);
-              } catch (_error) {}
-            }
-          },
-        });
-      }
-      return normalizeState(nextState, fallbackState);
+      return saveSessionJsonState({
+        key: storageKey,
+        fallback: fallbackState,
+        state: nextState,
+        normalize: function (parsed, normalizedFallback) {
+          return normalizeState(parsed, normalizedFallback, { applyActionTab: false });
+        },
+        onSave: function (normalizedState) {
+          if (typeof settings.onWriteTab === "function") {
+            try {
+              settings.onWriteTab(normalizedState.tab, settings);
+            } catch (_error) {}
+          }
+        },
+      });
     }
 
     function update(patch) {
@@ -565,19 +575,15 @@
     }
 
     function buildMonthOptions() {
-      return typeof surfaceLayerApi.buildRecentYearMonthOptions === "function"
-        ? surfaceLayerApi.buildRecentYearMonthOptions(monthConfig)
-        : [{ value: "", label: "Todo periodo" }];
+      return buildRecentYearMonthOptions(monthConfig);
     }
 
     function getMonthLabel(monthKey) {
-      return typeof surfaceLayerApi.resolveRecentYearMonthLabel === "function"
-        ? surfaceLayerApi.resolveRecentYearMonthLabel(
-            Object.assign({}, monthConfig, {
-              monthKey: sanitizeMonth(monthKey),
-            })
-          )
-        : sanitizeMonth(monthKey);
+      return resolveRecentYearMonthLabel(
+        Object.assign({}, monthConfig, {
+          monthKey: sanitizeMonth(monthKey),
+        })
+      );
     }
 
     function handleToolbarInteraction(rawConfig) {
@@ -599,9 +605,6 @@
           target.getAttribute("data-surface-tab")
         ) || nextTabState.tab;
         nextTabState = write(nextTabState);
-        if (typeof interaction.writeWorkspaceHint === "function") {
-          interaction.writeWorkspaceHint(String(interaction.workspaceHint || "").trim());
-        }
         if (typeof interaction.buildAction === "function" && typeof interaction.performAction === "function") {
           var nextTabAction = interaction.performAction(interaction.buildAction(nextTabState, interaction));
           if (nextTabAction && typeof nextTabAction.catch === "function") {
@@ -617,9 +620,6 @@
         var nextMonthState = read();
         nextMonthState.month = sanitizeMonth(target.value);
         nextMonthState = write(nextMonthState);
-        if (typeof interaction.writeWorkspaceHint === "function") {
-          interaction.writeWorkspaceHint(String(interaction.workspaceHint || "").trim());
-        }
         if (typeof interaction.buildAction === "function" && typeof interaction.performAction === "function") {
           var nextMonthAction = interaction.performAction(interaction.buildAction(nextMonthState, interaction));
           if (nextMonthAction && typeof nextMonthAction.catch === "function") {
@@ -708,10 +708,7 @@
 
   function captureInitialQueryState(config) {
     var settings = config && typeof config === "object" ? config : {};
-    var href =
-      typeof surfaceLayerApi.getInitialDocumentHref === "function"
-        ? String(surfaceLayerApi.getInitialDocumentHref() || "").trim()
-        : String(window.location.href || "").trim();
+    var href = String(surfaceLayerApi.getInitialDocumentHref() || "").trim();
     var url = null;
     try {
       url = new URL(href || window.location.href, window.location.origin);
@@ -769,6 +766,7 @@
     loadActionBackedAllowedSessionKey: loadActionBackedAllowedSessionKey,
     buildActionBackedSelectionController: buildActionBackedSelectionController,
     buildActionBackedToolbarSelectionController: buildActionBackedToolbarSelectionController,
+    buildWorkspaceToolbarInteractionHandler: buildWorkspaceToolbarInteractionHandler,
     buildTabbedMonthListStateController: buildTabbedMonthListStateController,
     saveTimedSessionPayload: saveTimedSessionPayload,
     readTimedSessionPayload: readTimedSessionPayload,

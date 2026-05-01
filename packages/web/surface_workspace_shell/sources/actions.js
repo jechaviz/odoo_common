@@ -2,24 +2,8 @@
   "use strict";
 
   var surfaceLayerApi = window.OdooSurfaceLayers || {};
-  var escapeHtml = typeof surfaceLayerApi.escapeHtml === "function"
-    ? surfaceLayerApi.escapeHtml
-    : function (value) {
-        return String(value || "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
-      };
-  var toDataAttributeName = typeof surfaceLayerApi.toDataAttributeName === "function"
-    ? surfaceLayerApi.toDataAttributeName
-    : function (key) {
-        return String(key || "")
-          .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-          .replace(/_/g, "-")
-          .toLowerCase();
-      };
+  var escapeHtml = surfaceLayerApi.escapeHtml;
+  var toDataAttributeName = surfaceLayerApi.toDataAttributeName;
 
   function joinClassNames(values) {
     var seen = Object.create(null);

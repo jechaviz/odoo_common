@@ -68,3 +68,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad.
 - presets de subtotales, campos `x_*` y copy comercial deben quedarse en adapters del proyecto
 - cada proyecto debe crear su adapter delgado y declarativo
 - si una pieza necesita labels, modelos, campos o copy, eso entra por config
+- para `surface-workspace-shell`, los adapters deben suministrar `workspaceKey`, breadcrumb keys y action/model state canonicos; no deben depender de `workspaceHint`, action ids alternos ni selectors fallback
+- para `surface-workspace-shell`, la seccion activa del sidebar debe llegar por claves explicitas (`data-surface-sidebar-section-key`, `data-section`, breadcrumb section key o resolver explicito); no se debe ensamblar por labels del navbar ni por estado `active/show/aria-*`
+- los popovers del sidebar deben tener owner trigger canonico y vivo; si un proyecto necesita rescatar owners desde otro estado, eso pertenece al adapter, no a `common`
+- los modos de route presentation (`query`, `hash`, `path-tail`) permanecen solo porque son parte del contrato publico canonico del shell; no deben reinterpretarse como compatibilidad legacy del proyecto

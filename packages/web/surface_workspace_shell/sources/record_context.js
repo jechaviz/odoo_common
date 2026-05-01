@@ -227,9 +227,7 @@
     var formRoot = resolveRecordContextFormRoot(settings);
     var fieldReader = typeof settings.fieldReader === "function"
       ? settings.fieldReader
-      : typeof surfaceLayerApi.readFieldText === "function"
-      ? surfaceLayerApi.readFieldText
-      : function () { return ""; };
+      : surfaceLayerApi.readFieldText;
     var source = settings.source && typeof settings.source === "object"
       ? settings.source
       : buildRecordContextSource({});
@@ -414,9 +412,7 @@
     var raw = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
     var fieldReader = typeof raw.fieldReader === "function"
       ? raw.fieldReader
-      : typeof surfaceLayerApi.readFieldText === "function"
-      ? surfaceLayerApi.readFieldText
-      : function () { return ""; };
+      : surfaceLayerApi.readFieldText;
     var rawSource = raw.source && typeof raw.source === "object" ? raw.source : {};
     var source = buildRecordContextSource(
       rawSource[RECORD_CONTEXT_SOURCE_MARKER] === true
@@ -547,11 +543,9 @@
     syncRecordContextPanel: syncRecordContextPanel,
     syncManagedRecordContextPanels: syncManagedRecordContextPanels,
   });
-  if (typeof surfaceLayerApi.registerManagedFormEnhancer === "function") {
-    surfaceLayerApi.registerManagedFormEnhancer({
-      key: RECORD_CONTEXT_PANEL_ENHANCER_KEY,
-      sync: syncManagedRecordContextPanels,
-    });
-  }
+  surfaceLayerApi.registerManagedFormEnhancer({
+    key: RECORD_CONTEXT_PANEL_ENHANCER_KEY,
+    sync: syncManagedRecordContextPanels,
+  });
   window.OdooSurfaceLayers = surfaceLayerApi;
 })();

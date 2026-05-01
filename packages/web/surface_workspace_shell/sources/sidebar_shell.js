@@ -44,11 +44,11 @@
     return shared.sidebarShellSectionTrees;
   }
 
-  function getSidebarShellRootSections() {
-    if (!Array.isArray(shared.sidebarShellRootSections)) {
-      shared.sidebarShellRootSections = [];
+  function getSidebarShellRootSectionKeyRegistry() {
+    if (!(shared.sidebarShellRootSectionKeys && typeof shared.sidebarShellRootSectionKeys === "object")) {
+      shared.sidebarShellRootSectionKeys = {};
     }
-    return shared.sidebarShellRootSections;
+    return shared.sidebarShellRootSectionKeys;
   }
 
   surfaceLayerApi.registerSidebarShellSectionTree = function (sectionKey, treeEntries) {
@@ -65,16 +65,22 @@
     return false;
   };
 
-  surfaceLayerApi.registerSidebarShellRootSections = function (entries) {
-    shared.sidebarShellRootSections = (Array.isArray(entries) ? entries : []).map(function (entry) {
+  surfaceLayerApi.registerSidebarShellRootSectionKeys = function (entries) {
+    var registry = getSidebarShellRootSectionKeyRegistry();
+    Object.keys(registry).forEach(function (key) {
+      delete registry[key];
+    });
+    (Array.isArray(entries) ? entries : []).forEach(function (entry) {
       if (!(entry && typeof entry === "object")) {
-        return null;
+        return;
       }
+      var label = normalizeLabel(String(entry.label || "").trim());
       var key = normalizeSidebarShellKey(entry.key || "");
-      var label = String(entry.label || "").trim();
-      return key && label ? { key: key, label: label } : null;
-    }).filter(Boolean);
-    return shared.sidebarShellRootSections.slice();
+      if (label && key) {
+        registry[label] = key;
+      }
+    });
+    return Object.keys(registry).length > 0;
   };
 
   function hasBackendHomeMenu() {
@@ -260,28 +266,23 @@
     });
   }
 
-  function annotateSidebarShellRootSectionNodes() {
-    var rootNodes = getSidebarShellRootSectionNodes();
-    var registeredSections = getSidebarShellRootSections();
-    if (!rootNodes.length || !registeredSections.length) {
-      return rootNodes;
+  function resolveSidebarShellSectionKeyFromProvider(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
     }
-    rootNodes.forEach(function (node) {
-      if (!(node instanceof HTMLElement) || normalizeSidebarShellKey(node.dataset.surfaceSidebarSectionKey || "")) {
-        return;
-      }
-      var nodeLabel = normalizeSidebarShellKey(String(node.textContent || "").trim());
-      if (!nodeLabel) {
-        return;
-      }
-      var matchingSection = registeredSections.find(function (entry) {
-        return normalizeSidebarShellKey(entry.label || "") === nodeLabel;
-      });
-      if (matchingSection && matchingSection.key) {
-        node.dataset.surfaceSidebarSectionKey = matchingSection.key;
-      }
-    });
-    return rootNodes;
+    var rootSectionKeys = getSidebarShellRootSectionKeyRegistry();
+    if (typeof shared.sidebarShellSectionResolver === "function") {
+      try {
+        return normalizeSidebarShellKey(shared.sidebarShellSectionResolver({
+          node: node,
+          rootSectionKeys: rootSectionKeys,
+        }));
+      } catch (_error) {}
+    }
+    var label = normalizeLabel(resolveSidebarShellMenuItemLabel(node));
+    return label && Object.prototype.hasOwnProperty.call(rootSectionKeys, label)
+      ? normalizeSidebarShellKey(rootSectionKeys[label])
+      : "";
   }
 
   function readSidebarShellSectionKeyFromNode(node) {
@@ -297,6 +298,10 @@
     if (explicitKey) {
       return explicitKey;
     }
+    var providedKey = resolveSidebarShellSectionKeyFromProvider(node);
+    if (providedKey) {
+      return providedKey;
+    }
     var scopedNode = node.querySelector("[data-section]");
     return normalizeSidebarShellKey(
       scopedNode instanceof HTMLElement
@@ -305,107 +310,39 @@
     );
   }
 
-  function readSidebarShellBreadcrumbHintKey() {
-    var currentItem = document.querySelector(".o_control_panel .o_last_breadcrumb_item");
-    if (!(currentItem instanceof HTMLElement)) {
-      return "";
-    }
-    var explicitHint = normalizeSidebarShellKey(currentItem.dataset.surfaceBreadcrumbHint || "");
-    if (explicitHint) {
-      return explicitHint;
-    }
-    var hintNode = currentItem.querySelector("[data-surface-breadcrumb-hint]");
-    return normalizeSidebarShellKey(
-      hintNode instanceof HTMLElement ? hintNode.dataset.surfaceBreadcrumbHint || "" : ""
-    );
-  }
-
-  function readSidebarShellRouteHints() {
-    return Array.isArray(shared.sidebarShellRouteHints)
-      ? shared.sidebarShellRouteHints.slice()
-      : [];
-  }
-
-  function matchSidebarShellRouteHint(pathname) {
-    var normalizedPathname = normalizePathname(pathname || "");
-    var routeHints = readSidebarShellRouteHints();
-    for (var index = 0; index < routeHints.length; index += 1) {
-      var hint = routeHints[index];
-      if (!(hint && typeof hint === "object")) {
-        continue;
-      }
-      var sectionKey = normalizeSidebarShellKey(hint.sectionKey || "");
-      if (!sectionKey) {
-        continue;
-      }
-      var prefix = normalizePathname(hint.pathnamePrefix || "");
-      if (prefix && normalizedPathname.indexOf(prefix) === 0) {
-        return sectionKey;
-      }
-      if (hint.pattern instanceof RegExp && hint.pattern.test(normalizedPathname)) {
-        return sectionKey;
-      }
-    }
-    return "";
-  }
-
-  function resolveSidebarShellSectionKeyFromProvider(context) {
-    var resolver = shared.sidebarShellSectionResolver;
-    if (typeof resolver !== "function") {
-      return "";
-    }
-    try {
-      return normalizeSidebarShellKey(resolver(context || {}));
-    } catch (_error) {
-      return "";
-    }
-  }
-
   function readSidebarShellSectionKey() {
-    var pathname = normalizePathname(window.location.pathname || "");
-    var rootSectionNodes = annotateSidebarShellRootSectionNodes();
     var explicitSectionKey = normalizeSidebarShellKey(shared.sidebarShellCurrentSectionKey || "");
     if (explicitSectionKey) {
       return explicitSectionKey;
     }
-    var providerSectionKey = resolveSidebarShellSectionKeyFromProvider({
-      pathname: pathname,
-      breadcrumbHint: readSidebarShellBreadcrumbHintKey(),
-      rootSectionNodes: rootSectionNodes.slice(),
-      rootSectionKeys: rootSectionNodes.map(function (node) {
-        return readSidebarShellSectionKeyFromNode(node);
-      }).filter(Boolean),
-    });
-    if (providerSectionKey) {
-      return providerSectionKey;
-    }
-    var hintedSectionKey = matchSidebarShellRouteHint(pathname);
-    if (hintedSectionKey) {
-      return hintedSectionKey;
-    }
-    var breadcrumbHintKey = readSidebarShellBreadcrumbHintKey();
-    if (breadcrumbHintKey) {
-      return breadcrumbHintKey;
-    }
-    for (var index = 0; index < rootSectionNodes.length; index += 1) {
-      var node = rootSectionNodes[index];
-      if (!(node instanceof HTMLElement)) {
-        continue;
-      }
-      if (
-        node.classList.contains("active") ||
-        node.classList.contains("show") ||
-        node.getAttribute("aria-current") === "page" ||
-        node.getAttribute("aria-expanded") === "true"
-      ) {
-        return readSidebarShellSectionKeyFromNode(node);
-      }
+    var breadcrumbSectionKey = readSidebarShellBreadcrumbSectionKey();
+    if (breadcrumbSectionKey) {
+      return breadcrumbSectionKey;
     }
     return "";
   }
 
+  function readSidebarShellBreadcrumbSectionKey() {
+    return normalizeSidebarShellKey(shared.surfaceBreadcrumbSectionKey || "");
+  }
+
+  function syncSidebarShellRootSectionKeys() {
+    getSidebarShellRootSectionNodes().forEach(function (node) {
+      if (!(node instanceof HTMLElement)) {
+        return;
+      }
+      var sectionKey = resolveSidebarShellSectionKeyFromProvider(node);
+      if (sectionKey) {
+        node.dataset.surfaceSidebarSectionKey = sectionKey;
+      } else if (node.dataset.surfaceSidebarSectionKey) {
+        delete node.dataset.surfaceSidebarSectionKey;
+      }
+    });
+  }
+
   function syncSidebarShellCurrentSection(active) {
-    var items = annotateSidebarShellRootSectionNodes();
+    syncSidebarShellRootSectionKeys();
+    var items = getSidebarShellRootSectionNodes();
     var currentKey = active ? readSidebarShellSectionKey() : "";
     items.forEach(function (node) {
       if (!(node instanceof HTMLElement)) {
@@ -1187,12 +1124,11 @@
   function positionSidebarShellPopover(node) {
     var popover = node instanceof HTMLElement ? node : null;
     var triggerNode = resolveSidebarShellPopoverOwnerTrigger(popover);
-    var fallbackOwnerTrigger = findSidebarShellTriggerById(popover instanceof HTMLElement ? popover.dataset.surfaceSidebarOwnerTriggerId : "");
     if (popover instanceof HTMLElement) {
-      if (!materializeSidebarShellTreePopover(popover, triggerNode || fallbackOwnerTrigger)) {
+      if (!materializeSidebarShellTreePopover(popover, triggerNode)) {
         materializeSidebarShellGroupedPopover(popover);
       }
-      annotateSidebarShellPopoverHierarchy(popover, triggerNode || fallbackOwnerTrigger);
+      annotateSidebarShellPopoverHierarchy(popover, triggerNode);
     }
     var containerNode = getSidebarShellTriggerContainer(triggerNode);
     if (!(popover instanceof HTMLElement) || !(containerNode instanceof HTMLElement) || !(triggerNode instanceof HTMLElement)) {

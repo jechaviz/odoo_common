@@ -365,9 +365,9 @@
       }
     }
     if (!roots.length) {
-      var fallbackRoot = resolveBreadcrumbRoot(settings.rootNode || settings.root || settings.breadcrumbContainer);
-      if (fallbackRoot instanceof HTMLElement) {
-        roots.push(fallbackRoot);
+      var configuredRoot = resolveBreadcrumbRoot(settings.rootNode || settings.root || settings.breadcrumbContainer);
+      if (configuredRoot instanceof HTMLElement) {
+        roots.push(configuredRoot);
       }
     }
     roots.forEach(function (rootNode) {
@@ -555,10 +555,15 @@
     } else {
       delete lastItem.dataset.surfaceBreadcrumbKey;
     }
-    if (normalizedEntry.workspaceHint) {
-      lastItem.dataset.surfaceBreadcrumbHint = normalizedEntry.workspaceHint;
+    if (normalizedEntry.workspaceKey) {
+      lastItem.dataset.surfaceBreadcrumbWorkspaceKey = normalizedEntry.workspaceKey;
     } else {
-      delete lastItem.dataset.surfaceBreadcrumbHint;
+      delete lastItem.dataset.surfaceBreadcrumbWorkspaceKey;
+    }
+    if (normalizedEntry.sectionKey) {
+      lastItem.dataset.surfaceBreadcrumbSectionKey = normalizedEntry.sectionKey;
+    } else {
+      delete lastItem.dataset.surfaceBreadcrumbSectionKey;
     }
     if (normalizedEntry.home) {
       lastItem.dataset.surfaceBreadcrumbHomeItem = "1";
@@ -623,9 +628,9 @@
     if (explicitKey) {
       return explicitKey;
     }
-    var workspaceHintKey = normalizeBreadcrumbKey(item.workspaceHint || "");
-    if (workspaceHintKey) {
-      return "hint:" + workspaceHintKey;
+    var workspaceKey = normalizeBreadcrumbKey(item.workspaceKey || "");
+    if (workspaceKey) {
+      return "workspace:" + workspaceKey;
     }
     if (typeof item.action === "string" || typeof item.action === "number") {
       return "action:" + normalizeBreadcrumbKey(String(item.action));
@@ -659,7 +664,8 @@
         href: String(item.href || "").trim(),
         action: item.action || null,
         target: String(item.target || "").trim(),
-        workspaceHint: String(item.workspaceHint || "").trim(),
+        workspaceKey: String(item.workspaceKey || "").trim(),
+        sectionKey: String(item.sectionKey || "").trim(),
         home: item.home === true || isHomeBreadcrumbEntry(item),
         current: !!item.current,
         menu: menuEntries,
@@ -671,7 +677,8 @@
       href: "",
       action: null,
       target: "",
-      workspaceHint: "",
+      workspaceKey: "",
+      sectionKey: "",
       home: false,
       current: false,
       menu: [],
@@ -712,8 +719,11 @@
     if (normalizedEntry.key) {
       node.dataset.surfaceBreadcrumbKey = normalizedEntry.key;
     }
-    if (normalizedEntry.workspaceHint) {
-      node.dataset.surfaceBreadcrumbHint = normalizedEntry.workspaceHint;
+    if (normalizedEntry.workspaceKey) {
+      node.dataset.surfaceBreadcrumbWorkspaceKey = normalizedEntry.workspaceKey;
+    }
+    if (normalizedEntry.sectionKey) {
+      node.dataset.surfaceBreadcrumbSectionKey = normalizedEntry.sectionKey;
     }
     if (normalizedEntry.home) {
       node.dataset.surfaceBreadcrumbHome = "1";
@@ -784,8 +794,14 @@
     }
     menuNode.hidden = !visible;
     menuNode.style.display = visible ? "block" : "none";
-    menuNode.classList.toggle("show", !!visible);
     menuNode.setAttribute("aria-hidden", visible ? "false" : "true");
+  }
+
+  function isBreadcrumbMenuBranchOpen(branchNode) {
+    return !!(
+      branchNode instanceof HTMLElement &&
+      branchNode.getAttribute("data-surface-breadcrumb-menu-open") === "1"
+    );
   }
 
   function hideBreadcrumbMenuBranch(branchNode) {
@@ -797,7 +813,6 @@
         hideBreadcrumbMenuBranch(childBranch);
       }
     });
-    branchNode.classList.remove("show");
     branchNode.removeAttribute("data-surface-breadcrumb-menu-open");
     var menuNode = getDirectBreadcrumbMenu(branchNode);
     if (menuNode instanceof HTMLElement) {
@@ -813,32 +828,11 @@
     if (!(rootNode instanceof HTMLElement)) {
       return;
     }
-    Array.prototype.slice.call(rootNode.querySelectorAll("[data-surface-breadcrumb-menu-branch='1'].show")).forEach(function (branchNode) {
+    Array.prototype.slice.call(rootNode.querySelectorAll("[data-surface-breadcrumb-menu-open='1']")).forEach(function (branchNode) {
       if (branchNode instanceof HTMLElement) {
         hideBreadcrumbMenuBranch(branchNode);
       }
     });
-  }
-
-  function cancelBreadcrumbMenuHide(rootNode) {
-    if (!(rootNode instanceof HTMLElement)) {
-      return;
-    }
-    if (rootNode._surfaceBreadcrumbHideTimer) {
-      window.clearTimeout(rootNode._surfaceBreadcrumbHideTimer);
-      rootNode._surfaceBreadcrumbHideTimer = 0;
-    }
-  }
-
-  function scheduleBreadcrumbMenuHide(rootNode, delayMs) {
-    if (!(rootNode instanceof HTMLElement)) {
-      return;
-    }
-    cancelBreadcrumbMenuHide(rootNode);
-    rootNode._surfaceBreadcrumbHideTimer = window.setTimeout(function () {
-      rootNode._surfaceBreadcrumbHideTimer = 0;
-      hideAllBreadcrumbMenus(rootNode);
-    }, Math.max(Number(delayMs || 0) || 0, 0));
   }
 
   function closeSiblingBreadcrumbMenuBranches(branchNode) {
@@ -865,13 +859,33 @@
       return;
     }
     closeSiblingBreadcrumbMenuBranches(branchNode);
-    branchNode.classList.add("show");
     branchNode.setAttribute("data-surface-breadcrumb-menu-open", "1");
     setBreadcrumbMenuVisibility(menuNode, true);
     var toggleNode = getBreadcrumbMenuToggle(branchNode);
     if (toggleNode instanceof HTMLElement) {
       toggleNode.setAttribute("aria-expanded", "true");
     }
+  }
+
+  function clearBreadcrumbMenuHideTimer(rootNode) {
+    if (!(rootNode instanceof HTMLElement)) {
+      return;
+    }
+    if (rootNode._surfaceBreadcrumbMenuHideTimer) {
+      window.clearTimeout(rootNode._surfaceBreadcrumbMenuHideTimer);
+      rootNode._surfaceBreadcrumbMenuHideTimer = 0;
+    }
+  }
+
+  function scheduleBreadcrumbMenuHide(rootNode) {
+    if (!(rootNode instanceof HTMLElement)) {
+      return;
+    }
+    clearBreadcrumbMenuHideTimer(rootNode);
+    rootNode._surfaceBreadcrumbMenuHideTimer = window.setTimeout(function () {
+      rootNode._surfaceBreadcrumbMenuHideTimer = 0;
+      hideAllBreadcrumbMenus(rootNode);
+    }, 140);
   }
 
   function resolveBreadcrumbBranchTarget(rootNode, eventTarget) {
@@ -896,22 +910,23 @@
     }
     rootNode.dataset.surfaceBreadcrumbMenusBound = "1";
     rootNode.addEventListener("mouseover", function (event) {
-      cancelBreadcrumbMenuHide(rootNode);
-      var branchNode = resolveBreadcrumbBranchTarget(rootNode, event.target instanceof HTMLElement ? event.target : null);
+      clearBreadcrumbMenuHideTimer(rootNode);
+      var branchNode = resolveBreadcrumbBranchTarget(
+        rootNode,
+        event.target instanceof HTMLElement ? event.target : null
+      );
       if (!(branchNode instanceof HTMLElement)) {
+        return;
+      }
+      if (branchNode.dataset.surfaceBreadcrumbHasMenu !== "1") {
         return;
       }
       showBreadcrumbMenuBranch(branchNode);
     });
-    rootNode.addEventListener("mouseleave", function (event) {
-      var relatedTarget = event && event.relatedTarget instanceof Node ? event.relatedTarget : null;
-      if (relatedTarget && rootNode.contains(relatedTarget)) {
-        return;
-      }
-      cancelBreadcrumbMenuHide(rootNode);
+    rootNode.addEventListener("mouseleave", function () {
+      scheduleBreadcrumbMenuHide(rootNode);
     });
     rootNode.addEventListener("click", function (event) {
-      cancelBreadcrumbMenuHide(rootNode);
       var toggleNode = event.target instanceof HTMLElement
         ? event.target.closest("[data-surface-breadcrumb-menu-toggle='1']")
         : null;
@@ -946,7 +961,7 @@
       if (typeof event.stopImmediatePropagation === "function") {
         event.stopImmediatePropagation();
       }
-      if (menuNode.classList.contains("show")) {
+      if (isBreadcrumbMenuBranchOpen(branchNode)) {
         if (interactiveNode !== toggleNode) {
           showBreadcrumbMenuBranch(branchNode);
           return;
@@ -956,17 +971,6 @@
       }
       showBreadcrumbMenuBranch(branchNode);
     }, true);
-    rootNode.addEventListener("focusin", function (event) {
-      cancelBreadcrumbMenuHide(rootNode);
-      var branchNode = resolveBreadcrumbBranchTarget(rootNode, event.target instanceof HTMLElement ? event.target : null);
-      if (!(branchNode instanceof HTMLElement)) {
-        return;
-      }
-      showBreadcrumbMenuBranch(branchNode);
-    });
-    rootNode.addEventListener("focusout", function () {
-      cancelBreadcrumbMenuHide(rootNode);
-    });
     rootNode.addEventListener("keydown", function (event) {
       var branchNode = event.target instanceof HTMLElement
         ? event.target.closest("[data-surface-breadcrumb-menu-branch='1']")
@@ -1015,16 +1019,7 @@
       if (!(event.target instanceof Node) || rootNode.contains(event.target)) {
         return;
       }
-      cancelBreadcrumbMenuHide(rootNode);
       hideAllBreadcrumbMenus(rootNode);
-    }, true);
-    document.addEventListener("mouseover", function (event) {
-      var branchNode = resolveBreadcrumbBranchTarget(rootNode, event.target instanceof HTMLElement ? event.target : null);
-      if (!(branchNode instanceof HTMLElement)) {
-        return;
-      }
-      cancelBreadcrumbMenuHide(rootNode);
-      showBreadcrumbMenuBranch(branchNode);
     }, true);
     return true;
   }
@@ -1072,8 +1067,11 @@
         if (entry.key) {
           entryNode.dataset.surfaceBreadcrumbKey = entry.key;
         }
-        if (entry.workspaceHint) {
-          entryNode.dataset.surfaceBreadcrumbHint = entry.workspaceHint;
+        if (entry.workspaceKey) {
+          entryNode.dataset.surfaceBreadcrumbWorkspaceKey = entry.workspaceKey;
+        }
+        if (entry.sectionKey) {
+          entryNode.dataset.surfaceBreadcrumbSectionKey = entry.sectionKey;
         }
         if (entry.action != null) {
           entryNode.__surfaceBreadcrumbAction = entry.action;
@@ -1134,8 +1132,11 @@
       if (entry.key) {
         node.dataset.surfaceBreadcrumbKey = entry.key;
       }
-      if (entry.workspaceHint) {
-        node.dataset.surfaceBreadcrumbHint = entry.workspaceHint;
+      if (entry.workspaceKey) {
+        node.dataset.surfaceBreadcrumbWorkspaceKey = entry.workspaceKey;
+      }
+      if (entry.sectionKey) {
+        node.dataset.surfaceBreadcrumbSectionKey = entry.sectionKey;
       }
       var labelNode = createBreadcrumbLabelNode(entry, "o_surface_breadcrumb_label min-w-0 text-truncate");
       if (labelNode instanceof HTMLElement) {

@@ -83,10 +83,7 @@
         return null;
       }
     }
-    if (typeof surfaceLayerApi.resolveOdooService === "function") {
-      return surfaceLayerApi.resolveOdooService("menu");
-    }
-    return null;
+    return surfaceLayerApi.resolveOdooService("menu");
   }
 
   function isMenuContextReady(config) {

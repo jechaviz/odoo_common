@@ -131,9 +131,7 @@
     var kinds = Array.isArray(settings.kinds) && settings.kinds.length
       ? settings.kinds.map(function (kind) { return String(kind || "").trim().toLowerCase(); }).filter(Boolean)
       : ["pdf", "xml"];
-    var getDataRecordId = typeof surfaceLayerApi.getDataRecordId === "function"
-      ? surfaceLayerApi.getDataRecordId
-      : function () { return 0; };
+    var getDataRecordId = surfaceLayerApi.getDataRecordId;
     var recordIds = rows.map(function (row) {
       return getDataRecordId(row);
     }).filter(function (recordId) {
@@ -165,9 +163,6 @@
         }
       });
     });
-    if (typeof surfaceLayerApi.resolveOdooService !== "function") {
-      return cache;
-    }
     var ormService = await surfaceLayerApi.resolveOdooService("orm");
     if (!ormService || typeof ormService.searchRead !== "function") {
       return cache;

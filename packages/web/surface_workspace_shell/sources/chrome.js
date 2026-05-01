@@ -758,6 +758,16 @@
     return flatSections.join("");
   }
 
+  function buildSelectFilterWorkspaceConsoleMarkup(config) {
+    var toolbarMarkup = buildSelectFilterToolbarMarkup(Object.assign({}, config && typeof config === "object" ? config : {}, {
+      className: "o_surface_workspace_console",
+    }));
+    if (!toolbarMarkup) {
+      return "";
+    }
+    return '<div class="o_surface_workspace_console">' + toolbarMarkup + "</div>";
+  }
+
   function normalizeSurfaceBreadcrumbText(value) {
     return String(value == null ? "" : value).replace(/\s+/g, " ").trim();
   }
@@ -950,6 +960,7 @@
     resolveManagedBreadcrumbRootNode: resolveManagedBreadcrumbRootNode,
     normalizeControlPanelBreadcrumbLayout: normalizeControlPanelBreadcrumbLayout,
     buildSelectFilterToolbarMarkup: buildSelectFilterToolbarMarkup,
+    buildSelectFilterWorkspaceConsoleMarkup: buildSelectFilterWorkspaceConsoleMarkup,
   });
   window.OdooSurfaceLayers = surfaceLayerApi;
 })();

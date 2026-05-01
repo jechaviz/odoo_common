@@ -298,12 +298,10 @@
     buildLinePickerConfig: buildLinePickerConfig,
     syncManagedLinePickers: syncManagedLinePickers,
   });
-  if (typeof surfaceLayerApi.registerManagedFormEnhancer === "function") {
-    surfaceLayerApi.registerManagedFormEnhancer({
-      key: ENTRY_PICKER_ENHANCER_KEY,
-      sync: syncManagedLinePickers,
-    });
-  }
+  surfaceLayerApi.registerManagedFormEnhancer({
+    key: ENTRY_PICKER_ENHANCER_KEY,
+    sync: syncManagedLinePickers,
+  });
   surfaceLayerApi._shared = shared;
   window.OdooSurfaceLayers = surfaceLayerApi;
 })();

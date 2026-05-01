@@ -281,27 +281,6 @@
     var attributes = applyPreviewButtonAttributes(settings.attributes, Object.assign({}, settings, {
       previewKey: previewKey,
     }));
-    if (typeof surfaceLayerApi.buildPreviewActionButtonMarkup === "function") {
-      return surfaceLayerApi.buildPreviewActionButtonMarkup({
-        action: previewKey,
-        iconClass: String(settings.iconClass || "").trim(),
-        label: String(settings.label || settings.title || "").trim(),
-        className: String(settings.className || DEFAULT_PREVIEW_BUTTON_CLASS_NAME).trim(),
-        data: settings.data && typeof settings.data === "object"
-          ? Object.assign({}, settings.data)
-          : {},
-        attributes: attributes,
-        surfacePreview: Object.prototype.hasOwnProperty.call(settings, "surfacePreview")
-          ? settings.surfacePreview
-          : previewKey,
-        surfaceAction: Object.prototype.hasOwnProperty.call(settings, "surfaceAction")
-          ? settings.surfaceAction
-          : true,
-      });
-    }
-    if (typeof surfaceLayerApi.buildIconActionButtonMarkup !== "function") {
-      return "";
-    }
     var data = settings.data && typeof settings.data === "object"
       ? Object.assign({}, settings.data)
       : {};
@@ -317,12 +296,19 @@
     if (!Object.prototype.hasOwnProperty.call(data, "url") && String(settings.url || "").trim()) {
       data.url = String(settings.url || "").trim();
     }
-    return surfaceLayerApi.buildIconActionButtonMarkup({
+    return surfaceLayerApi.buildPreviewActionButtonMarkup({
       action: previewKey,
       iconClass: String(settings.iconClass || "").trim(),
       label: String(settings.label || settings.title || "").trim(),
       className: String(settings.className || DEFAULT_PREVIEW_BUTTON_CLASS_NAME).trim(),
       data: data,
+      attributes: attributes,
+      surfacePreview: Object.prototype.hasOwnProperty.call(settings, "surfacePreview")
+        ? settings.surfacePreview
+        : previewKey,
+      surfaceAction: Object.prototype.hasOwnProperty.call(settings, "surfaceAction")
+        ? settings.surfaceAction
+        : true,
     });
   }
 
@@ -364,31 +350,16 @@
         url: item.url,
       }));
     }).filter(Boolean);
-    if (typeof surfaceLayerApi.buildPreviewActionGroupMarkup === "function") {
-      return surfaceLayerApi.buildPreviewActionGroupMarkup({
-        actions: actionButtons,
-        className: String(settings.className || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim(),
-        emptyMarkup: String(settings.emptyMarkup || "").trim(),
-        wrap: settings.wrap,
-      });
-    }
-    if (!actionButtons.length) {
-      return String(settings.emptyMarkup || "");
-    }
-    return (
-      '<div class="' +
-      String(settings.className || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim() +
-      '">' +
-      actionButtons.join("") +
-      "</div>"
-    );
+    return surfaceLayerApi.buildPreviewActionGroupMarkup({
+      actions: actionButtons,
+      className: String(settings.className || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim(),
+      emptyMarkup: String(settings.emptyMarkup || "").trim(),
+      wrap: settings.wrap,
+    });
   }
 
   function ensureManagedPreviewActionColumn(config) {
     var settings = config && typeof config === "object" ? config : {};
-    if (typeof surfaceLayerApi.ensureManagedActionColumn !== "function") {
-      return null;
-    }
     return surfaceLayerApi.ensureManagedActionColumn({
       table: settings.table,
       rows: settings.rows,
@@ -412,9 +383,6 @@
 
   function clearManagedPreviewActionColumn(config) {
     var settings = config && typeof config === "object" ? config : {};
-    if (typeof surfaceLayerApi.clearManagedActionColumn !== "function") {
-      return;
-    }
     surfaceLayerApi.clearManagedActionColumn({
       table: settings.table,
       headerClassName: String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim(),
@@ -501,7 +469,7 @@
         } catch (_error) {}
         return;
       }
-      if (url && typeof surfaceLayerApi.openSurfaceUrl === "function") {
+      if (url) {
         surfaceLayerApi.openSurfaceUrl(url, false);
       }
     }, true);

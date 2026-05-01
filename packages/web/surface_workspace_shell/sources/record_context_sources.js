@@ -19,9 +19,7 @@
   }
 
   function normalizeRelationalMany2oneValue(value) {
-    var normalized = typeof surfaceLayerApi.normalizeMany2oneValue === "function"
-      ? surfaceLayerApi.normalizeMany2oneValue(value) || {}
-      : {};
+    var normalized = surfaceLayerApi.normalizeMany2oneValue(value) || {};
     return {
       id: Number.parseInt(String(normalized.id || 0), 10) || 0,
       label: normalizeRelationalText(normalized.label || normalized.displayName || ""),
@@ -254,9 +252,6 @@
   }
 
   async function resolvePartnerCommercialRecordContextData(spec, runtimeContext, fieldReader) {
-    if (typeof surfaceLayerApi.resolveOdooService !== "function") {
-      return {};
-    }
     var ormService = await surfaceLayerApi.resolveOdooService("orm");
     if (!ormService || typeof ormService.searchRead !== "function") {
       return {};
@@ -428,7 +423,7 @@
 
   async function resolveRelationalRecordContextData(spec, runtimeContext, fieldReader) {
     var buildData = typeof spec.buildData === "function" ? spec.buildData : null;
-    if (typeof buildData !== "function" || typeof surfaceLayerApi.resolveOdooService !== "function") {
+    if (typeof buildData !== "function") {
       return {};
     }
     var ormService = await surfaceLayerApi.resolveOdooService("orm");
@@ -476,9 +471,7 @@
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : typeof surfaceLayerApi.readFieldText === "function"
-      ? surfaceLayerApi.readFieldText
-      : function () { return ""; };
+      : surfaceLayerApi.readFieldText;
     var sourceConfig = {
       cacheScopeKey: spec.cacheScopeKey,
       recordIdResolver: function (runtimeContext) {
@@ -489,18 +482,14 @@
         return resolveRelationalRecordContextData(spec, runtimeContext, fieldReader);
       },
     };
-    return typeof surfaceLayerApi.buildRecordContextSource === "function"
-      ? surfaceLayerApi.buildRecordContextSource(sourceConfig)
-      : sourceConfig;
+    return surfaceLayerApi.buildRecordContextSource(sourceConfig);
   }
 
   function buildRelationalRecordContextAdapter(rawSpec) {
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : typeof surfaceLayerApi.readFieldText === "function"
-      ? surfaceLayerApi.readFieldText
-      : function () { return ""; };
+      : surfaceLayerApi.readFieldText;
     return surfaceLayerApi.buildRecordContextPanelConfig({
       cacheScopeKey: spec.cacheScopeKey,
       panelSelector: spec.panelSelector,
@@ -518,9 +507,7 @@
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : typeof surfaceLayerApi.readFieldText === "function"
-      ? surfaceLayerApi.readFieldText
-      : function () { return ""; };
+      : surfaceLayerApi.readFieldText;
     var formFieldMap = normalizePartnerCommercialFieldMap(spec.formFieldMap, {
       billing: "partner_id",
       shipping: "partner_shipping_id",
@@ -546,18 +533,14 @@
         return resolvePartnerCommercialRecordContextData(spec, runtimeContext, fieldReader);
       },
     };
-    return typeof surfaceLayerApi.buildRecordContextSource === "function"
-      ? surfaceLayerApi.buildRecordContextSource(sourceConfig)
-      : sourceConfig;
+    return surfaceLayerApi.buildRecordContextSource(sourceConfig);
   }
 
   function buildPartnerCommercialRecordContextAdapter(rawSpec) {
     var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
     var fieldReader = typeof spec.fieldReader === "function"
       ? spec.fieldReader
-      : typeof surfaceLayerApi.readFieldText === "function"
-      ? surfaceLayerApi.readFieldText
-      : function () { return ""; };
+      : surfaceLayerApi.readFieldText;
     return surfaceLayerApi.buildRecordContextPanelConfig({
       cacheScopeKey: spec.cacheScopeKey,
       panelSelector: spec.panelSelector,

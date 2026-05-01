@@ -12,12 +12,35 @@ Publica `window.OdooSurfaceLayers` con:
 - `buildCommercialPolicySurfaceBridge(spec)`
 - `installCommercialPolicySurfaceBridge(spec)`
 
+## Server Action Injection
+
+La inyeccion del `ir.actions.server` es opcional y entra por `spec` de una de estas dos formas:
+
+- `sourceActionId`
+  - ID numerico ya resuelto
+- `resolveSourceActionId()`
+  - resolver lazy para cuando el adapter obtiene el ID en runtime
+
+Si el bridge recibe un action ID valido, ejecuta:
+
+- modelo: `ir.actions.server`
+- metodo: `run`
+- contexto inyectado:
+  - `active_model = sourceModel`
+  - `active_id = sourceId`
+  - `active_ids = [sourceId]`
+
+Si no se inyecta action ID, el bridge degrada a read/write e hydration visual sin correr server action.
+
 ## Spec minimo
 
 ```js
 window.OdooSurfaceLayers.installCommercialPolicySurfaceBridge({
   sourceModel: "x_customer_policy_assignment",
   targetModel: "sale.order",
+  resolveSourceActionId: function () {
+    return window.CUSTOMER_POLICY_ACTION_ID || 0;
+  },
   sourceFields: ["id", "display_name", "x_percent", "x_program_id"],
   sourceProgramFieldName: "x_program_id",
   sourcePercentFieldName: "x_percent",

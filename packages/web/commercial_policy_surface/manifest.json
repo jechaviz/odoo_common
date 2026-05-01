@@ -15,6 +15,6 @@
   "capabilities": [
     "policy-assignment-sync",
     "preview-field-hydration",
-    "server-action-handoff"
+    "source-action-injection"
   ]
 }

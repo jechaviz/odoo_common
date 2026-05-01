@@ -84,15 +84,30 @@
   function resolveScopedControlPanel(config) {
     var settings = config && typeof config === "object" ? config : {};
     var hostNode = resolveElement(settings.hostNode);
-    var scopedPanel = hostNode instanceof HTMLElement
-      ? hostNode.querySelector(String(settings.selector || ".o_control_panel").trim() || ".o_control_panel")
-      : null;
-    if (scopedPanel instanceof HTMLElement) {
-      return scopedPanel;
+    var selector = String(settings.selector || ".o_control_panel").trim() || ".o_control_panel";
+    var candidateHosts = [];
+    if (hostNode instanceof HTMLElement) {
+      candidateHosts.push(hostNode);
+      var promotedHost = hostNode.matches(".o_content")
+        ? hostNode.parentElement
+        : hostNode.closest(".o_action, .o_view_controller, .o_action_manager");
+      while (promotedHost instanceof HTMLElement) {
+        if (promotedHost.matches(".o_action, .o_view_controller, .o_action_manager")) {
+          if (candidateHosts.indexOf(promotedHost) < 0) {
+            candidateHosts.push(promotedHost);
+          }
+          break;
+        }
+        promotedHost = promotedHost.parentElement;
+      }
     }
-    var fallbackSelector = String(settings.fallbackSelector || settings.selector || ".o_control_panel").trim() || ".o_control_panel";
-    var fallbackPanel = document.querySelector(fallbackSelector);
-    return fallbackPanel instanceof HTMLElement ? fallbackPanel : null;
+    for (var index = 0; index < candidateHosts.length; index += 1) {
+      var scopedPanel = candidateHosts[index].querySelector(selector);
+      if (scopedPanel instanceof HTMLElement) {
+        return scopedPanel;
+      }
+    }
+    return null;
   }
 
   function matchesFormHints(form, config) {

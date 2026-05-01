@@ -1,0 +1,16 @@
+{
+  "modules": [
+    "form_layout_surface/constants.js",
+    "form_layout_surface/runtime/ui/action_helpers.js",
+    "form_layout_surface/runtime/api/session_scope.js",
+    "form_layout_surface/state.js",
+    "form_layout_surface/runtime/ui/entry_keys.js",
+    "form_layout_surface/runtime/ui/state_storage.js",
+    "form_layout_surface/runtime/ui/layouts.js",
+    "form_layout_surface/runtime/ui/process_persistence.js",
+    "form_layout_surface/drag_drop.js",
+    "form_layout_surface/runtime/process_form.js",
+    "form_layout_surface/runtime/process_runtime.js",
+    "form_layout_surface/runtime/bootstrap.js"
+  ]
+}

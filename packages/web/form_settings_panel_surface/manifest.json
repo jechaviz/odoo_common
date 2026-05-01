@@ -1,0 +1,23 @@
+{
+  "key": "form-settings-panel-surface",
+  "title": "Form Settings Panel Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "runtime",
+    "styles"
+  ],
+  "publish_order": [
+    "runtime",
+    "styles"
+  ],
+  "capabilities": [
+    "form-settings-panel-shell",
+    "section-settings-editor",
+    "layout-settings-editor",
+    "statusbar-label-settings"
+  ]
+}

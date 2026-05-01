@@ -1,0 +1,19 @@
+{
+  "key": "form-section-headers-surface",
+  "title": "Form Section Headers Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_section_headers_surface.js"
+  ],
+  "publish_order": [
+    "form_section_headers_surface.js"
+  ],
+  "capabilities": [
+    "section-header-decoration",
+    "section-collapse-summary"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "modules": [
+    "form_subtotals_surface/runtime/ui/field_loading.js",
+    "form_subtotals_surface/runtime/api/relation_options.js",
+    "form_subtotals_surface/runtime/ui/field_values.js",
+    "form_subtotals_surface/runtime/ui/field_widget_sync.js",
+    "form_subtotals_surface/runtime/subtotals/state_keys.js",
+    "form_subtotals_surface/runtime/subtotals/line_rules.js",
+    "form_subtotals_surface/runtime/subtotals/storage.js",
+    "form_subtotals_surface/runtime/subtotals/layout_mutations.js",
+    "form_subtotals_surface/runtime/subtotals/layout_labels_defaults.js",
+    "form_subtotals_surface/runtime/subtotals/native_rows.js",
+    "form_subtotals_surface/runtime/subtotals/formulas.js",
+    "form_subtotals_surface/runtime/subtotals/persist.js",
+    "form_subtotals_surface/runtime/subtotals/report_persistence.js",
+    "form_subtotals_surface/runtime/subtotals/render_state.js",
+    "form_subtotals_surface/runtime/subtotals/render_rows.js",
+    "form_subtotals_surface/runtime/subtotals/render.js",
+    "form_subtotals_surface/runtime/subtotals/toggle_menu.js",
+    "form_subtotals_surface/runtime/subtotals/edit_mode.js",
+    "form_subtotals_surface/runtime/subtotals_surface_integration.js"
+  ]
+}

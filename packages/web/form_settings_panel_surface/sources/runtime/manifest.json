@@ -1,0 +1,14 @@
+{
+  "modules": [
+    "form_settings_panel_surface/runtime/settings_panel_surface.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_shell.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_context.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_roles.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_sections.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_layouts.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_statusbars.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_render.js",
+    "form_settings_panel_surface/runtime/ui/settings_panel_open.js",
+    "form_settings_panel_surface/runtime/bootstrap.js"
+  ]
+}

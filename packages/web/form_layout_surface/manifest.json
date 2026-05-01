@@ -1,0 +1,35 @@
+{
+  "key": "form-layout-surface",
+  "title": "Form Layout Surface Core",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "constants.js",
+    "state.js",
+    "drag_drop.js",
+    "runtime"
+  ],
+  "publish_order": [
+    "constants.js",
+    "runtime/ui/action_helpers.js",
+    "runtime/api/session_scope.js",
+    "state.js",
+    "runtime/ui/entry_keys.js",
+    "runtime/ui/state_storage.js",
+    "runtime/ui/layouts.js",
+    "runtime/ui/process_persistence.js",
+    "drag_drop.js",
+    "runtime/process_form.js",
+    "runtime/process_runtime.js",
+    "runtime/bootstrap.js"
+  ],
+  "capabilities": [
+    "layout-item-collection",
+    "layout-item-visibility",
+    "section-order-persistence",
+    "shared-form-scope-runtime"
+  ]
+}

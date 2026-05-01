@@ -1,0 +1,19 @@
+{
+  "key": "form-section-visibility-surface",
+  "title": "Form Section Visibility Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_section_visibility_surface.js"
+  ],
+  "publish_order": [
+    "form_section_visibility_surface.js"
+  ],
+  "capabilities": [
+    "section-control-visibility",
+    "section-hover-sync"
+  ]
+}

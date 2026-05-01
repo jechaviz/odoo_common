@@ -1,0 +1,44 @@
+{
+  "key": "form-subtotals-surface",
+  "title": "Form Subtotals Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "runtime",
+    "styles"
+  ],
+  "publish_order": [
+    "runtime/ui/field_loading.js",
+    "runtime/api/relation_options.js",
+    "runtime/ui/field_values.js",
+    "runtime/ui/field_widget_sync.js",
+    "runtime/subtotals/state_keys.js",
+    "runtime/subtotals/line_rules.js",
+    "runtime/subtotals/storage.js",
+    "runtime/subtotals/layout_mutations.js",
+    "runtime/subtotals/layout_labels_defaults.js",
+    "runtime/subtotals/native_rows.js",
+    "runtime/subtotals/formulas.js",
+    "runtime/subtotals/persist.js",
+    "runtime/subtotals/report_persistence.js",
+    "runtime/subtotals/render_state.js",
+    "runtime/subtotals/render_rows.js",
+    "runtime/subtotals/render.js",
+    "runtime/subtotals/toggle_menu.js",
+    "runtime/subtotals/edit_mode.js",
+    "runtime/subtotals_surface_integration.js",
+    "styles/subtotals.css"
+  ],
+  "dependencies": [
+    "form-layout-surface"
+  ],
+  "capabilities": [
+    "subtotal-layout-storage",
+    "subtotal-formula-rendering",
+    "subtotal-edit-mode",
+    "subtotal-toggle-menu"
+  ]
+}

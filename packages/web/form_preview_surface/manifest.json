@@ -1,0 +1,23 @@
+{
+  "key": "form-preview-surface",
+  "title": "Form Preview Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_preview_surface.js"
+  ],
+  "publish_order": [
+    "form_preview_surface.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
+  "capabilities": [
+    "form-root-resolution",
+    "field-preview-hydration",
+    "preview-visibility-sync"
+  ]
+}

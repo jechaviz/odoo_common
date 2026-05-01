@@ -1,0 +1,18 @@
+{
+  "key": "rental_master_terms",
+  "title": "Mobile Equipment Rental Terms And Conditions",
+  "locale_code": "en_US",
+  "body_markdown": "1. DEFINITIONS\n1.1 \"Equipment\" means the equipment listed in the rental contract.\n\n2. TERM\n2.1 The rental term begins on the delivery date.",
+  "revision_label": "Rev. Feb. 24, 2026",
+  "effective_from": "2026-02-24",
+  "source_url": "https://legal.example.com/contracts/rental/terms/v2026-02-24",
+  "render_profile": "legal-markdown-v1",
+  "tags": [
+    "rental",
+    "master-contract"
+  ],
+  "metadata": {
+    "owner_team": "legal",
+    "approved_by": "general-counsel"
+  }
+}

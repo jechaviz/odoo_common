@@ -1,16 +1,22 @@
 {
   "key": "terms-and-conditions",
   "title": "Terms And Conditions Schema Pattern",
-  "status": "planned",
+  "status": "canonical",
   "language": "schema",
-  "origin_project": "odoo_fiax",
+  "origin_project": "rp-rental-mock",
   "sync_root": ".",
   "sync_mode": "tree",
   "exports": [
-    "README.md"
+    "README.md",
+    "resolution_contract.md",
+    "source_terms_conditions.schema.json",
+    "resolved_terms_conditions.schema.json",
+    "examples/source_terms_conditions_payload.json",
+    "examples/resolved_terms_conditions_payload.json"
   ],
   "capabilities": [
-    "template-level-terms-field",
+    "terms-source-payload",
+    "terms-resolution-contract",
     "printable-conditions-payload"
   ]
 }

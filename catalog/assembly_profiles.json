@@ -17,6 +17,7 @@
     "components": [
       "record-context-surface",
       "commercial-policy-surface",
+      "form-preview-surface",
       "partner-defaults"
     ],
     "use_cases": [
@@ -32,15 +33,22 @@
       "surface-workspace-shell",
       "line-picker-surface",
       "record-context-surface",
-      "form-section-layout",
+      "form-defaults-surface",
+      "form-preview-surface",
+      "commercial-policy-surface",
+      "form-layout-surface",
+      "form-section-headers-surface",
+      "form-section-visibility-surface",
+      "form-settings-panel-surface",
+      "form-chatter-toggle-surface",
+      "form-subtotals-surface",
       "form-layout-state",
       "many2x-parent-form-autosave",
       "many2x-parent-form-autosave-python",
-      "form-defaults",
-      "commercial-policy-surface",
-      "form-totals",
       "partner-defaults",
-      "default-persistence"
+      "partner-language-defaults",
+      "default-persistence",
+      "terms-and-conditions"
     ],
     "use_cases": [
       "sales orders",
@@ -54,7 +62,12 @@
     "key": "adaptive_form_layout",
     "title": "Adaptive Form Layout",
     "components": [
-      "form-section-layout",
+      "form-layout-surface",
+      "form-section-headers-surface",
+      "form-section-visibility-surface",
+      "form-settings-panel-surface",
+      "form-chatter-toggle-surface",
+      "form-subtotals-surface",
       "form-layout-state"
     ],
     "use_cases": [
@@ -71,14 +84,29 @@
     "components": [
       "default-persistence",
       "partner-defaults",
+      "partner-language-defaults",
       "record-context-surface",
       "commercial-policy-surface",
+      "form-preview-surface",
       "taxation-helpers"
     ],
     "use_cases": [
       "defaults per customer",
       "payment terms defaults",
-      "commercial policy sync"
+      "commercial policy sync",
+      "partner language governance"
+    ]
+  },
+  {
+    "key": "terms_driven_documents",
+    "title": "Terms Driven Documents",
+    "components": [
+      "terms-and-conditions"
+    ],
+    "use_cases": [
+      "document template terms",
+      "printable conditions payloads",
+      "resolved terms inheritance"
     ]
   }
 ]

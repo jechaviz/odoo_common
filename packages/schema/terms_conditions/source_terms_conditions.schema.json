@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openai.local/odoo-common/schema/terms-conditions/source-terms-conditions.schema.json",
+  "title": "Source Terms And Conditions Payload",
+  "description": "Editable source payload for one terms-and-conditions policy scope.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locale_code": {
+      "type": "string",
+      "minLength": 2
+    },
+    "body_markdown": {
+      "type": "string",
+      "minLength": 1
+    },
+    "revision_label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "render_profile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "key",
+    "title",
+    "locale_code",
+    "body_markdown"
+  ]
+}

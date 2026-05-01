@@ -1,0 +1,18 @@
+{
+  "key": "partner-language-defaults",
+  "title": "Partner Language Defaults",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "partner_language_defaults.py"
+  ],
+  "capabilities": [
+    "partner-language-default-resolution",
+    "partner-language-ir-default-seeding",
+    "partner-language-payload-injection"
+  ]
+}

@@ -2,48 +2,69 @@
 
 ## Regla base
 
-No ensamblar por proyecto fuente. Ensamblar por capacidad.
+No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
-## Capas
+## Capas canónicas
 
 1. `surface-workspace-shell`
    - usar cuando el modulo necesita shell lateral, breadcrumb, toolbar nativa y workspaces
-   - no asume ownership de panels de contexto de registro
-   - no absorbe line picking ni enhancers de lineas editables
+   - no asume ownership de panels de contexto, line picking ni defaults documentales
 
 2. `line-picker-surface`
    - usar cuando el formulario necesita abrir y enfocar pickers de lineas editables dentro de un `x2many`
-   - es un paquete web canonico separado del shell; consume el runtime de `surface-workspace-shell`, pero no se ensambla implicito dentro de el
+   - consume el runtime de `surface-workspace-shell`, pero no se ensambla implicito dentro de el
    - la configuracion debe entrar por `managedFormEnhancers` con claves explicitas de campo y picker
 
 3. `record-context-surface`
    - usar cuando el formulario necesita un panel lateral o superior de contexto relacional/comercial
    - el panel debe declararse por schema de `slots`; no se ensambla implicito dentro del shell
-   - separa lectura relacional, render de slots y contexto comercial del workspace shell
 
-4. `form-section-layout`
-   - usar cuando el formulario necesita colapsar secciones, controlar visibilidad, mover layouts o colapsar chatter
-   - hoy esta en `source-derived` porque el editor de subtotales aun conserva presets de negocio
+4. `form-defaults-surface`
+   - usar cuando el formulario necesita resolver, cachear y enriquecer `default_get`
+   - separa carga de defaults del wiring visual del formulario
 
-5. `form-layout-state`
-   - usar cuando el proyecto necesita sembrar o persistir desde servidor el estado compartido de `form-section-layout`
-   - cubre labels de statusbar, layouts globales y normalizacion del payload persistido
-   - al venderizar paquetes Python, este componente espera el namespace canonico `odoo_common`
+5. `form-preview-surface`
+   - usar cuando el formulario necesita hidratar previews visibles o espejos readonly dentro del DOM
+   - concentra lectura/escritura de field previews y visibilidad de nodos
 
-6. `form-defaults`
-   - usar cuando el formulario necesita hidratar defaults de `default_get`, sucursal, serie o tipo documental
+6. `commercial-policy-surface`
+   - usar cuando el browser debe sincronizar politica comercial, assignment ids o hydration de previews desde acciones server-side
+   - es la base canonica para nuevas integraciones; no volver a usar `customer-defaults-web`
 
-7. `partner-defaults` + `commercial-policy-surface`
-   - usar cuando el documento hereda defaults server-side desde el cliente y ademas necesita sync o hydration comercial en el browser
-   - si ademas se quiere exponer ese contexto en un panel declarativo, agregar `record-context-surface`
+7. `form-layout-surface`
+   - usar cuando el formulario necesita runtime base de layout, coleccion de items, persistencia de orden y alcance compartido
+   - es el core canonico sobre el que cuelgan headers, visibility, settings, chatter y subtotals
 
-8. `form-totals` + `taxation-helpers`
-   - usar cuando el documento necesita una capa nativa de totales e impuestos
+8. `form-section-headers-surface`
+   - usar cuando el formulario necesita headers decorados y resumen colapsado de secciones
 
-9. `many2x-parent-form-autosave` + `many2x-parent-form-autosave-python`
-   - usar cuando el form tiene lineas editables y conviene proteger la consistencia del parent
-   - el componente `web` protege la UX inline
-   - el componente `python` construye el patch/template reutilizable cuando el proyecto necesita publicarlo desde servidor
+9. `form-section-visibility-surface`
+   - usar cuando el formulario necesita mostrar/ocultar controles de seccion por hover, estado o contexto
+
+10. `form-settings-panel-surface`
+    - usar cuando el formulario necesita editor lateral de settings de seccion, layout o statusbar
+
+11. `form-chatter-toggle-surface`
+    - usar cuando el formulario necesita colapsar/expandir chatter sin acoplar ese comportamiento al layout shell
+
+12. `form-subtotals-surface`
+    - usar cuando el formulario necesita editor/layout de subtotales desacoplado del resto del section-layout legacy
+
+13. `form-layout-state`
+    - usar cuando el proyecto necesita sembrar o persistir desde servidor el estado compartido de layout
+    - cubre labels de statusbar, layouts globales y normalizacion del payload persistido
+    - al venderizar paquetes Python, este componente espera el namespace canonico `odoo_common`
+
+14. `partner-defaults` + `commercial-policy-surface`
+    - usar cuando el documento hereda defaults server-side desde el cliente y ademas necesita sync o hydration comercial en el browser
+    - si ademas se quiere exponer ese contexto en un panel declarativo, agregar `record-context-surface`
+
+15. `partner-language-defaults`
+    - usar cuando el proyecto necesita gobernar el idioma canonico de nuevos partners y sembrar `res.partner.lang` por `ir.default`
+
+16. `terms-and-conditions`
+    - usar cuando el proyecto necesita un contrato comun para payload fuente y payload resuelto de terminos/condiciones
+    - no es runtime JS; es un paquete `schema`
 
 ## Combinaciones recomendadas
 
@@ -52,18 +73,31 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad.
 - `surface-workspace-shell`
 - `line-picker-surface`
 - `record-context-surface`
-- `form-section-layout`
-- `form-layout-state`
-- `form-defaults`
+- `form-defaults-surface`
+- `form-preview-surface`
 - `commercial-policy-surface`
-- `partner-defaults`
-- `form-totals`
+- `form-layout-surface`
+- `form-section-headers-surface`
+- `form-section-visibility-surface`
+- `form-settings-panel-surface`
+- `form-chatter-toggle-surface`
+- `form-subtotals-surface`
+- `form-layout-state`
 - `many2x-parent-form-autosave`
 - `many2x-parent-form-autosave-python`
+- `partner-defaults`
+- `partner-language-defaults`
+- `default-persistence`
+- `terms-and-conditions`
 
 ### Formulario operativo editable
 
-- `form-section-layout`
+- `form-layout-surface`
+- `form-section-headers-surface`
+- `form-section-visibility-surface`
+- `form-settings-panel-surface`
+- `form-chatter-toggle-surface`
+- `form-subtotals-surface`
 - `form-layout-state` si el proyecto necesita sembrar labels/layouts desde servidor
 - `line-picker-surface` si el formulario tiene pickers inline dentro de lineas editables
 - `many2x-parent-form-autosave`
@@ -71,6 +105,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad.
 ### Panel de contexto relacional/comercial
 
 - `record-context-surface`
+- `form-preview-surface`
 - `partner-defaults` si el panel depende de defaults server-side por cliente
 - `commercial-policy-surface` si el panel expone politica comercial o hydration de browser
 
@@ -79,12 +114,22 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad.
 - `surface-workspace-shell`
 - `partner-defaults` solo si el catalogo influye defaults de clientes
 
-## Nota de legado
+### Documentos guiados por terminos
 
-- `customer-defaults-web` queda como traza source-derived del runtime original de Rental.
-- `commercial-policy-surface` es la base canonica para adapters web nuevos.
-- `line-picker-surface` es la base canonica para line picking administrado; no debe volver a quedar subsumido dentro de `surface-workspace-shell`.
-- `record-context-surface` es la base canonica para panels de contexto relacional/comercial; no debe volver a quedar subsumido dentro de `surface-workspace-shell`.
+- `terms-and-conditions`
+- `partner-defaults` si la resolucion depende del cliente
+- `commercial-policy-surface` si el payload resuelto tambien afecta previews o condiciones vivas del browser
+
+## Trazas source-derived
+
+Estas piezas siguen existiendo solo como traza de origen y no deben ser el camino preferente de nuevas integraciones:
+
+- `form-section-layout`
+- `form-defaults`
+- `form-totals`
+- `customer-defaults-web`
+
+Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las superficies canonicas nuevas y no revivir la pieza source-derived.
 
 ## Regla de adaptadores
 
@@ -97,4 +142,6 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad.
 - los popovers del sidebar deben tener owner trigger canonico y vivo; si un proyecto necesita rescatar owners desde otro estado, eso pertenece al adapter, no a `common`
 - para `line-picker-surface`, los adapters deben declarar `managedFormEnhancers`, `x2manyField`, `itemField` y cualquier selector excepcional de forma explicita; no debe reabsorberse en wiring implicito del shell
 - para `record-context-surface`, los adapters deben declarar `slots`, `valueKey`, readers relacionales y renderers explicitamente; no debe reabsorberse en presets del shell ni en wiring implicito por formulario
+- para `form-defaults-surface` y `form-preview-surface`, los adapters deben declarar loaders, enrichers, field maps y preview targets explicitamente; no debe revivirse `form_context.js` ni wiring local ad hoc
+- para `form-layout-surface` y sus paquetes hermanos, el host debe declarar access rules, persistence, settings metadata y editores por contratos explicitos; no debe reconstruirse el monolito de `form_section_layout`
 - los modos de route presentation (`query`, `hash`, `path-tail`) permanecen solo porque son parte del contrato publico canonico del shell; no deben reinterpretarse como compatibilidad legacy del proyecto

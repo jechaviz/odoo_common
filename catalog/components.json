@@ -62,11 +62,65 @@
     ]
   },
   {
-    "key": "form-section-layout",
-    "title": "Adaptive Form Section Layout",
+    "key": "form-defaults-surface",
+    "title": "Form Defaults Surface",
     "runtime": "web",
-    "status": "source-derived",
-    "package_path": "packages/web/form_section_layout",
+    "status": "canonical",
+    "package_path": "packages/web/form_defaults_surface",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_context.js"
+      }
+    ],
+    "features": [
+      "default-get loader",
+      "default cache",
+      "default enrichment"
+    ]
+  },
+  {
+    "key": "form-preview-surface",
+    "title": "Form Preview Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_preview_surface",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_preview.js"
+      }
+    ],
+    "features": [
+      "form root resolution",
+      "field preview hydration",
+      "preview visibility sync"
+    ]
+  },
+  {
+    "key": "commercial-policy-surface",
+    "title": "Commercial Policy Surface Bridge",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/commercial_policy_surface",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/customer_discount.js"
+      }
+    ],
+    "features": [
+      "policy assignment sync",
+      "preview field hydration",
+      "server action handoff"
+    ]
+  },
+  {
+    "key": "form-layout-surface",
+    "title": "Form Layout Surface Core",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_layout_surface",
     "origins": [
       {
         "project": "odoo_rpp",
@@ -74,12 +128,100 @@
       }
     ],
     "features": [
-      "section collapse",
-      "section visibility",
-      "layout persistence",
-      "settings panel",
-      "subtotal editor shell",
-      "chatter collapse"
+      "layout item collection",
+      "layout item visibility",
+      "section order persistence",
+      "shared form scope runtime"
+    ]
+  },
+  {
+    "key": "form-section-headers-surface",
+    "title": "Form Section Headers Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_section_headers_surface",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/form_section_layout/runtime/ui/section_headers.js"
+      }
+    ],
+    "features": [
+      "section header decoration",
+      "section collapse summary"
+    ]
+  },
+  {
+    "key": "form-section-visibility-surface",
+    "title": "Form Section Visibility Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_section_visibility_surface",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/form_section_layout/runtime/ui/section_control_visibility.js"
+      }
+    ],
+    "features": [
+      "section control visibility",
+      "section hover sync"
+    ]
+  },
+  {
+    "key": "form-settings-panel-surface",
+    "title": "Form Settings Panel Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_settings_panel_surface",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/form_section_layout/runtime/ui/settings_panel_*"
+      }
+    ],
+    "features": [
+      "form settings panel shell",
+      "section settings editor",
+      "layout settings editor",
+      "statusbar label settings"
+    ]
+  },
+  {
+    "key": "form-chatter-toggle-surface",
+    "title": "Form Chatter Toggle Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_chatter_toggle_surface",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/form_section_layout/runtime/ui/chatter.js"
+      }
+    ],
+    "features": [
+      "form chatter toggle",
+      "global chatter collapse",
+      "form chatter layout reflow"
+    ]
+  },
+  {
+    "key": "form-subtotals-surface",
+    "title": "Form Subtotals Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_subtotals_surface",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/form_section_layout/runtime/subtotals"
+      }
+    ],
+    "features": [
+      "subtotal layout storage",
+      "subtotal formula rendering",
+      "subtotal edit mode",
+      "subtotal toggle menu"
     ]
   },
   {
@@ -98,6 +240,136 @@
       "layout state normalization",
       "shared form layout persistence",
       "statusbar label seeding"
+    ]
+  },
+  {
+    "key": "default-persistence",
+    "title": "Default Value Persistence Helpers",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/default_persistence",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/default_value_persistence.py"
+      }
+    ],
+    "features": [
+      "ir.default upsert",
+      "ir.config_parameter read/write"
+    ]
+  },
+  {
+    "key": "partner-defaults",
+    "title": "Partner Defaults Autofill",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/partner_defaults",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/partner_defaults_autofill.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/partner_child_defaults.py"
+      }
+    ],
+    "features": [
+      "defaults per customer",
+      "invoice/delivery/contact autofill",
+      "partner address default builders"
+    ]
+  },
+  {
+    "key": "partner-language-defaults",
+    "title": "Partner Language Defaults",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/partner_language_defaults",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/partner_language_defaults.py"
+      }
+    ],
+    "features": [
+      "partner language default resolution",
+      "partner language ir.default seeding",
+      "partner language payload injection"
+    ]
+  },
+  {
+    "key": "taxation-helpers",
+    "title": "Reusable Taxation Helpers",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/taxation",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/core/taxation.py"
+      }
+    ],
+    "features": [
+      "tax helper utilities",
+      "server-side taxation support"
+    ]
+  },
+  {
+    "key": "many2x-parent-form-autosave",
+    "title": "Many2X Parent Form Autosave",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/many2x_parent_form_autosave",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/many2x_parent_form_autosave.js"
+      }
+    ],
+    "features": [
+      "parent-form-autosave",
+      "many2x-relational-safety",
+      "line-editing support"
+    ]
+  },
+  {
+    "key": "many2x-parent-form-autosave-python",
+    "title": "Many2X Parent Form Autosave Builder",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/many2x_parent_form_autosave",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/many2x_parent_form_autosave_patch.py"
+      }
+    ],
+    "features": [
+      "patch builder",
+      "template-based web patch"
+    ]
+  },
+  {
+    "key": "form-section-layout",
+    "title": "Adaptive Form Section Layout",
+    "runtime": "web",
+    "status": "source-derived",
+    "package_path": "packages/web/form_section_layout",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/odoo/web/form_section_layout"
+      }
+    ],
+    "features": [
+      "section collapse",
+      "section visibility",
+      "layout persistence",
+      "settings panel",
+      "subtotal editor shell",
+      "chatter collapse"
     ]
   },
   {
@@ -160,119 +432,10 @@
     ]
   },
   {
-    "key": "commercial-policy-surface",
-    "title": "Commercial Policy Surface Bridge",
-    "runtime": "web",
-    "status": "canonical",
-    "package_path": "packages/web/commercial_policy_surface",
-    "origins": [
-      {
-        "project": "rp-rental-mock",
-        "path": "odoo_migration/web_assets/rental_native_tabs/customer_discount.js"
-      }
-    ],
-    "features": [
-      "policy assignment sync",
-      "preview field hydration",
-      "server action handoff"
-    ]
-  },
-  {
-    "key": "default-persistence",
-    "title": "Default Value Persistence Helpers",
-    "runtime": "python",
-    "status": "canonical",
-    "package_path": "packages/python/default_persistence",
-    "origins": [
-      {
-        "project": "odoo_rpp",
-        "path": "lib/python/odoo_reusable/odoo_views/default_value_persistence.py"
-      }
-    ],
-    "features": [
-      "ir.default upsert",
-      "ir.config_parameter read/write"
-    ]
-  },
-  {
-    "key": "partner-defaults",
-    "title": "Partner Defaults Autofill",
-    "runtime": "python",
-    "status": "canonical",
-    "package_path": "packages/python/partner_defaults",
-    "origins": [
-      {
-        "project": "odoo_rpp",
-        "path": "lib/python/odoo_reusable/odoo_views/partner_defaults_autofill.py"
-      },
-      {
-        "project": "odoo_rpp",
-        "path": "lib/python/odoo_reusable/odoo_views/partner_child_defaults.py"
-      }
-    ],
-    "features": [
-      "defaults per customer",
-      "invoice/delivery/contact autofill",
-      "partner address default builders"
-    ]
-  },
-  {
-    "key": "taxation-helpers",
-    "title": "Reusable Taxation Helpers",
-    "runtime": "python",
-    "status": "canonical",
-    "package_path": "packages/python/taxation",
-    "origins": [
-      {
-        "project": "odoo_rpp",
-        "path": "lib/python/odoo_reusable/core/taxation.py"
-      }
-    ],
-    "features": [
-      "tax helper utilities",
-      "server-side taxation support"
-    ]
-  },
-  {
-    "key": "many2x-parent-form-autosave",
-    "title": "Many2X Parent Form Autosave",
-    "runtime": "web",
-    "status": "canonical",
-    "package_path": "packages/web/many2x_parent_form_autosave",
-    "origins": [
-      {
-        "project": "odoo_rpp",
-        "path": "lib/odoo/web/many2x_parent_form_autosave.js"
-      }
-    ],
-    "features": [
-      "parent-form-autosave",
-      "many2x-relational-safety",
-      "line-editing support"
-    ]
-  },
-  {
-    "key": "many2x-parent-form-autosave-python",
-    "title": "Many2X Parent Form Autosave Builder",
-    "runtime": "python",
-    "status": "canonical",
-    "package_path": "packages/python/many2x_parent_form_autosave",
-    "origins": [
-      {
-        "project": "odoo_rpp",
-        "path": "lib/python/odoo_reusable/odoo_views/many2x_parent_form_autosave_patch.py"
-      }
-    ],
-    "features": [
-      "patch builder",
-      "template-based web patch"
-    ]
-  },
-  {
     "key": "terms-and-conditions",
     "title": "Terms And Conditions Schema Pattern",
     "runtime": "schema",
-    "status": "planned",
+    "status": "canonical",
     "package_path": "packages/schema/terms_conditions",
     "origins": [
       {
@@ -281,7 +444,8 @@
       }
     ],
     "features": [
-      "template-level terms field",
+      "terms source payload",
+      "terms resolution contract",
       "printable conditions payload"
     ]
   }

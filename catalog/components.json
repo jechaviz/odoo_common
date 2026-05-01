@@ -16,8 +16,26 @@
       "breadcrumb runtime",
       "workspace lifecycle",
       "table shell",
-      "line picker",
       "route slug settings"
+    ]
+  },
+  {
+    "key": "line-picker-surface",
+    "title": "Managed Line Picker Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/line_picker_surface",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers/line_picker.js"
+      }
+    ],
+    "features": [
+      "managed form enhancer registration",
+      "x2many add-line auto-open",
+      "editable row picker activation",
+      "combobox picker handoff"
     ]
   },
   {

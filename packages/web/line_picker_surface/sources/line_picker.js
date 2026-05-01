@@ -3,7 +3,7 @@
 
   function requireSurfaceLayerApi() {
     if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
-      throw new Error("Missing required OdooSurfaceLayers runtime before surface workspace line picker.");
+      throw new Error("Missing required OdooSurfaceLayers runtime before line picker surface.");
     }
     return window.OdooSurfaceLayers;
   }
@@ -13,7 +13,7 @@
     if (typeof candidate !== "function") {
       throw new Error(
         "Missing required OdooSurfaceLayers." + String(name || "").trim() +
-        " before surface workspace line picker."
+        " before line picker surface."
       );
     }
     return candidate;
@@ -26,7 +26,7 @@
   var AUTO_OPEN_TIMEOUT_MS = 3200;
   var ENTRY_PICKER_ENHANCER_KEY = "entryPicker";
   var DEFAULT_ENTRY_TRIGGER_LABELS = [
-    "Agregar una línea",
+    "Agregar una l\u00ednea",
     "Agregar una linea",
     "Add a line",
     "Add line",

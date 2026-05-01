@@ -30,6 +30,7 @@
     "title": "Transactional Form Capture",
     "components": [
       "surface-workspace-shell",
+      "line-picker-surface",
       "record-context-surface",
       "form-section-layout",
       "form-layout-state",
@@ -45,7 +46,8 @@
       "sales orders",
       "quotations",
       "invoices",
-      "documents with lines"
+      "documents with lines",
+      "managed line entry"
     ]
   },
   {

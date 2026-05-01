@@ -1,0 +1,21 @@
+{
+  "key": "line-picker-surface",
+  "title": "Line Picker Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_fiax",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "line_picker.js"
+  ],
+  "publish_order": [
+    "line_picker.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
+  "capabilities": [
+    "line-picker"
+  ]
+}

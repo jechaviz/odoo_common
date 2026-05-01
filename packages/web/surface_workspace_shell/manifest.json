@@ -15,7 +15,6 @@
     "dom.js",
     "filters.js",
     "layout.js",
-    "line_picker.js",
     "markup.js",
     "menu.js",
     "route.js",
@@ -47,14 +46,12 @@
     "actions.js",
     "markup.js",
     "table.js",
-    "line_picker.js",
     "surface_layers.css"
   ],
   "capabilities": [
     "sidebar-shell",
     "breadcrumb",
     "workspace-runtime",
-    "line-picker",
     "route-state"
   ]
 }

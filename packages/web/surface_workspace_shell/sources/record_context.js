@@ -9,9 +9,9 @@
     return api;
   }
 
-  function ensureSharedRegistry(api) {
+  function requireSharedRegistry(api) {
     if (!(api._shared && typeof api._shared === "object")) {
-      api._shared = Object.create(null);
+      throw new Error("OdooSurfaceLayers._shared is required by record_context.js.");
     }
     return api._shared;
   }
@@ -25,7 +25,7 @@
   }
 
   var surfaceLayerApi = requireSurfaceLayerApi();
-  var shared = ensureSharedRegistry(surfaceLayerApi);
+  var shared = requireSharedRegistry(surfaceLayerApi);
   var readFieldText = requireSurfaceLayerMethod(surfaceLayerApi, "readFieldText");
   var registerManagedFormEnhancer = requireSurfaceLayerMethod(surfaceLayerApi, "registerManagedFormEnhancer");
   var RECORD_CONTEXT_PANEL_ENHANCER_KEY = "recordContextPanel";

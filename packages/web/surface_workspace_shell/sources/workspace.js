@@ -1374,6 +1374,7 @@
     cloneManagedFormEnhancers: cloneManagedFormEnhancers,
     registerManagedFormEnhancer: registerManagedFormEnhancer,
     syncManagedFormEnhancers: syncManagedFormEnhancers,
+    readFieldText: readFieldText,
   });
 
   Object.assign(workspaceApi, {

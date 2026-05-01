@@ -9,9 +9,9 @@
     return api;
   }
 
-  function ensureSharedRegistry(api) {
+  function requireSharedRegistry(api) {
     if (!(api._shared && typeof api._shared === "object")) {
-      api._shared = Object.create(null);
+      throw new Error("OdooSurfaceLayers._shared is required by rows.js.");
     }
     return api._shared;
   }
@@ -25,7 +25,7 @@
   }
 
   var surfaceLayerApi = requireSurfaceLayerApi();
-  var shared = ensureSharedRegistry(surfaceLayerApi);
+  var shared = requireSharedRegistry(surfaceLayerApi);
   var clearSessionStorageKey = requireSurfaceLayerMethod(surfaceLayerApi, "clearSessionStorageKey");
   var saveTimedSessionPayload = requireSurfaceLayerMethod(surfaceLayerApi, "saveTimedSessionPayload");
   var readTimedSessionPayload = requireSurfaceLayerMethod(surfaceLayerApi, "readTimedSessionPayload");

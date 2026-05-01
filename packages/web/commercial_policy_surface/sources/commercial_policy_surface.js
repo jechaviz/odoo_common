@@ -8,6 +8,13 @@
     return window.OdooSurfaceLayers;
   }
 
+  function requireSurfaceLayerMethod(surfaceLayerApi, methodName) {
+    if (typeof surfaceLayerApi[methodName] !== "function") {
+      throw new Error("OdooSurfaceLayers." + methodName + " is required by commercial_policy_surface.js.");
+    }
+    return surfaceLayerApi[methodName];
+  }
+
   function normalizeText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
@@ -16,51 +23,152 @@
     return Number.parseInt(String(value || 0), 10) || 0;
   }
 
-  function defaultNormalizeMany2one(value) {
-    if (typeof window.normalizeMany2one === "function") {
-      var normalized = window.normalizeMany2one(value) || {};
-      return {
-        id: toIntegerId(normalized.id),
-        label: normalizeText(normalized.label || normalized.display_name || normalized.displayName || ""),
-      };
+  var surfaceLayerApi = requireSurfaceLayerApi();
+  var normalizeMany2oneValue = requireSurfaceLayerMethod(surfaceLayerApi, "normalizeMany2oneValue");
+  var resolveOdooService = requireSurfaceLayerMethod(surfaceLayerApi, "resolveOdooService");
+
+  function readSpecObject(value) {
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  }
+
+  function requireSpecObject(value, path) {
+    var objectValue = readSpecObject(value);
+    if (!Object.keys(objectValue).length) {
+      throw new Error(path + " is required.");
     }
-    if (Array.isArray(value) && value.length) {
-      return {
-        id: toIntegerId(value[0]),
-        label: normalizeText(value[1] || ""),
-      };
+    return objectValue;
+  }
+
+  function requireSpecString(value, path) {
+    var normalizedValue = normalizeText(value);
+    if (!normalizedValue) {
+      throw new Error(path + " is required.");
     }
-    if (value && typeof value === "object") {
-      return {
-        id: toIntegerId(value.id || value.resId || value.res_id),
-        label: normalizeText(value.display_name || value.displayName || value.name || value.label || ""),
-      };
-    }
+    return normalizedValue;
+  }
+
+  function normalizeStringList(values, fallbackValues) {
+    var rawValues = Array.isArray(values) ? values : Array.isArray(fallbackValues) ? fallbackValues : [];
+    var seen = Object.create(null);
+    var result = [];
+    rawValues.forEach(function (value) {
+      var normalizedValue = normalizeText(value);
+      if (!normalizedValue || seen[normalizedValue]) {
+        return;
+      }
+      seen[normalizedValue] = true;
+      result.push(normalizedValue);
+    });
+    return result;
+  }
+
+  function normalizeMany2oneRecord(value) {
+    var normalized = normalizeMany2oneValue(value) || {};
     return {
-      id: toIntegerId(value),
-      label: "",
+      id: toIntegerId(normalized.id),
+      label: normalizeText(normalized.label || normalized.display_name || normalized.displayName || ""),
     };
   }
 
-  function defaultResolveOrmService() {
-    if (typeof window.resolveOrmService === "function") {
-      return window.resolveOrmService();
-    }
-    var surfaceLayerApi = requireSurfaceLayerApi();
-    if (typeof surfaceLayerApi.resolveOdooService === "function") {
-      return surfaceLayerApi.resolveOdooService("orm");
-    }
-    return Promise.resolve(null);
+  function normalizePreviewMappings(values) {
+    return (Array.isArray(values) ? values : []).filter(function (mapping) {
+      return !!(mapping && typeof mapping === "object" && normalizeText(mapping.fieldName));
+    });
   }
 
-  function defaultResolveRecordRoot() {
-    if (typeof window.resolveVisibleFormController === "function") {
-      var genericController = window.resolveVisibleFormController();
-      if (genericController && genericController.model && genericController.model.root) {
-        return genericController.model.root;
-      }
+  function normalizeCommercialPolicySurfaceSpec(rawSpec) {
+    var spec = requireSpecObject(rawSpec, "commercial policy surface spec");
+    var recordSpec = requireSpecObject(spec.record, "commercial policy surface spec.record");
+    var sourceSpec = requireSpecObject(spec.source, "commercial policy surface spec.source");
+    var targetSpec = requireSpecObject(spec.target, "commercial policy surface spec.target");
+    var actionsSpec = readSpecObject(spec.actions);
+    var previewSpec = readSpecObject(spec.preview);
+    var behaviorSpec = readSpecObject(spec.behavior);
+    var sourcePolicyFieldMap = readSpecObject(sourceSpec.policyFieldMap);
+    var targetWriteBackFieldMap = readSpecObject(targetSpec.writeBackFieldMap);
+    var labelFields = normalizeStringList(sourceSpec.labelFields, ["display_name", "name"]);
+    var sourceFields = normalizeStringList(
+      []
+        .concat(Array.isArray(sourceSpec.fields) ? sourceSpec.fields : ["id", "display_name"])
+        .concat(labelFields)
+        .concat(sourcePolicyFieldMap.program || [])
+        .concat(sourcePolicyFieldMap.percent || [])
+    );
+
+    if (typeof recordSpec.resolveRoot !== "function") {
+      throw new Error("commercial policy surface spec.record.resolveRoot is required.");
     }
-    return null;
+    if (previewSpec.setValue && typeof previewSpec.setValue !== "function") {
+      throw new Error("commercial policy surface spec.preview.setValue must be a function.");
+    }
+    if (actionsSpec.resolveSourceActionId && typeof actionsSpec.resolveSourceActionId !== "function") {
+      throw new Error("commercial policy surface spec.actions.resolveSourceActionId must be a function.");
+    }
+    if (recordSpec.resolveManagedId && typeof recordSpec.resolveManagedId !== "function") {
+      throw new Error("commercial policy surface spec.record.resolveManagedId must be a function.");
+    }
+    if (behaviorSpec.isManagedRoute && typeof behaviorSpec.isManagedRoute !== "function") {
+      throw new Error("commercial policy surface spec.behavior.isManagedRoute must be a function.");
+    }
+    if (behaviorSpec.suppressObserverMutations && typeof behaviorSpec.suppressObserverMutations !== "function") {
+      throw new Error("commercial policy surface spec.behavior.suppressObserverMutations must be a function.");
+    }
+    if (behaviorSpec.afterTargetSync && typeof behaviorSpec.afterTargetSync !== "function") {
+      throw new Error("commercial policy surface spec.behavior.afterTargetSync must be a function.");
+    }
+    if (behaviorSpec.buildWritePayload && typeof behaviorSpec.buildWritePayload !== "function") {
+      throw new Error("commercial policy surface spec.behavior.buildWritePayload must be a function.");
+    }
+
+    return {
+      record: {
+        resolveRoot: recordSpec.resolveRoot,
+        resolveManagedId: typeof recordSpec.resolveManagedId === "function" ? recordSpec.resolveManagedId : null,
+      },
+      source: {
+        model: requireSpecString(sourceSpec.model, "commercial policy surface spec.source.model"),
+        fields: sourceFields,
+        labelFields: labelFields,
+        policyFieldMap: {
+          program: sourcePolicyFieldMap.program || "",
+          percent: sourcePolicyFieldMap.percent || "",
+        },
+      },
+      target: {
+        model: requireSpecString(targetSpec.model, "commercial policy surface spec.target.model"),
+        sourceFieldName: normalizeText(targetSpec.sourceFieldName || ""),
+        writeBackFieldMap: {
+          source: normalizeText(targetWriteBackFieldMap.source || ""),
+          program: normalizeText(targetWriteBackFieldMap.program || ""),
+          percent: normalizeText(targetWriteBackFieldMap.percent || ""),
+        },
+      },
+      actions: {
+        sourceActionId: toIntegerId(actionsSpec.sourceActionId),
+        resolveSourceActionId: typeof actionsSpec.resolveSourceActionId === "function"
+          ? actionsSpec.resolveSourceActionId
+          : null,
+      },
+      preview: {
+        setValue: typeof previewSpec.setValue === "function" ? previewSpec.setValue : null,
+        sourceMappings: normalizePreviewMappings(previewSpec.sourceMappings),
+        targetMappings: normalizePreviewMappings(previewSpec.targetMappings),
+      },
+      behavior: {
+        watchedFieldNames: normalizeStringList(behaviorSpec.watchedFieldNames),
+        saveButtonLabels: normalizeStringList(
+          (Array.isArray(behaviorSpec.saveButtonLabels) ? behaviorSpec.saveButtonLabels : ["save"]).map(function (label) {
+            return normalizeText(label).toLowerCase();
+          })
+        ),
+        isManagedRoute: typeof behaviorSpec.isManagedRoute === "function" ? behaviorSpec.isManagedRoute : null,
+        suppressObserverMutations: typeof behaviorSpec.suppressObserverMutations === "function"
+          ? behaviorSpec.suppressObserverMutations
+          : null,
+        afterTargetSync: typeof behaviorSpec.afterTargetSync === "function" ? behaviorSpec.afterTargetSync : null,
+        buildWritePayload: typeof behaviorSpec.buildWritePayload === "function" ? behaviorSpec.buildWritePayload : null,
+      },
+    };
   }
 
   function readRecordRootModel(recordRoot) {
@@ -158,20 +266,11 @@
   }
 
   function buildCommercialPolicySurfaceBridge(rawSpec) {
-    var spec = rawSpec && typeof rawSpec === "object" ? rawSpec : {};
-    var normalizeMany2one = typeof spec.normalizeMany2one === "function"
-      ? spec.normalizeMany2one
-      : defaultNormalizeMany2one;
-    var watchedFieldNames = (Array.isArray(spec.watchedFieldNames) ? spec.watchedFieldNames : [])
-      .map(normalizeText)
-      .filter(Boolean);
-    var sourcePreviewMappings = Array.isArray(spec.sourcePreviewMappings) ? spec.sourcePreviewMappings : [];
-    var targetPreviewMappings = Array.isArray(spec.targetPreviewMappings) ? spec.targetPreviewMappings : [];
-    var saveButtonLabels = (Array.isArray(spec.saveButtonLabels) ? spec.saveButtonLabels : ["save"])
-      .map(function (label) {
-        return normalizeText(label).toLowerCase();
-      })
-      .filter(Boolean);
+    var spec = normalizeCommercialPolicySurfaceSpec(rawSpec);
+    var watchedFieldNames = spec.behavior.watchedFieldNames;
+    var sourcePreviewMappings = spec.preview.sourceMappings;
+    var targetPreviewMappings = spec.preview.targetMappings;
+    var saveButtonLabels = spec.behavior.saveButtonLabels;
     var state = {
       installed: false,
       syncTimer: 0,
@@ -182,9 +281,7 @@
     };
 
     function resolveRecordRoot() {
-      return typeof spec.resolveRecordRoot === "function"
-        ? spec.resolveRecordRoot()
-        : defaultResolveRecordRoot();
+      return spec.record.resolveRoot();
     }
 
     function resolveVisibleModel() {
@@ -196,30 +293,30 @@
     }
 
     function resolveManagedRecordId() {
-      if (typeof spec.resolveManagedRecordId === "function") {
-        return toIntegerId(spec.resolveManagedRecordId());
+      if (typeof spec.record.resolveManagedId === "function") {
+        return toIntegerId(spec.record.resolveManagedId());
       }
-      return resolveVisibleModel() === normalizeText(spec.targetModel)
+      return resolveVisibleModel() === spec.target.model
         ? resolveVisibleRecordId()
         : 0;
     }
 
     function resolveSourceActionId() {
-      if (typeof spec.resolveSourceActionId === "function") {
-        return toIntegerId(spec.resolveSourceActionId());
+      if (typeof spec.actions.resolveSourceActionId === "function") {
+        return toIntegerId(spec.actions.resolveSourceActionId());
       }
-      return toIntegerId(spec.sourceActionId);
+      return spec.actions.sourceActionId;
     }
 
-    function resolveSelectedAssignmentId() {
+    function resolveSelectedSourceId() {
       var recordRoot = resolveRecordRoot();
-      var fieldName = normalizeText(spec.targetAssignmentFieldName);
+      var fieldName = spec.target.sourceFieldName;
       if (!recordRoot || !fieldName) {
         return 0;
       }
       return readMany2oneIdFromCandidates(
         readRecordRootFieldCandidates(recordRoot, fieldName),
-        normalizeMany2one
+        normalizeMany2oneRecord
       );
     }
 
@@ -243,8 +340,8 @@
       if (!(actionId > 0) || !(sourceId > 0) || !ormService || typeof ormService.call !== "function") {
         return false;
       }
-      if (typeof spec.suppressObserverMutations === "function") {
-        spec.suppressObserverMutations(300);
+      if (typeof spec.behavior.suppressObserverMutations === "function") {
+        spec.behavior.suppressObserverMutations(300);
       }
       await ormService.call(
         "ir.actions.server",
@@ -252,7 +349,7 @@
         [[actionId]],
         {
           context: {
-            active_model: normalizeText(spec.sourceModel),
+            active_model: spec.source.model,
             active_id: sourceId,
             active_ids: [sourceId],
           },
@@ -267,15 +364,15 @@
       }
       return searchReadSingle(
         ormService,
-        spec.sourceModel,
+        spec.source.model,
         [["id", "=", sourceId]],
-        Array.isArray(spec.sourceFields) ? spec.sourceFields : ["id", "display_name"],
+        spec.source.fields,
         { limit: 1, order: "id asc" }
       );
     }
 
     function resolveSourceLabel(sourceRow) {
-      var rawLabel = readRecordFieldValue(sourceRow, spec.sourceLabelFields || ["display_name", "name"]);
+      var rawLabel = readRecordFieldValue(sourceRow, spec.source.labelFields);
       return normalizeText(rawLabel);
     }
 
@@ -290,7 +387,7 @@
     }
 
     function applyPreviewMappings(mappings, context) {
-      if (typeof spec.setPreviewValue !== "function") {
+      if (typeof spec.preview.setValue !== "function") {
         return false;
       }
       var applied = false;
@@ -302,7 +399,7 @@
         if (value === null || value === undefined || value === "") {
           return;
         }
-        if (spec.setPreviewValue(mapping.fieldName, value, mapping.options || {}) !== false) {
+        if (spec.preview.setValue(mapping.fieldName, value, mapping.options || {}) !== false) {
           applied = true;
         }
       });
@@ -310,7 +407,7 @@
     }
 
     async function syncVisibleSourceRecordSurface(ormService) {
-      if (resolveVisibleModel() !== normalizeText(spec.sourceModel)) {
+      if (resolveVisibleModel() !== spec.source.model) {
         return false;
       }
       var sourceId = resolveVisibleRecordId();
@@ -324,8 +421,10 @@
       await runSourceAction(ormService, sourceId);
       var sourceRow = await fetchSourceRow(ormService, sourceId);
       var label = resolveSourceLabel(sourceRow);
-      var programValue = normalizeMany2one(readRecordFieldValue(sourceRow, spec.sourceProgramFieldName));
-      var percentValue = readNumericRecordValue(sourceRow, spec.sourcePercentFieldName);
+      var programValue = normalizeMany2oneRecord(
+        readRecordFieldValue(sourceRow, spec.source.policyFieldMap.program)
+      );
+      var percentValue = readNumericRecordValue(sourceRow, spec.source.policyFieldMap.percent);
       applyPreviewMappings(sourcePreviewMappings, {
         sourceId: sourceId,
         label: label,
@@ -339,36 +438,38 @@
     }
 
     async function syncManagedTargetRecordSurface(ormService) {
-      if (typeof spec.isManagedRoute === "function" && !spec.isManagedRoute()) {
+      if (typeof spec.behavior.isManagedRoute === "function" && !spec.behavior.isManagedRoute()) {
         return false;
       }
       var targetId = resolveManagedRecordId();
-      var assignmentId = resolveSelectedAssignmentId();
-      if (!(assignmentId > 0) && targetId > 0 && spec.targetAssignmentFieldName) {
+      var sourceId = resolveSelectedSourceId();
+      if (!(sourceId > 0) && targetId > 0 && spec.target.sourceFieldName) {
         var targetRow = await searchReadSingle(
           ormService,
-          spec.targetModel,
+          spec.target.model,
           [["id", "=", targetId]],
-          ["id", spec.targetAssignmentFieldName],
+          ["id", spec.target.sourceFieldName],
           { limit: 1, order: "id asc" }
         );
-        assignmentId = normalizeMany2one(targetRow && targetRow[spec.targetAssignmentFieldName]).id;
+        sourceId = normalizeMany2oneRecord(targetRow && targetRow[spec.target.sourceFieldName]).id;
       }
-      if (!(assignmentId > 0)) {
+      if (!(sourceId > 0)) {
         state.lastTargetSignature = "";
         return false;
       }
-      await runSourceAction(ormService, assignmentId);
-      var sourceRow = await fetchSourceRow(ormService, assignmentId);
+      await runSourceAction(ormService, sourceId);
+      var sourceRow = await fetchSourceRow(ormService, sourceId);
       if (!sourceRow) {
         return false;
       }
       var label = resolveSourceLabel(sourceRow);
-      var programValue = normalizeMany2one(readRecordFieldValue(sourceRow, spec.sourceProgramFieldName));
-      var percentValue = readNumericRecordValue(sourceRow, spec.sourcePercentFieldName);
+      var programValue = normalizeMany2oneRecord(
+        readRecordFieldValue(sourceRow, spec.source.policyFieldMap.program)
+      );
+      var percentValue = readNumericRecordValue(sourceRow, spec.source.policyFieldMap.percent);
       var signature = buildSignature([
         String(targetId || 0),
-        String(assignmentId || 0),
+        String(sourceId || 0),
         label,
         String(percentValue || 0),
       ]);
@@ -376,21 +477,21 @@
         return false;
       }
 
-      if (targetId > 0 && spec.targetModel && spec.targetWriteBackFields && typeof ormService.call === "function") {
+      if (targetId > 0 && spec.target.model && typeof ormService.call === "function") {
         var payload = {};
-        if (spec.targetWriteBackFields.assignment) {
-          payload[spec.targetWriteBackFields.assignment] = assignmentId;
+        if (spec.target.writeBackFieldMap.source) {
+          payload[spec.target.writeBackFieldMap.source] = sourceId;
         }
-        if (spec.targetWriteBackFields.program) {
-          payload[spec.targetWriteBackFields.program] = programValue.id || false;
+        if (spec.target.writeBackFieldMap.program) {
+          payload[spec.target.writeBackFieldMap.program] = programValue.id || false;
         }
-        if (spec.targetWriteBackFields.percent) {
-          payload[spec.targetWriteBackFields.percent] = percentValue || 0;
+        if (spec.target.writeBackFieldMap.percent) {
+          payload[spec.target.writeBackFieldMap.percent] = percentValue || 0;
         }
-        if (typeof spec.buildWritePayload === "function") {
-          payload = Object.assign(payload, spec.buildWritePayload({
+        if (typeof spec.behavior.buildWritePayload === "function") {
+          payload = Object.assign(payload, spec.behavior.buildWritePayload({
             targetId: targetId,
-            sourceId: assignmentId,
+            sourceId: sourceId,
             row: sourceRow,
             label: label,
             programValue: programValue,
@@ -398,7 +499,7 @@
           }) || {});
         }
         if (Object.keys(payload).length) {
-          await ormService.call(spec.targetModel, "write", [[targetId], payload], {}).catch(function () {
+          await ormService.call(spec.target.model, "write", [[targetId], payload], {}).catch(function () {
             return false;
           });
         }
@@ -406,7 +507,7 @@
 
       applyPreviewMappings(targetPreviewMappings, {
         targetId: targetId,
-        sourceId: assignmentId,
+        sourceId: sourceId,
         label: label,
         programId: programValue.id || 0,
         programLabel: programValue.label || "",
@@ -415,11 +516,11 @@
       });
       state.lastTargetSignature = signature;
 
-      if (typeof spec.afterTargetSync === "function") {
-        await spec.afterTargetSync({
+      if (typeof spec.behavior.afterTargetSync === "function") {
+        await spec.behavior.afterTargetSync({
           ormService: ormService,
           targetId: targetId,
-          sourceId: assignmentId,
+          sourceId: sourceId,
           row: sourceRow,
           label: label,
           programValue: programValue,
@@ -430,11 +531,7 @@
     }
 
     async function sync(force) {
-      var ormService = await (
-        typeof spec.resolveOrmService === "function"
-          ? spec.resolveOrmService()
-          : defaultResolveOrmService()
-      );
+      var ormService = await resolveOdooService("orm");
       if (!ormService || typeof ormService.searchRead !== "function") {
         return false;
       }
@@ -550,7 +647,6 @@
     return api;
   }
 
-  var surfaceLayerApi = requireSurfaceLayerApi();
   surfaceLayerApi.buildCommercialPolicySurfaceBridge = buildCommercialPolicySurfaceBridge;
   surfaceLayerApi.installCommercialPolicySurfaceBridge = function (spec) {
     var bridge = buildCommercialPolicySurfaceBridge(spec);

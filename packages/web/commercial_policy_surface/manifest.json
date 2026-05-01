@@ -12,6 +12,9 @@
   "publish_order": [
     "commercial_policy_surface.js"
   ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
   "capabilities": [
     "policy-assignment-sync",
     "preview-field-hydration",

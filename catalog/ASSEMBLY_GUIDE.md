@@ -50,19 +50,23 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 12. `form-subtotals-surface`
     - usar cuando el formulario necesita editor/layout de subtotales desacoplado del resto del section-layout legacy
 
-13. `form-layout-state`
+13. `form-totals-surface`
+    - usar cuando el formulario necesita normalizar `tax_totals`, derivar filas visibles de impuestos y sincronizar un bloque DOM de totales
+    - es la superficie canonica para breakdown fiscal; no volver a ensamblar `form-totals`
+
+14. `form-layout-state`
     - usar cuando el proyecto necesita sembrar o persistir desde servidor el estado compartido de layout
     - cubre labels de statusbar, layouts globales y normalizacion del payload persistido
     - al venderizar paquetes Python, este componente espera el namespace canonico `odoo_common`
 
-14. `partner-defaults` + `commercial-policy-surface`
+15. `partner-defaults` + `commercial-policy-surface`
     - usar cuando el documento hereda defaults server-side desde el cliente y ademas necesita sync o hydration comercial en el browser
     - si ademas se quiere exponer ese contexto en un panel declarativo, agregar `record-context-surface`
 
-15. `partner-language-defaults`
+16. `partner-language-defaults`
     - usar cuando el proyecto necesita gobernar el idioma canonico de nuevos partners y sembrar `res.partner.lang` por `ir.default`
 
-16. `terms-and-conditions`
+17. `terms-and-conditions`
     - usar cuando el proyecto necesita un contrato comun para payload fuente y payload resuelto de terminos/condiciones
     - no es runtime JS; es un paquete `schema`
 
@@ -82,6 +86,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `form-settings-panel-surface`
 - `form-chatter-toggle-surface`
 - `form-subtotals-surface`
+- `form-totals-surface`
 - `form-layout-state`
 - `many2x-parent-form-autosave`
 - `many2x-parent-form-autosave-python`
@@ -98,6 +103,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `form-settings-panel-surface`
 - `form-chatter-toggle-surface`
 - `form-subtotals-surface`
+- `form-totals-surface` si el formulario necesita breakdown de impuestos/totales fuera del renderer nativo
 - `form-layout-state` si el proyecto necesita sembrar labels/layouts desde servidor
 - `line-picker-surface` si el formulario tiene pickers inline dentro de lineas editables
 - `many2x-parent-form-autosave`
@@ -129,7 +135,7 @@ Estas piezas siguen existiendo solo como traza de origen y no deben ser el camin
 - `form-totals`
 - `customer-defaults-web`
 
-Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las superficies canonicas nuevas y no revivir la pieza source-derived.
+Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las superficies canonicas nuevas y no revivir la pieza source-derived. En particular, `form-totals` queda reemplazado por `form-totals-surface`.
 
 ## Regla de adaptadores
 

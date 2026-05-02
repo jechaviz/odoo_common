@@ -1,0 +1,23 @@
+{
+  "key": "form-totals-surface",
+  "title": "Form Totals Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_totals_surface.js"
+  ],
+  "publish_order": [
+    "form_totals_surface.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
+  "capabilities": [
+    "tax-totals-normalization",
+    "tax-row-rendering",
+    "tax-fallback-visibility"
+  ]
+}

@@ -225,6 +225,25 @@
     ]
   },
   {
+    "key": "form-totals-surface",
+    "title": "Form Totals Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_totals_surface",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_totals.js"
+      }
+    ],
+    "features": [
+      "tax_totals normalization",
+      "tax group display rows",
+      "monetary totals formatting",
+      "fallback tax row sync"
+    ]
+  },
+  {
     "key": "form-layout-state",
     "title": "Form Layout State Persistence",
     "runtime": "python",

@@ -42,6 +42,7 @@
       "form-settings-panel-surface",
       "form-chatter-toggle-surface",
       "form-subtotals-surface",
+      "form-totals-surface",
       "form-layout-state",
       "many2x-parent-form-autosave",
       "many2x-parent-form-autosave-python",
@@ -55,7 +56,8 @@
       "quotations",
       "invoices",
       "documents with lines",
-      "managed line entry"
+      "managed line entry",
+      "tax breakdown and totals preview"
     ]
   },
   {

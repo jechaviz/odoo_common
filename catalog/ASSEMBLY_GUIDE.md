@@ -25,8 +25,9 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
 5. `commercial-capture-context-surface`
    - usar cuando el formulario necesita un panel comercial de captura encima de `record-context-surface`
-   - compone slots canonicos, enrichment de referencia comercial y resumen de condicion sin reintroducir wiring legacy
-   - no absorbe `commercial-policy-surface` ni `form-preview-surface`; esas capacidades se ensamblan aparte cuando hacen falta
+   - compone slots canonicos, enrichment de referencia comercial, resumen de condicion y layout/copy de captura sin reintroducir wiring legacy
+   - depende semanticamente de `commercial-policy-surface` para copy canonico de politica comercial y render de notas
+   - no absorbe policy sync, preview hydration ni server-action dispatch; esas capacidades se ensamblan aparte cuando hacen falta
 
 6. `form-defaults-surface`
    - usar cuando el formulario necesita resolver, cachear y enriquecer `default_get`
@@ -51,6 +52,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
 11. `commercial-policy-surface`
    - usar cuando el browser debe sincronizar politica comercial, assignment ids o hydration de previews
+   - tambien es la fuente canonica de copy y nota compartida para superficies comerciales de captura
    - si esa superficie necesita disparar acciones server-side, ensamblar tambien `form-action-bridge-surface`
    - es la base canonica para nuevas integraciones; no volver a usar `customer-defaults-web`
 
@@ -142,16 +144,18 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `surface-workspace-shell`
 - `record-context-surface`
 - `record-context-layout-contract`
+- `commercial-policy-surface`
 - `commercial-capture-context-surface`
 
 ### Panel de contexto relacional/comercial
 
 - `record-context-surface`
 - `record-context-layout-contract`
-- `commercial-capture-context-surface` para componer el panel comercial de captura con referencia, condiciones y copy reutilizable
+- `commercial-policy-surface` para copy, nota y semantica canonica de politica comercial
+- `commercial-capture-context-surface` para componer el panel comercial de captura con referencia, condiciones y slots reutilizables
 - `form-preview-surface`
 - `partner-defaults` si el panel depende de defaults server-side por cliente
-- `commercial-policy-surface` si el panel expone politica comercial o hydration de browser
+- `commercial-policy-surface` si el panel ademas expone policy sync o hydration de browser
 - `form-action-bridge-surface` si el panel tambien dispara acciones server-side desde el browser
 
 ### Catalogo maestro
@@ -188,7 +192,7 @@ Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las su
 - los popovers del sidebar deben tener owner trigger canonico y vivo; si un proyecto necesita rescatar owners desde otro estado, eso pertenece al adapter, no a `common`
 - para `line-picker-surface`, los adapters deben declarar `managedFormEnhancers`, `x2manyField`, `itemField` y cualquier selector excepcional de forma explicita; no debe reabsorberse en wiring implicito del shell
 - para `record-context-surface`, los adapters deben declarar `slots`, `valueKey`, readers relacionales y renderers explicitamente; no debe reabsorberse en presets del shell ni en wiring implicito por formulario
-- para `commercial-capture-context-surface`, los adapters deben declarar `panelSelector`, `recordModel`, `recordFieldMap`, `partnerFieldMap`, `formFieldMap`, `referenceMeta`, `copy` y cualquier `slotOverrides` de forma explicita; no deben inferir selectors legacy ni absorber policy sync o preview hydration
+- para `commercial-capture-context-surface`, los adapters deben declarar `panelSelector`, `recordModel`, `recordFieldMap`, `partnerFieldMap`, `formFieldMap`, `referenceMeta` y cualquier `slotOverrides` de forma explicita; el copy/noise compartido de politica comercial vive en `commercial-policy-surface`, no en presets inline del proyecto
 - para `form-defaults-surface` y `form-preview-surface`, los adapters deben declarar loaders, enrichers, field maps y preview targets explicitamente; no debe revivirse `form_context.js` ni wiring local ad hoc
 - para `form-header-identity-surface`, los adapters deben declarar `fieldMap`, `displayRefBuilder`, `documentSeriesNormalizer`, `breadcrumbRoot`, `titleSync` y cualquier hook opcional de persistencia de forma explicita; no debe revivirse la heuristica Rental del header ni wiring por labels del breadcrumb
 - para `form-action-bridge-surface`, los adapters deben declarar `actionId`, `payloadBuilder`, `contextBuilder`, `successHandler` y cualquier gating o confirmacion de forma explicita; no debe esconderse dentro de `commercial-policy-surface` ni revivir puentes implicitos por nombre de boton o callback legacy

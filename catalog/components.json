@@ -70,17 +70,14 @@
     "origins": [
       {
         "project": "odoo_fiax",
-        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers/record_context.js"
-      },
-      {
-        "project": "odoo_fiax",
-        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers/record_context_sources.js"
+        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers/commercial_capture_context.js"
       }
     ],
     "features": [
       "record-context slot composition",
       "commercial reference meta enrichment",
-      "condition override summary"
+      "condition override summary",
+      "commercial capture panel copy composition"
     ]
   },
   {
@@ -180,7 +177,9 @@
     "features": [
       "policy assignment sync",
       "preview field hydration",
-      "commercial state hydration"
+      "commercial state hydration",
+      "commercial policy copy normalization",
+      "commercial policy note rendering"
     ]
   },
   {

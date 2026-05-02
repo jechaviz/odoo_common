@@ -1,0 +1,194 @@
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_controls,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"] {
+  align-items: end;
+  display: inline-grid;
+  gap: 0.4rem 0.75rem;
+  grid-template-columns: repeat(2, minmax(9.5rem, max-content));
+  margin-top: 0.42rem;
+  min-width: 0;
+  overflow: visible;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.45rem;
+  grid-template-columns: none;
+  margin-left: 0.55rem;
+  margin-top: 0;
+  vertical-align: middle;
+}
+
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control_group,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity-slot] {
+  display: grid;
+  gap: 0.14rem;
+  min-width: 0;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-slot] {
+  align-items: center;
+  display: inline-flex;
+  gap: 0;
+}
+
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control_label {
+  color: var(--o-surface-theme-muted, #96a1b6);
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control_label {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control,
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_many2one,
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_field_many2one_selection,
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_input_dropdown,
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o-autocomplete {
+  display: inline-flex !important;
+  min-width: 0;
+  width: auto !important;
+}
+
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_input_dropdown,
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o-autocomplete {
+  min-height: 2rem;
+  width: auto !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o_many2one,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o_field_many2one_selection,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o_input_dropdown,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o-autocomplete {
+  align-items: center;
+  display: inline-flex !important;
+  width: auto !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o_input_dropdown,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o-autocomplete {
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  min-height: 1.95rem;
+  padding-inline: 0.15rem 0.65rem;
+}
+
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o-autocomplete--input,
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_input,
+body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control input {
+  min-height: 2rem !important;
+  min-width: 8.75rem !important;
+  padding-inline: 0.6rem 0.75rem !important;
+  width: auto !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o-autocomplete--input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o_input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control input {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  height: 1.95rem !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+  min-height: 1.95rem !important;
+  min-width: 7.25rem !important;
+  padding: 0 0.55rem !important;
+  width: 7.25rem !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity-variant="wide"] .o-autocomplete--input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity-variant="wide"] .o_input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity-variant="wide"] input {
+  min-width: 10.5rem !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="document"] .o_input_dropdown,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="document"] .o-autocomplete {
+  background: #dbeafe !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="document"] .o-autocomplete--input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="document"] .o_input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="document"] input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="document"] .o_dropdown_button {
+  color: #1d4ed8 !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="branch"] .o_input_dropdown,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="branch"] .o-autocomplete {
+  background: #dcfce7 !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="branch"] .o-autocomplete--input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="branch"] .o_input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="branch"] input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-tone="branch"] .o_dropdown_button {
+  color: #166534 !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-variant="wide"] .o-autocomplete--input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-variant="wide"] .o_input,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] [data-surface-header-identity-variant="wide"] input {
+  min-width: 10.5rem !important;
+  padding-right: 1.4rem !important;
+  width: 10.5rem !important;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o-autocomplete,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o_dropdown_button {
+  flex: 0 0 auto;
+}
+
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o-autocomplete--input:focus,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control .o_input:focus,
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] .o_surface_header_identity_control input:focus {
+  outline: 2px solid rgba(14, 165, 233, 0.28);
+  outline-offset: 1px;
+}
+
+@media (max-width: 900px) {
+  body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-layout="pills"] {
+    margin-left: 0;
+    margin-top: 0.42rem;
+  }
+
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_controls,
+  body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"] {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control,
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_many2one,
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_field_many2one_selection,
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_input_dropdown,
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o-autocomplete {
+    width: 100% !important;
+  }
+
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o-autocomplete--input,
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control .o_input,
+  body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control input {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}

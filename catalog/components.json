@@ -120,6 +120,33 @@
     ]
   },
   {
+    "key": "form-header-identity-surface",
+    "title": "Form Header Identity Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_header_identity_surface",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_context.js"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form_breadcrumb.js"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form.js"
+      }
+    ],
+    "features": [
+      "header identity control sync",
+      "document reference title sync",
+      "branch and series control hydration",
+      "breadcrumb leaf identity updates"
+    ]
+  },
+  {
     "key": "commercial-policy-surface",
     "title": "Commercial Policy Surface Bridge",
     "runtime": "web",
@@ -446,7 +473,8 @@
     ],
     "replacement_components": [
       "form-defaults-surface",
-      "form-preview-surface"
+      "form-preview-surface",
+      "form-header-identity-surface"
     ]
   },
   {

@@ -38,6 +38,7 @@
       "record-context-surface",
       "form-defaults-surface",
       "form-preview-surface",
+      "form-header-identity-surface",
       "form-capture-shell-contract",
       "record-context-layout-contract",
       "commercial-capture-context-surface",
@@ -120,14 +121,16 @@
   },
   {
     "key": "capture_shell_markup",
-    "title": "Capture Shell Markup Contract",
+    "title": "Capture Shell Markup And Identity",
     "components": [
-      "form-capture-shell-contract"
+      "form-capture-shell-contract",
+      "form-header-identity-surface"
     ],
     "use_cases": [
       "two-column shell before line items",
       "header identity controls",
-      "document capture markup contracts"
+      "document capture markup contracts",
+      "document identity runtime"
     ]
   },
   {

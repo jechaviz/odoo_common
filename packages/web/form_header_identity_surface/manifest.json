@@ -1,0 +1,26 @@
+{
+  "key": "form-header-identity-surface",
+  "title": "Form Header Identity Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_header_identity.css",
+    "form_header_identity.js"
+  ],
+  "publish_order": [
+    "form_header_identity.css",
+    "form_header_identity.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
+  "capabilities": [
+    "form-header-identity",
+    "managed-form-enhancer",
+    "document-title-sync",
+    "breadcrumb-current-sync"
+  ]
+}

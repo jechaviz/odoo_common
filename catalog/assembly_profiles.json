@@ -42,6 +42,7 @@
       "form-capture-shell-contract",
       "record-context-layout-contract",
       "commercial-capture-context-surface",
+      "form-action-bridge-surface",
       "commercial-policy-surface",
       "form-layout-surface",
       "form-section-headers-surface",
@@ -64,6 +65,7 @@
       "invoices",
       "documents with lines",
       "managed line entry",
+      "server-side form actions",
       "commercial capture side panels",
       "tax breakdown and totals preview"
     ]
@@ -96,6 +98,7 @@
       "partner-defaults",
       "partner-language-defaults",
       "record-context-surface",
+      "form-action-bridge-surface",
       "commercial-policy-surface",
       "form-preview-surface",
       "taxation-helpers"
@@ -104,7 +107,20 @@
       "defaults per customer",
       "payment terms defaults",
       "commercial policy sync",
+      "server-side policy actions",
       "partner language governance"
+    ]
+  },
+  {
+    "key": "form_action_bridge",
+    "title": "Form Action Bridge",
+    "components": [
+      "form-action-bridge-surface"
+    ],
+    "use_cases": [
+      "server action handoff",
+      "browser-to-server form actions",
+      "managed action payload bridges"
     ]
   },
   {

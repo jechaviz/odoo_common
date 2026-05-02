@@ -147,8 +147,27 @@
     ]
   },
   {
+    "key": "form-action-bridge-surface",
+    "title": "Form Action Bridge Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/form_action_bridge_surface",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/web_assets/rental_native_tabs/form.js"
+      }
+    ],
+    "features": [
+      "server action handoff",
+      "browser-to-server form action dispatch",
+      "action context payload bridge",
+      "persist-before-run orchestration"
+    ]
+  },
+  {
     "key": "commercial-policy-surface",
-    "title": "Commercial Policy Surface Bridge",
+    "title": "Commercial Policy Surface",
     "runtime": "web",
     "status": "canonical",
     "package_path": "packages/web/commercial_policy_surface",
@@ -161,7 +180,7 @@
     "features": [
       "policy assignment sync",
       "preview field hydration",
-      "server action handoff"
+      "commercial state hydration"
     ]
   },
   {
@@ -517,6 +536,7 @@
     ],
     "replacement_components": [
       "commercial-policy-surface",
+      "form-action-bridge-surface",
       "record-context-surface",
       "form-preview-surface",
       "partner-defaults"

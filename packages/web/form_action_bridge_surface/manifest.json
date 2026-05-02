@@ -1,0 +1,24 @@
+{
+  "key": "form-action-bridge-surface",
+  "title": "Form Action Bridge Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "form_action_bridge.js"
+  ],
+  "publish_order": [
+    "form_action_bridge.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
+  "capabilities": [
+    "form-action-bridge",
+    "managed-form-enhancer",
+    "server-action-handoff",
+    "form-action-persist-before-run"
+  ]
+}

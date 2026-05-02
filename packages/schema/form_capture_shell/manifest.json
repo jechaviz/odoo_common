@@ -1,0 +1,23 @@
+{
+  "key": "form-capture-shell-contract",
+  "title": "Form Capture Shell Contract",
+  "status": "canonical",
+  "language": "schema",
+  "origin_project": "odoo_fiax",
+  "sync_root": ".",
+  "sync_mode": "tree",
+  "exports": [
+    "README.md",
+    "capture_shell_contract.md",
+    "header_identity_contract.md",
+    "form_capture_shell.schema.json",
+    "header_identity_controls.schema.json",
+    "examples/invoice_capture_shell.xml",
+    "examples/invoice_header_identity_controls.xml"
+  ],
+  "capabilities": [
+    "two-column-capture-shell",
+    "header-identity-controls",
+    "before-lines-form-contract"
+  ]
+}

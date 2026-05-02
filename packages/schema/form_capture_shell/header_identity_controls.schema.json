@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odoo.common/schema/header_identity_controls.schema.json",
+  "title": "Header Identity Controls Contract",
+  "type": "object",
+  "required": [
+    "header_identity",
+    "layout",
+    "controls"
+  ],
+  "properties": {
+    "header_identity": {
+      "const": true
+    },
+    "layout": {
+      "enum": [
+        "pills"
+      ]
+    },
+    "controls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "slot"
+        ],
+        "properties": {
+          "slot": {
+            "enum": [
+              "primary",
+              "secondary"
+            ]
+          },
+          "variant": {
+            "type": "string"
+          },
+          "tone": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

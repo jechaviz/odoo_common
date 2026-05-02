@@ -35,6 +35,7 @@
       "record-context-surface",
       "form-defaults-surface",
       "form-preview-surface",
+      "form-capture-shell-contract",
       "commercial-policy-surface",
       "form-layout-surface",
       "form-section-headers-surface",
@@ -109,6 +110,18 @@
       "document template terms",
       "printable conditions payloads",
       "resolved terms inheritance"
+    ]
+  },
+  {
+    "key": "capture_shell_markup",
+    "title": "Capture Shell Markup Contract",
+    "components": [
+      "form-capture-shell-contract"
+    ],
+    "use_cases": [
+      "two-column shell before line items",
+      "header identity controls",
+      "document capture markup contracts"
     ]
   }
 ]

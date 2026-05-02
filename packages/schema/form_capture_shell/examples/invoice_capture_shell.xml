@@ -1,0 +1,25 @@
+<group name="example_capture_shell"
+       data-surface-form-shell="capture"
+       data-surface-form-shell-layout="two-column"
+       data-surface-form-shell-anchor="before-lines"
+       col="2"
+       colspan="2">
+    <group name="example_capture_party"
+           data-surface-form-column="primary"
+           data-surface-form-column-role="party">
+        <div data-surface-form-section-title="1">Cliente</div>
+        <field name="partner_id"/>
+        <field name="fiscal_position_id"/>
+        <field name="partner_shipping_id"/>
+    </group>
+    <group name="example_capture_document"
+           data-surface-form-column="secondary"
+           data-surface-form-column-role="document"
+           col="2">
+        <div data-surface-form-section-title="1">Emision y cobro</div>
+        <field name="invoice_date"/>
+        <field name="invoice_payment_term_id"/>
+        <field name="invoice_date_due"/>
+        <field name="invoice_user_id"/>
+    </group>
+</group>

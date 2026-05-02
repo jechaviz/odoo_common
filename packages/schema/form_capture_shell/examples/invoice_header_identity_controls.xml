@@ -1,0 +1,14 @@
+<div data-surface-header-identity="1"
+     data-surface-header-identity-layout="pills">
+    <div data-surface-header-identity-slot="primary"
+         data-surface-header-identity-tone="document">
+        <span>Serie</span>
+        <field name="x_series_id"/>
+    </div>
+    <div data-surface-header-identity-slot="secondary"
+         data-surface-header-identity-variant="wide"
+         data-surface-header-identity-tone="branch">
+        <span>Sucursal</span>
+        <field name="x_branch_id"/>
+    </div>
+</div>

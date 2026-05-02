@@ -27,46 +27,50 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
    - usar cuando el formulario necesita hidratar previews visibles o espejos readonly dentro del DOM
    - concentra lectura/escritura de field previews y visibilidad de nodos
 
-6. `commercial-policy-surface`
+6. `form-capture-shell-contract`
+   - usar cuando el formulario necesita una composicion superior antes de sus lineas con `data-surface-form-shell="capture"` y controles de identidad en header
+   - define el contrato canonico de markup/attrs; no agrega runtime ni copy de negocio
+
+7. `commercial-policy-surface`
    - usar cuando el browser debe sincronizar politica comercial, assignment ids o hydration de previews desde acciones server-side
    - es la base canonica para nuevas integraciones; no volver a usar `customer-defaults-web`
 
-7. `form-layout-surface`
+8. `form-layout-surface`
    - usar cuando el formulario necesita runtime base de layout, coleccion de items, persistencia de orden y alcance compartido
    - es el core canonico sobre el que cuelgan headers, visibility, settings, chatter y subtotals
 
-8. `form-section-headers-surface`
+9. `form-section-headers-surface`
    - usar cuando el formulario necesita headers decorados y resumen colapsado de secciones
 
-9. `form-section-visibility-surface`
+10. `form-section-visibility-surface`
    - usar cuando el formulario necesita mostrar/ocultar controles de seccion por hover, estado o contexto
 
-10. `form-settings-panel-surface`
+11. `form-settings-panel-surface`
     - usar cuando el formulario necesita editor lateral de settings de seccion, layout o statusbar
 
-11. `form-chatter-toggle-surface`
+12. `form-chatter-toggle-surface`
     - usar cuando el formulario necesita colapsar/expandir chatter sin acoplar ese comportamiento al layout shell
 
-12. `form-subtotals-surface`
+13. `form-subtotals-surface`
     - usar cuando el formulario necesita editor/layout de subtotales desacoplado del resto del section-layout legacy
 
-13. `form-totals-surface`
+14. `form-totals-surface`
     - usar cuando el formulario necesita normalizar `tax_totals`, derivar filas visibles de impuestos y sincronizar un bloque DOM de totales
     - es la superficie canonica para breakdown fiscal; no volver a ensamblar `form-totals`
 
-14. `form-layout-state`
+15. `form-layout-state`
     - usar cuando el proyecto necesita sembrar o persistir desde servidor el estado compartido de layout
     - cubre labels de statusbar, layouts globales y normalizacion del payload persistido
     - al venderizar paquetes Python, este componente espera el namespace canonico `odoo_common`
 
-15. `partner-defaults` + `commercial-policy-surface`
+16. `partner-defaults` + `commercial-policy-surface`
     - usar cuando el documento hereda defaults server-side desde el cliente y ademas necesita sync o hydration comercial en el browser
     - si ademas se quiere exponer ese contexto en un panel declarativo, agregar `record-context-surface`
 
-16. `partner-language-defaults`
+17. `partner-language-defaults`
     - usar cuando el proyecto necesita gobernar el idioma canonico de nuevos partners y sembrar `res.partner.lang` por `ir.default`
 
-17. `terms-and-conditions`
+18. `terms-and-conditions`
     - usar cuando el proyecto necesita un contrato comun para payload fuente y payload resuelto de terminos/condiciones
     - no es runtime JS; es un paquete `schema`
 
@@ -79,6 +83,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `record-context-surface`
 - `form-defaults-surface`
 - `form-preview-surface`
+- `form-capture-shell-contract`
 - `commercial-policy-surface`
 - `form-layout-surface`
 - `form-section-headers-surface`

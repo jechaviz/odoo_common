@@ -1,0 +1,24 @@
+{
+  "key": "commercial-capture-context-surface",
+  "title": "Commercial Capture Context Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_fiax",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "commercial_capture_context.js"
+  ],
+  "publish_order": [
+    "commercial_capture_context.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell",
+    "record-context-surface"
+  ],
+  "capabilities": [
+    "record-context-slot-composition",
+    "commercial-reference-meta-enrichment",
+    "condition-override-summary"
+  ]
+}

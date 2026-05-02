@@ -17,6 +17,7 @@
     "components": [
       "record-context-surface",
       "record-context-layout-contract",
+      "commercial-capture-context-surface",
       "commercial-policy-surface",
       "form-preview-surface",
       "partner-defaults"
@@ -24,7 +25,8 @@
     "use_cases": [
       "customer context panel",
       "billing and shipping sidebars",
-      "commercial context hydration"
+      "commercial context hydration",
+      "reference and condition summaries"
     ]
   },
   {
@@ -38,6 +40,7 @@
       "form-preview-surface",
       "form-capture-shell-contract",
       "record-context-layout-contract",
+      "commercial-capture-context-surface",
       "commercial-policy-surface",
       "form-layout-surface",
       "form-section-headers-surface",
@@ -60,6 +63,7 @@
       "invoices",
       "documents with lines",
       "managed line entry",
+      "commercial capture side panels",
       "tax breakdown and totals preview"
     ]
   },
@@ -136,6 +140,21 @@
       "detail-list record context panels",
       "billing shipping commercial cards",
       "record context slot marker markup"
+    ]
+  },
+  {
+    "key": "commercial_capture_context",
+    "title": "Commercial Capture Context",
+    "components": [
+      "surface-workspace-shell",
+      "record-context-surface",
+      "record-context-layout-contract",
+      "commercial-capture-context-surface"
+    ],
+    "use_cases": [
+      "commercial capture panels",
+      "reference metadata summaries",
+      "default-vs-current condition context"
     ]
   }
 ]

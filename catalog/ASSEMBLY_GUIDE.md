@@ -23,58 +23,63 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
    - usar cuando el proyecto necesita un contrato declarativo de markup para paneles `record-context` con cards y slot markers
    - no agrega runtime; formaliza el layout que hidrata `record-context-surface`
 
-5. `form-defaults-surface`
+5. `commercial-capture-context-surface`
+   - usar cuando el formulario necesita un panel comercial de captura encima de `record-context-surface`
+   - compone slots canonicos, enrichment de referencia comercial y resumen de condicion sin reintroducir wiring legacy
+   - no absorbe `commercial-policy-surface` ni `form-preview-surface`; esas capacidades se ensamblan aparte cuando hacen falta
+
+6. `form-defaults-surface`
    - usar cuando el formulario necesita resolver, cachear y enriquecer `default_get`
    - separa carga de defaults del wiring visual del formulario
 
-6. `form-preview-surface`
+7. `form-preview-surface`
    - usar cuando el formulario necesita hidratar previews visibles o espejos readonly dentro del DOM
    - concentra lectura/escritura de field previews y visibilidad de nodos
 
-7. `form-capture-shell-contract`
+8. `form-capture-shell-contract`
    - usar cuando el formulario necesita una composicion superior antes de sus lineas con `data-surface-form-shell="capture"` y controles de identidad en header
    - define el contrato canonico de markup/attrs; no agrega runtime ni copy de negocio
 
-8. `commercial-policy-surface`
+9. `commercial-policy-surface`
    - usar cuando el browser debe sincronizar politica comercial, assignment ids o hydration de previews desde acciones server-side
    - es la base canonica para nuevas integraciones; no volver a usar `customer-defaults-web`
 
-9. `form-layout-surface`
+10. `form-layout-surface`
    - usar cuando el formulario necesita runtime base de layout, coleccion de items, persistencia de orden y alcance compartido
    - es el core canonico sobre el que cuelgan headers, visibility, settings, chatter y subtotals
 
-10. `form-section-headers-surface`
+11. `form-section-headers-surface`
    - usar cuando el formulario necesita headers decorados y resumen colapsado de secciones
 
-11. `form-section-visibility-surface`
+12. `form-section-visibility-surface`
    - usar cuando el formulario necesita mostrar/ocultar controles de seccion por hover, estado o contexto
 
-12. `form-settings-panel-surface`
+13. `form-settings-panel-surface`
     - usar cuando el formulario necesita editor lateral de settings de seccion, layout o statusbar
 
-13. `form-chatter-toggle-surface`
+14. `form-chatter-toggle-surface`
     - usar cuando el formulario necesita colapsar/expandir chatter sin acoplar ese comportamiento al layout shell
 
-14. `form-subtotals-surface`
+15. `form-subtotals-surface`
     - usar cuando el formulario necesita editor/layout de subtotales desacoplado del resto del section-layout legacy
 
-15. `form-totals-surface`
+16. `form-totals-surface`
     - usar cuando el formulario necesita normalizar `tax_totals`, derivar filas visibles de impuestos y sincronizar un bloque DOM de totales
     - es la superficie canonica para breakdown fiscal; no volver a ensamblar `form-totals`
 
-16. `form-layout-state`
+17. `form-layout-state`
     - usar cuando el proyecto necesita sembrar o persistir desde servidor el estado compartido de layout
     - cubre labels de statusbar, layouts globales y normalizacion del payload persistido
     - al venderizar paquetes Python, este componente espera el namespace canonico `odoo_common`
 
-17. `partner-defaults` + `commercial-policy-surface`
+18. `partner-defaults` + `commercial-policy-surface`
     - usar cuando el documento hereda defaults server-side desde el cliente y ademas necesita sync o hydration comercial en el browser
-    - si ademas se quiere exponer ese contexto en un panel declarativo, agregar `record-context-surface`
+    - si ademas se quiere exponer ese contexto en un panel declarativo, agregar `record-context-surface` y `commercial-capture-context-surface`
 
-18. `partner-language-defaults`
+19. `partner-language-defaults`
     - usar cuando el proyecto necesita gobernar el idioma canonico de nuevos partners y sembrar `res.partner.lang` por `ir.default`
 
-19. `terms-and-conditions`
+20. `terms-and-conditions`
     - usar cuando el proyecto necesita un contrato comun para payload fuente y payload resuelto de terminos/condiciones
     - no es runtime JS; es un paquete `schema`
 
@@ -86,6 +91,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `line-picker-surface`
 - `record-context-surface`
 - `record-context-layout-contract`
+- `commercial-capture-context-surface`
 - `form-defaults-surface`
 - `form-preview-surface`
 - `form-capture-shell-contract`
@@ -118,10 +124,18 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `line-picker-surface` si el formulario tiene pickers inline dentro de lineas editables
 - `many2x-parent-form-autosave`
 
+### Captura comercial contextual
+
+- `surface-workspace-shell`
+- `record-context-surface`
+- `record-context-layout-contract`
+- `commercial-capture-context-surface`
+
 ### Panel de contexto relacional/comercial
 
 - `record-context-surface`
 - `record-context-layout-contract`
+- `commercial-capture-context-surface` para componer el panel comercial de captura con referencia, condiciones y copy reutilizable
 - `form-preview-surface`
 - `partner-defaults` si el panel depende de defaults server-side por cliente
 - `commercial-policy-surface` si el panel expone politica comercial o hydration de browser
@@ -159,6 +173,7 @@ Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las su
 - los popovers del sidebar deben tener owner trigger canonico y vivo; si un proyecto necesita rescatar owners desde otro estado, eso pertenece al adapter, no a `common`
 - para `line-picker-surface`, los adapters deben declarar `managedFormEnhancers`, `x2manyField`, `itemField` y cualquier selector excepcional de forma explicita; no debe reabsorberse en wiring implicito del shell
 - para `record-context-surface`, los adapters deben declarar `slots`, `valueKey`, readers relacionales y renderers explicitamente; no debe reabsorberse en presets del shell ni en wiring implicito por formulario
+- para `commercial-capture-context-surface`, los adapters deben declarar `panelSelector`, `recordModel`, `recordFieldMap`, `partnerFieldMap`, `formFieldMap`, `referenceMeta`, `copy` y cualquier `slotOverrides` de forma explicita; no deben inferir selectors legacy ni absorber policy sync o preview hydration
 - para `form-defaults-surface` y `form-preview-surface`, los adapters deben declarar loaders, enrichers, field maps y preview targets explicitamente; no debe revivirse `form_context.js` ni wiring local ad hoc
 - para `form-layout-surface` y sus paquetes hermanos, el host debe declarar access rules, persistence, settings metadata y editores por contratos explicitos; no debe reconstruirse el monolito de `form_section_layout`
 - los modos de route presentation (`query`, `hash`, `path-tail`) permanecen solo porque son parte del contrato publico canonico del shell; no deben reinterpretarse como compatibilidad legacy del proyecto

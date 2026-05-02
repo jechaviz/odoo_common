@@ -18,6 +18,8 @@
   "capabilities": [
     "policy-assignment-sync",
     "preview-field-hydration",
-    "source-action-injection"
+    "source-action-injection",
+    "policy-copy-semantics",
+    "policy-note-rendering"
   ]
 }

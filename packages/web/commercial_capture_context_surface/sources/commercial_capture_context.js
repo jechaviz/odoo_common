@@ -85,23 +85,23 @@
 
   function normalizeCommercialCaptureCopy(rawCopy) {
     var copy = readObject(rawCopy);
+    var policyCopy = normalizeCommercialPolicyCopy(copy);
     return {
       primaryNameFallback: normalizeText(copy.primaryNameFallback || "Registro sin seleccionar"),
       primaryDetailsFallback: normalizeText(copy.primaryDetailsFallback || "Selecciona un contacto para ver el resumen comercial."),
       secondaryNameFallback: normalizeText(copy.secondaryNameFallback || "Mismo destino comercial"),
       secondaryDetailsFallback: normalizeText(copy.secondaryDetailsFallback || "Este documento usa la direccion comercial principal mientras no asignes un destino secundario."),
       identifierFallback: normalizeText(copy.identifierFallback || "-"),
-      referenceFallback: normalizeText(copy.referenceFallback || "Sin referencia comercial"),
-      referenceMetaFallback: normalizeText(copy.referenceMetaFallback || "Sin reglas"),
-      conditionFallback: normalizeText(copy.conditionFallback || "Sin default"),
-      conditionMetaFallback: normalizeText(copy.conditionMetaFallback || "Sin override"),
-      noteFallback: normalizeText(copy.noteFallback || ""),
-      noteWithReferenceAndItems: normalizeText(copy.noteWithReferenceAndItems || "La referencia comercial ya tiene reglas activas."),
-      noteWithReferenceNoItems: normalizeText(copy.noteWithReferenceNoItems || "La referencia comercial existe, pero aun no tiene reglas activas."),
-      noteWithoutReference: normalizeText(copy.noteWithoutReference || "Este registro usa la politica comercial base."),
-      changedConditionLabel: normalizeText(copy.changedConditionLabel || "Ajustado en este registro"),
-      inheritedConditionLabel: normalizeText(copy.inheritedConditionLabel || "Heredado del contacto"),
-      explicitConditionLabel: normalizeText(copy.explicitConditionLabel || "Definido en este registro"),
+      referenceFallback: policyCopy.referenceFallback,
+      referenceMetaFallback: policyCopy.referenceMetaFallback,
+      conditionFallback: policyCopy.conditionFallback,
+      conditionMetaFallback: policyCopy.conditionMetaFallback,
+      noteWithReferenceAndItems: policyCopy.noteWithReferenceAndItems,
+      noteWithReferenceNoItems: policyCopy.noteWithReferenceNoItems,
+      noteWithoutReference: policyCopy.noteWithoutReference,
+      changedConditionLabel: policyCopy.changedConditionLabel,
+      inheritedConditionLabel: policyCopy.inheritedConditionLabel,
+      explicitConditionLabel: policyCopy.explicitConditionLabel,
     };
   }
 
@@ -188,6 +188,7 @@
       inheritedLabel: copy.inheritedConditionLabel,
       explicitLabel: copy.explicitConditionLabel,
     });
+    var noteRenderer = buildCommercialPolicyNoteRenderer(copy);
     var baseSlots = {
       primaryName: { fallback: copy.primaryNameFallback },
       primaryDetails: { fallback: copy.primaryDetailsFallback },
@@ -205,21 +206,11 @@
         render: conditionMetaRenderer,
       },
       note: {
-        fallback: copy.noteFallback,
         render: function (data, runtimeContext, fallback) {
           if (spec.noteRenderer) {
             return spec.noteRenderer(data, runtimeContext, fallback);
           }
-          var normalizedData = readObject(data);
-          var referenceLabel = normalizeText(normalizedData.reference);
-          var itemCount = toInteger(normalizedData.referenceItemCount);
-          if (referenceLabel && itemCount > 0) {
-            return copy.noteWithReferenceAndItems || normalizeText(fallback);
-          }
-          if (referenceLabel) {
-            return copy.noteWithReferenceNoItems || normalizeText(fallback);
-          }
-          return copy.noteWithoutReference || normalizeText(fallback);
+          return noteRenderer(data, runtimeContext, fallback);
         },
       },
     };
@@ -252,6 +243,8 @@
   var buildPartnerCommercialRecordContextAdapter = requireSurfaceLayerMethod(surfaceLayerApi, "buildPartnerCommercialRecordContextAdapter");
   var buildRecordContextSummarySlotRenderer = requireSurfaceLayerMethod(surfaceLayerApi, "buildRecordContextSummarySlotRenderer");
   var buildRecordContextOverrideSlotRenderer = requireSurfaceLayerMethod(surfaceLayerApi, "buildRecordContextOverrideSlotRenderer");
+  var normalizeCommercialPolicyCopy = requireSurfaceLayerMethod(surfaceLayerApi, "normalizeCommercialPolicyCopy");
+  var buildCommercialPolicyNoteRenderer = requireSurfaceLayerMethod(surfaceLayerApi, "buildCommercialPolicyNoteRenderer");
 
   Object.assign(surfaceLayerApi, {
     buildCommercialCaptureContextSlots: buildCommercialCaptureContextSlots,

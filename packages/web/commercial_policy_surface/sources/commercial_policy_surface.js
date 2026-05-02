@@ -76,6 +76,38 @@
     });
   }
 
+  function normalizeCommercialPolicyCopy(rawCopy) {
+    var copy = readSpecObject(rawCopy);
+    return {
+      referenceFallback: normalizeText(copy.referenceFallback || "Tarifa base"),
+      referenceMetaFallback: normalizeText(copy.referenceMetaFallback || "Sin reglas"),
+      conditionFallback: normalizeText(copy.conditionFallback || "Sin default"),
+      conditionMetaFallback: normalizeText(copy.conditionMetaFallback || "Sin override"),
+      noteWithReferenceAndItems: normalizeText(copy.noteWithReferenceAndItems || "La referencia comercial ya tiene reglas activas."),
+      noteWithReferenceNoItems: normalizeText(copy.noteWithReferenceNoItems || "La referencia comercial existe, pero aun no tiene reglas activas."),
+      noteWithoutReference: normalizeText(copy.noteWithoutReference || "Este registro usa la politica comercial base."),
+      changedConditionLabel: normalizeText(copy.changedConditionLabel || "Ajustado en este registro"),
+      inheritedConditionLabel: normalizeText(copy.inheritedConditionLabel || "Heredado del contacto"),
+      explicitConditionLabel: normalizeText(copy.explicitConditionLabel || "Definido en este registro"),
+    };
+  }
+
+  function buildCommercialPolicyNoteRenderer(rawCopy) {
+    var copy = normalizeCommercialPolicyCopy(rawCopy);
+    return function renderCommercialPolicyNote(data) {
+      var normalizedData = readSpecObject(data);
+      var referenceLabel = normalizeText(normalizedData.reference);
+      var itemCount = Number(normalizedData.referenceItemCount || 0) || 0;
+      if (referenceLabel && itemCount > 0) {
+        return copy.noteWithReferenceAndItems;
+      }
+      if (referenceLabel) {
+        return copy.noteWithReferenceNoItems;
+      }
+      return copy.noteWithoutReference;
+    };
+  }
+
   function normalizeCommercialPolicySurfaceSpec(rawSpec) {
     var spec = requireSpecObject(rawSpec, "commercial policy surface spec");
     var recordSpec = requireSpecObject(spec.record, "commercial policy surface spec.record");
@@ -648,6 +680,8 @@
   }
 
   surfaceLayerApi.buildCommercialPolicySurfaceBridge = buildCommercialPolicySurfaceBridge;
+  surfaceLayerApi.normalizeCommercialPolicyCopy = normalizeCommercialPolicyCopy;
+  surfaceLayerApi.buildCommercialPolicyNoteRenderer = buildCommercialPolicyNoteRenderer;
   surfaceLayerApi.installCommercialPolicySurfaceBridge = function (spec) {
     var bridge = buildCommercialPolicySurfaceBridge(spec);
     bridge.install();

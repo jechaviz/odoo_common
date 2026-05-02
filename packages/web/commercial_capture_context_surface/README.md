@@ -58,7 +58,7 @@ Y ademas los bloques propios de esta superficie:
 - `itemCountSingularLabel`
 - `itemCountPluralTemplate`
 
-`copy` fija el texto canonico del panel:
+`copy` fija el texto del panel de captura y compone la semantica canonica de politica comercial:
 
 - `primaryNameFallback`
 - `primaryDetailsFallback`
@@ -69,7 +69,6 @@ Y ademas los bloques propios de esta superficie:
 - `referenceMetaFallback`
 - `conditionFallback`
 - `conditionMetaFallback`
-- `noteFallback`
 - `noteWithReferenceAndItems`
 - `noteWithReferenceNoItems`
 - `noteWithoutReference`
@@ -103,9 +102,6 @@ window.OdooSurfaceLayers.buildCommercialCaptureContextAdapter({
   },
   copy: {
     primaryNameFallback: "Cliente sin seleccionar",
-    referenceFallback: "Tarifa base",
-    noteWithReferenceNoItems: "La tarifa del cliente existe, pero aun no tiene reglas activas.",
-    noteWithoutReference: "Este cliente usa la tarifa base.",
   },
 });
 ```
@@ -117,5 +113,5 @@ Los labels, copy, modelos, field maps y texto de ayuda entran por `spec`; el paq
 ## Limites
 
 - no debe inferir selectors, labels ni ownership del panel desde markup legacy
-- no absorbe `commercial-policy-surface`, `form-preview-surface` ni defaults server-side
-- si el proyecto necesita policy sync o preview hydration, debe ensamblar esas superficies aparte
+- no absorbe policy-assignment sync ni preview hydration browser-side
+- compone el copy y note renderer canonicos de `commercial-policy-surface`; si el proyecto necesita policy sync o preview hydration browser-side, debe ensamblar esas superficies aparte

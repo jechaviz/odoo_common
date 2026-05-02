@@ -14,11 +14,13 @@
   ],
   "dependencies": [
     "surface-workspace-shell",
-    "record-context-surface"
+    "record-context-surface",
+    "commercial-policy-surface"
   ],
   "capabilities": [
     "record-context-slot-composition",
     "commercial-reference-meta-enrichment",
-    "condition-override-summary"
+    "condition-override-summary",
+    "commercial-policy-copy-composition"
   ]
 }

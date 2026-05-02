@@ -11,6 +11,32 @@ Publica `window.OdooSurfaceLayers` con:
 
 - `buildCommercialPolicySurfaceBridge(spec)`
 - `installCommercialPolicySurfaceBridge(spec)`
+- `normalizeCommercialPolicyCopy(copy)`
+- `buildCommercialPolicyNoteRenderer(copy)`
+
+## Copy y note semantics
+
+Este paquete es la fuente canonica para semantica reusable de politica comercial. El contrato shared queda asi:
+
+- `normalizeCommercialPolicyCopy(copy)`
+  - recibe solo un objeto plano del consumer
+  - devuelve un objeto normalizado con copy canonico para:
+    - `referenceFallback`
+    - `referenceMetaFallback`
+    - `conditionFallback`
+    - `conditionMetaFallback`
+    - `noteWithReferenceAndItems`
+    - `noteWithReferenceNoItems`
+    - `noteWithoutReference`
+    - `changedConditionLabel`
+    - `inheritedConditionLabel`
+    - `explicitConditionLabel`
+- `buildCommercialPolicyNoteRenderer(copy)`
+  - compone ese copy normalizado
+  - devuelve un renderer puro que solo depende de `data.reference` y `data.referenceItemCount`
+  - no acepta fallbacks externos ni strings legacy del caller
+
+Si otra superficie shared necesita copy o render de nota comercial, debe componer estos helpers canonicos en vez de redefinir textos locales o fallback chains.
 
 ## Dependencias
 
@@ -95,8 +121,10 @@ window.OdooSurfaceLayers.installCommercialPolicySurfaceBridge({
 
 ## Nota
 
-Los nombres de modelo, campos, labels y hooks de UX entran por `spec`; el paquete canonico no debe codificar copy ni nombres de negocio del proyecto.
+Los nombres de modelo, campos, labels y hooks de UX entran por `spec`; el paquete canonico no debe codificar nombres de negocio del proyecto. La unica excepcion permitida aqui es el copy generico de politica comercial, porque justamente forma parte del contrato shared de esta superficie.
 
 ## Relacion con el legado
 
 `commercial-policy-surface` reemplaza para integraciones nuevas al runtime derivado `customer-defaults-web`.
+
+Cuando otra superficie shared necesite solo copy o note-rendering de politica comercial, debe componer estos helpers canonicos en vez de reimplementar strings o renderers locales.

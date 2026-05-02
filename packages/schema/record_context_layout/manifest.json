@@ -1,0 +1,21 @@
+{
+  "key": "record-context-layout-contract",
+  "title": "Record Context Layout Contract",
+  "status": "canonical",
+  "language": "schema",
+  "origin_project": "odoo_fiax",
+  "sync_root": ".",
+  "sync_mode": "tree",
+  "exports": [
+    "README.md",
+    "record_context_layout_contract.md",
+    "record_context_layout.schema.json",
+    "record_context_slot_markers.schema.json",
+    "examples/invoice_record_context_layout.xml"
+  ],
+  "capabilities": [
+    "record-context-panel-layout",
+    "record-context-card-markup",
+    "record-context-slot-markers"
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odoo.common/schema/record_context_layout.schema.json",
+  "title": "Record Context Layout Contract",
+  "type": "object",
+  "required": [
+    "panel",
+    "layout",
+    "cards"
+  ],
+  "properties": {
+    "panel": {
+      "const": true
+    },
+    "layout": {
+      "enum": [
+        "detail-list"
+      ]
+    },
+    "cards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

@@ -515,5 +515,27 @@
       "header identity controls",
       "before-lines form contract"
     ]
+  },
+  {
+    "key": "record-context-layout-contract",
+    "title": "Record Context Layout Contract",
+    "runtime": "schema",
+    "status": "canonical",
+    "package_path": "packages/schema/record_context_layout",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/templates/view_fragments/invoice_form_capture_shell.xml.tmpl"
+      },
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/web_assets/odoo_surface_layers/record_context.js"
+      }
+    ],
+    "features": [
+      "record context panel layout",
+      "record context card markup",
+      "record context slot markers"
+    ]
   }
 ]

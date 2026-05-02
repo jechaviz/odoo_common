@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://odoo.common/schema/record_context_slot_markers.schema.json",
+  "title": "Record Context Slot Markers",
+  "type": "array",
+  "items": {
+    "type": "string",
+    "enum": [
+      "primary-name",
+      "primary-details",
+      "secondary-name",
+      "secondary-details",
+      "identifier",
+      "reference",
+      "reference-meta",
+      "condition",
+      "condition-meta",
+      "note"
+    ]
+  },
+  "uniqueItems": true
+}

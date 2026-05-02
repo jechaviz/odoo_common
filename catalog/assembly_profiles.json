@@ -16,6 +16,7 @@
     "title": "Record Context Capture",
     "components": [
       "record-context-surface",
+      "record-context-layout-contract",
       "commercial-policy-surface",
       "form-preview-surface",
       "partner-defaults"
@@ -36,6 +37,7 @@
       "form-defaults-surface",
       "form-preview-surface",
       "form-capture-shell-contract",
+      "record-context-layout-contract",
       "commercial-policy-surface",
       "form-layout-surface",
       "form-section-headers-surface",
@@ -122,6 +124,18 @@
       "two-column shell before line items",
       "header identity controls",
       "document capture markup contracts"
+    ]
+  },
+  {
+    "key": "record_context_layout",
+    "title": "Record Context Layout Contract",
+    "components": [
+      "record-context-layout-contract"
+    ],
+    "use_cases": [
+      "detail-list record context panels",
+      "billing shipping commercial cards",
+      "record context slot marker markup"
     ]
   }
 ]

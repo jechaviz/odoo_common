@@ -19,58 +19,62 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
    - usar cuando el formulario necesita un panel lateral o superior de contexto relacional/comercial
    - el panel debe declararse por schema de `slots`; no se ensambla implicito dentro del shell
 
-4. `form-defaults-surface`
+4. `record-context-layout-contract`
+   - usar cuando el proyecto necesita un contrato declarativo de markup para paneles `record-context` con cards y slot markers
+   - no agrega runtime; formaliza el layout que hidrata `record-context-surface`
+
+5. `form-defaults-surface`
    - usar cuando el formulario necesita resolver, cachear y enriquecer `default_get`
    - separa carga de defaults del wiring visual del formulario
 
-5. `form-preview-surface`
+6. `form-preview-surface`
    - usar cuando el formulario necesita hidratar previews visibles o espejos readonly dentro del DOM
    - concentra lectura/escritura de field previews y visibilidad de nodos
 
-6. `form-capture-shell-contract`
+7. `form-capture-shell-contract`
    - usar cuando el formulario necesita una composicion superior antes de sus lineas con `data-surface-form-shell="capture"` y controles de identidad en header
    - define el contrato canonico de markup/attrs; no agrega runtime ni copy de negocio
 
-7. `commercial-policy-surface`
+8. `commercial-policy-surface`
    - usar cuando el browser debe sincronizar politica comercial, assignment ids o hydration de previews desde acciones server-side
    - es la base canonica para nuevas integraciones; no volver a usar `customer-defaults-web`
 
-8. `form-layout-surface`
+9. `form-layout-surface`
    - usar cuando el formulario necesita runtime base de layout, coleccion de items, persistencia de orden y alcance compartido
    - es el core canonico sobre el que cuelgan headers, visibility, settings, chatter y subtotals
 
-9. `form-section-headers-surface`
+10. `form-section-headers-surface`
    - usar cuando el formulario necesita headers decorados y resumen colapsado de secciones
 
-10. `form-section-visibility-surface`
+11. `form-section-visibility-surface`
    - usar cuando el formulario necesita mostrar/ocultar controles de seccion por hover, estado o contexto
 
-11. `form-settings-panel-surface`
+12. `form-settings-panel-surface`
     - usar cuando el formulario necesita editor lateral de settings de seccion, layout o statusbar
 
-12. `form-chatter-toggle-surface`
+13. `form-chatter-toggle-surface`
     - usar cuando el formulario necesita colapsar/expandir chatter sin acoplar ese comportamiento al layout shell
 
-13. `form-subtotals-surface`
+14. `form-subtotals-surface`
     - usar cuando el formulario necesita editor/layout de subtotales desacoplado del resto del section-layout legacy
 
-14. `form-totals-surface`
+15. `form-totals-surface`
     - usar cuando el formulario necesita normalizar `tax_totals`, derivar filas visibles de impuestos y sincronizar un bloque DOM de totales
     - es la superficie canonica para breakdown fiscal; no volver a ensamblar `form-totals`
 
-15. `form-layout-state`
+16. `form-layout-state`
     - usar cuando el proyecto necesita sembrar o persistir desde servidor el estado compartido de layout
     - cubre labels de statusbar, layouts globales y normalizacion del payload persistido
     - al venderizar paquetes Python, este componente espera el namespace canonico `odoo_common`
 
-16. `partner-defaults` + `commercial-policy-surface`
+17. `partner-defaults` + `commercial-policy-surface`
     - usar cuando el documento hereda defaults server-side desde el cliente y ademas necesita sync o hydration comercial en el browser
     - si ademas se quiere exponer ese contexto en un panel declarativo, agregar `record-context-surface`
 
-17. `partner-language-defaults`
+18. `partner-language-defaults`
     - usar cuando el proyecto necesita gobernar el idioma canonico de nuevos partners y sembrar `res.partner.lang` por `ir.default`
 
-18. `terms-and-conditions`
+19. `terms-and-conditions`
     - usar cuando el proyecto necesita un contrato comun para payload fuente y payload resuelto de terminos/condiciones
     - no es runtime JS; es un paquete `schema`
 
@@ -81,6 +85,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `surface-workspace-shell`
 - `line-picker-surface`
 - `record-context-surface`
+- `record-context-layout-contract`
 - `form-defaults-surface`
 - `form-preview-surface`
 - `form-capture-shell-contract`
@@ -116,6 +121,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 ### Panel de contexto relacional/comercial
 
 - `record-context-surface`
+- `record-context-layout-contract`
 - `form-preview-surface`
 - `partner-defaults` si el panel depende de defaults server-side por cliente
 - `commercial-policy-surface` si el panel expone politica comercial o hydration de browser

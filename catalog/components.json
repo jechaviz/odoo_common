@@ -389,6 +389,15 @@
       "settings panel",
       "subtotal editor shell",
       "chatter collapse"
+    ],
+    "replacement_components": [
+      "form-layout-surface",
+      "form-section-headers-surface",
+      "form-section-visibility-surface",
+      "form-settings-panel-surface",
+      "form-chatter-toggle-surface",
+      "form-subtotals-surface",
+      "form-layout-state"
     ]
   },
   {
@@ -412,6 +421,10 @@
       "branch defaults",
       "series/document type defaults",
       "preview defaults"
+    ],
+    "replacement_components": [
+      "form-defaults-surface",
+      "form-preview-surface"
     ]
   },
   {
@@ -430,6 +443,9 @@
       "tax_totals normalization",
       "tax group rendering",
       "fallback tax rows"
+    ],
+    "replacement_components": [
+      "form-totals-surface"
     ]
   },
   {
@@ -448,6 +464,12 @@
       "customer discount sync",
       "discount assignment hydration",
       "server action bridge"
+    ],
+    "replacement_components": [
+      "commercial-policy-surface",
+      "record-context-surface",
+      "form-preview-surface",
+      "partner-defaults"
     ]
   },
   {

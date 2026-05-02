@@ -130,10 +130,10 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
 Estas piezas siguen existiendo solo como traza de origen y no deben ser el camino preferente de nuevas integraciones:
 
-- `form-section-layout`
-- `form-defaults`
-- `form-totals`
-- `customer-defaults-web`
+- `form-section-layout` -> `form-layout-surface`, `form-section-headers-surface`, `form-section-visibility-surface`, `form-settings-panel-surface`, `form-chatter-toggle-surface`, `form-subtotals-surface`, `form-layout-state`
+- `form-defaults` -> `form-defaults-surface`, `form-preview-surface`
+- `form-totals` -> `form-totals-surface`
+- `customer-defaults-web` -> `commercial-policy-surface`, `record-context-surface`, `form-preview-surface`, `partner-defaults`
 
 Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las superficies canonicas nuevas y no revivir la pieza source-derived. En particular, `form-totals` queda reemplazado por `form-totals-surface`.
 

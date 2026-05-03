@@ -1,14 +1,29 @@
 (function () {
   "use strict";
 
-  if (!window.OdooSurfaceLayers || !window.OdooSurfaceLayers._shared) {
-    throw new Error("form totals surface requires the canonical OdooSurfaceLayers bootstrap.");
+  function requireSurfaceLayerApi() {
+    if (!(window.OdooSurfaceLayers && typeof window.OdooSurfaceLayers === "object")) {
+      throw new Error("form totals surface requires the canonical OdooSurfaceLayers bootstrap.");
+    }
+    return window.OdooSurfaceLayers;
   }
 
-  var layers = window.OdooSurfaceLayers;
+  var layers = requireSurfaceLayerApi();
 
   function normalizeScalarText(value) {
     return typeof value === "string" ? value.trim() : String(value == null ? "" : value).trim();
+  }
+
+  function readOptions(value) {
+    return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  }
+
+  function asElement(value) {
+    return value instanceof HTMLElement ? value : null;
+  }
+
+  function readFunction(value) {
+    return typeof value === "function" ? value : null;
   }
 
   function normalizeAmount(value) {
@@ -162,6 +177,77 @@
     row.style.setProperty("display", "none", "important");
   }
 
+  function resolveFormTotalsRoot(rawOptions) {
+    var options = readOptions(rawOptions);
+    if (typeof options.resolveRoot === "function") {
+      var resolvedRoot = options.resolveRoot();
+      if (resolvedRoot instanceof HTMLElement) {
+        return resolvedRoot;
+      }
+    }
+    if (options.root instanceof HTMLElement) {
+      return options.root;
+    }
+    var selector = normalizeScalarText(options.selector);
+    if (selector) {
+      var selectedRoot = document.querySelector(selector);
+      if (selectedRoot instanceof HTMLElement) {
+        return selectedRoot;
+      }
+    }
+    return null;
+  }
+
+  function normalizeFormTotalsSurfaceSpec(rawSpec) {
+    var spec = readOptions(rawSpec);
+    var root = asElement(spec.root);
+    var selector = normalizeScalarText(spec.selector);
+    var resolveRoot = readFunction(spec.resolveRoot);
+    if (!(root || selector || resolveRoot)) {
+      throw new Error("form totals surface spec.root, spec.selector, or spec.resolveRoot is required.");
+    }
+    var rowSelector = normalizeScalarText(spec.rowSelector);
+    if (!rowSelector) {
+      throw new Error("form totals surface spec.rowSelector is required.");
+    }
+    return {
+      root: root,
+      selector: selector,
+      resolveRoot: resolveRoot,
+      fallbackSelector: normalizeScalarText(spec.fallbackSelector),
+      rowSelector: rowSelector,
+      labelSelector: normalizeScalarText(spec.labelSelector) || "[data-surface-tax-label='1']",
+      amountSelector: normalizeScalarText(spec.amountSelector) || "[data-surface-tax-amount='1']",
+      replaceText: readFunction(spec.replaceText),
+      formatAmount: readFunction(spec.formatAmount),
+      money: readOptions(spec.money),
+      rows: readOptions(spec.rows),
+      beforeSync: readFunction(spec.beforeSync),
+      afterSync: readFunction(spec.afterSync),
+      visibleWhen: readFunction(spec.visibleWhen),
+    };
+  }
+
+  function buildFormTotalsSurfaceRuntimeSpec(spec, rawOptions) {
+    var options = readOptions(rawOptions);
+    return {
+      root: asElement(options.root) || spec.root,
+      selector: normalizeScalarText(options.selector || spec.selector),
+      resolveRoot: readFunction(options.resolveRoot) || spec.resolveRoot,
+      fallbackSelector: normalizeScalarText(options.fallbackSelector || spec.fallbackSelector),
+      rowSelector: normalizeScalarText(options.rowSelector || spec.rowSelector),
+      labelSelector: normalizeScalarText(options.labelSelector || spec.labelSelector) || "[data-surface-tax-label='1']",
+      amountSelector: normalizeScalarText(options.amountSelector || spec.amountSelector) || "[data-surface-tax-amount='1']",
+      replaceText: readFunction(options.replaceText) || spec.replaceText,
+      formatAmount: readFunction(options.formatAmount) || spec.formatAmount,
+      money: Object.assign({}, spec.money, readOptions(options.money)),
+      rows: Object.assign({}, spec.rows, readOptions(options.rows)),
+      beforeSync: readFunction(options.beforeSync) || spec.beforeSync,
+      afterSync: readFunction(options.afterSync) || spec.afterSync,
+      visibleWhen: readFunction(options.visibleWhen) || spec.visibleWhen,
+    };
+  }
+
   function buildFormTotalsSurface(spec) {
     var settings = spec && typeof spec === "object" ? spec : {};
     var root = settings.root instanceof HTMLElement ? settings.root : null;
@@ -229,8 +315,95 @@
     };
   }
 
+  function normalizeFormTotalsPayloadEnvelope(rawPayload) {
+    if (rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)) {
+      return {
+        taxTotals: Object.prototype.hasOwnProperty.call(rawPayload, "taxTotals")
+          ? rawPayload.taxTotals
+          : rawPayload.tax_totals,
+        fallbackAmount: Object.prototype.hasOwnProperty.call(rawPayload, "fallbackAmount")
+          ? rawPayload.fallbackAmount
+          : rawPayload.amountTax,
+      };
+    }
+    return {
+      taxTotals: rawPayload,
+      fallbackAmount: 0,
+    };
+  }
+
+  function buildFormTotalsSurfaceAdapter(rawSpec) {
+    var spec = normalizeFormTotalsSurfaceSpec(rawSpec);
+
+    function buildRuntime(rawOptions) {
+      var runtimeSpec = buildFormTotalsSurfaceRuntimeSpec(spec, rawOptions);
+      var root = resolveFormTotalsRoot(runtimeSpec);
+      if (!(root instanceof HTMLElement)) {
+        return null;
+      }
+      return buildFormTotalsSurface(Object.assign({}, runtimeSpec, { root: root }));
+    }
+
+    function clear(rawOptions) {
+      var runtime = buildRuntime(rawOptions);
+      if (!runtime) {
+        return false;
+      }
+      runtime.clear();
+      runtime.syncFallback(false);
+      return true;
+    }
+
+    function sync(rawPayload, rawOptions) {
+      var runtimeSpec = buildFormTotalsSurfaceRuntimeSpec(spec, rawOptions);
+      var envelope = normalizeFormTotalsPayloadEnvelope(rawPayload);
+      var visible = typeof runtimeSpec.visibleWhen === "function"
+        ? !!runtimeSpec.visibleWhen(envelope, readOptions(rawOptions))
+        : true;
+      if (!visible) {
+        clear(rawOptions);
+        return false;
+      }
+      if (typeof runtimeSpec.beforeSync === "function") {
+        runtimeSpec.beforeSync(envelope, readOptions(rawOptions));
+      }
+      var runtime = buildRuntime(rawOptions);
+      if (!runtime) {
+        return false;
+      }
+      var hasRows = runtime.sync(envelope.taxTotals, envelope.fallbackAmount, runtimeSpec.rows);
+      if (typeof runtimeSpec.afterSync === "function") {
+        runtimeSpec.afterSync({
+          hasRows: hasRows,
+          fallbackAmount: normalizeAmount(envelope.fallbackAmount),
+          taxRows: collectFormTotalsTaxRows(envelope.taxTotals, runtimeSpec.rows),
+        }, envelope, readOptions(rawOptions));
+      }
+      return hasRows;
+    }
+
+    function readState() {
+      return {
+        selector: spec.selector,
+        rowSelector: spec.rowSelector,
+        fallbackSelector: spec.fallbackSelector,
+        labelSelector: spec.labelSelector,
+        amountSelector: spec.amountSelector,
+      };
+    }
+
+    return {
+      clear: clear,
+      readState: readState,
+      sync: sync,
+    };
+  }
+
   layers.formatFormTotalsMonetaryValue = formatFormTotalsMonetaryValue;
   layers.normalizeFormTotalsPayload = normalizeFormTotalsPayload;
   layers.collectFormTotalsTaxRows = collectFormTotalsTaxRows;
+  layers.resolveFormTotalsRoot = resolveFormTotalsRoot;
+  layers.normalizeFormTotalsSurfaceSpec = normalizeFormTotalsSurfaceSpec;
   layers.buildFormTotalsSurface = buildFormTotalsSurface;
+  layers.buildFormTotalsSurfaceAdapter = buildFormTotalsSurfaceAdapter;
 })();

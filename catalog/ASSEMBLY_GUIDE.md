@@ -80,6 +80,7 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
 18. `form-totals-surface`
     - usar cuando el formulario necesita normalizar `tax_totals`, derivar filas visibles de impuestos y sincronizar un bloque DOM de totales
+    - el consumo canonico debe entrar por `buildFormTotalsSurfaceAdapter(spec)` cuando el proyecto necesite un controller reusable y no solo un renderer con `root` ya resuelto
     - es la superficie canonica para breakdown fiscal; no volver a ensamblar `form-totals`
 
 19. `form-layout-state`
@@ -209,6 +210,7 @@ Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las su
 - para `commercial-capture-context-surface`, los adapters deben declarar `panelSelector`, `recordModel`, `recordFieldMap`, `partnerFieldMap`, `formFieldMap`, `referenceMeta` y cualquier `slotOverrides` de forma explicita; el copy/noise compartido de politica comercial vive en `commercial-policy-surface`, no en presets inline del proyecto
 - para `form-defaults-surface` y `form-preview-surface`, los adapters deben declarar loaders, enrichers, field maps, preview targets y cualquier formatter/writer explicitamente; no debe revivirse `form_context.js` ni wiring local ad hoc
 - para `form-preview-surface`, los adapters de documentos transaccionales deben declarar que bloques readonly consumen el estado vivo del formulario y que targets son responsabilidad del preview layer; no debe esconderse esa sincronizacion en renderers locales de invoice, quotation, rental o similares
+- para `form-totals-surface`, los adapters deben declarar `selector` o `resolveRoot`, `rowSelector`, `fallbackSelector` y cualquier formatter monetario o hook de visibilidad explicitamente; no debe revivirse el wiring inline de `form_totals.js`
 - para `form-header-identity-surface`, los adapters deben declarar `fieldMap`, `displayRefBuilder`, `documentSeriesNormalizer`, `breadcrumbRoot`, `titleSync` y cualquier hook opcional de persistencia de forma explicita; no debe revivirse la heuristica Rental del header ni wiring por labels del breadcrumb
 - para `form-action-bridge-surface`, los adapters deben declarar `actionId`, `payloadBuilder`, `contextBuilder`, `successHandler` y cualquier gating o confirmacion de forma explicita; no debe esconderse dentro de `commercial-policy-surface` ni revivir puentes implicitos por nombre de boton o callback legacy
 - para `form-layout-surface` y sus paquetes hermanos, el host debe declarar access rules, persistence, settings metadata y editores por contratos explicitos; no debe reconstruirse el monolito de `form_section_layout`

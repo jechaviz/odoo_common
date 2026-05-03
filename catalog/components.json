@@ -311,7 +311,9 @@
       "tax_totals normalization",
       "tax group display rows",
       "monetary totals formatting",
-      "fallback tax row sync"
+      "fallback tax row sync",
+      "totals root resolution",
+      "totals adapter builder"
     ]
   },
   {

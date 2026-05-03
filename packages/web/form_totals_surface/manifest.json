@@ -18,6 +18,8 @@
   "capabilities": [
     "tax-totals-normalization",
     "tax-row-rendering",
-    "tax-fallback-visibility"
+    "tax-fallback-visibility",
+    "totals-root-resolution",
+    "totals-surface-adapter"
   ]
 }

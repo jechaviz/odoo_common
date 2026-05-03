@@ -26,7 +26,8 @@
       "customer context panel",
       "billing and shipping sidebars",
       "commercial context hydration",
-      "reference and condition summaries"
+      "reference and condition summaries",
+      "readonly commercial previews"
     ]
   },
   {
@@ -67,7 +68,8 @@
       "managed line entry",
       "server-side form actions",
       "commercial capture side panels",
-      "tax breakdown and totals preview"
+      "tax breakdown and totals preview",
+      "transactional readonly mirrors before and after line items"
     ]
   },
   {
@@ -108,7 +110,22 @@
       "payment terms defaults",
       "commercial policy sync",
       "server-side policy actions",
-      "partner language governance"
+      "partner language governance",
+      "commercial preview hydration in transactional documents"
+    ]
+  },
+  {
+    "key": "transactional_form_preview",
+    "title": "Transactional Form Preview",
+    "components": [
+      "form-preview-surface",
+      "commercial-policy-surface",
+      "form-totals-surface"
+    ],
+    "use_cases": [
+      "readonly mirrors inside transactional forms",
+      "commercial previews driven from browser state",
+      "totals and tax previews synchronized with line editing"
     ]
   },
   {

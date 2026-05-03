@@ -39,6 +39,27 @@
     return normalizeText(node.textContent || "");
   }
 
+  function asElement(value) {
+    return value instanceof HTMLElement ? value : null;
+  }
+
+  function readFunction(value) {
+    return typeof value === "function" ? value : null;
+  }
+
+  function readStringList(values) {
+    var seen = Object.create(null);
+    return (Array.isArray(values) ? values : []).reduce(function (result, value) {
+      var normalizedValue = normalizeText(value);
+      if (!normalizedValue || seen[normalizedValue]) {
+        return result;
+      }
+      seen[normalizedValue] = true;
+      result.push(normalizedValue);
+      return result;
+    }, []);
+  }
+
   function replaceTextContent(node, text) {
     if (!(node instanceof HTMLElement)) {
       return false;
@@ -102,6 +123,29 @@
       : null;
   }
 
+  function resolvePreviewTarget(rawTarget, rawOptions) {
+    var options = readOptions(rawOptions);
+    if (rawTarget instanceof HTMLElement) {
+      return rawTarget;
+    }
+    if (typeof rawTarget === "function") {
+      return resolvePreviewTarget(rawTarget(options), options);
+    }
+    var selector = normalizeText(rawTarget);
+    if (!selector) {
+      return null;
+    }
+    var rootNode = resolveManagedFormRoot(options);
+    if (rootNode instanceof HTMLElement) {
+      var nestedTarget = rootNode.querySelector(selector);
+      if (nestedTarget instanceof HTMLElement) {
+        return nestedTarget;
+      }
+    }
+    var documentTarget = document.querySelector(selector);
+    return documentTarget instanceof HTMLElement ? documentTarget : null;
+  }
+
   function resolveFormFieldRoot(fieldName, rawOptions) {
     var normalizedFieldName = normalizeText(fieldName);
     if (!normalizedFieldName) {
@@ -159,14 +203,183 @@
     return replaceTextContent(fieldRoot, normalizedValue);
   }
 
+  function normalizePreviewBinding(rawBinding, previewKey) {
+    var binding = rawBinding && typeof rawBinding === "object" && !Array.isArray(rawBinding)
+      ? rawBinding
+      : {};
+    var normalizedPreviewKey = normalizeText(previewKey || binding.previewKey || binding.key || binding.name);
+    var fieldName = normalizeText(binding.fieldName || binding.previewField || binding.targetField);
+    var targetSelector = normalizeText(binding.targetSelector || binding.previewSelector);
+    var targetResolver = readFunction(binding.resolveTarget || binding.targetResolver);
+    var targetNode = asElement(binding.targetNode);
+    var formatter = readFunction(binding.format);
+    var writer = readFunction(binding.write);
+    var shouldHideWhenEmpty = !Object.prototype.hasOwnProperty.call(binding, "hideWhenEmpty") || !!binding.hideWhenEmpty;
+    var shouldWriteField = !Object.prototype.hasOwnProperty.call(binding, "writeField") || !!binding.writeField;
+    var shouldWriteTarget = !Object.prototype.hasOwnProperty.call(binding, "writeTarget") || !!binding.writeTarget;
+    if (!(fieldName || targetSelector || targetResolver || targetNode || writer)) {
+      throw new Error(
+        "form_preview_surface binding " + (normalizedPreviewKey || "<anonymous>") +
+        " requires fieldName, targetSelector, resolveTarget, targetNode, or write."
+      );
+    }
+    return {
+      previewKey: normalizedPreviewKey,
+      fieldName: fieldName,
+      targetSelector: targetSelector,
+      targetResolver: targetResolver,
+      targetNode: targetNode,
+      formatter: formatter,
+      writer: writer,
+      hideWhenEmpty: shouldHideWhenEmpty,
+      writeField: shouldWriteField,
+      writeTarget: shouldWriteTarget,
+    };
+  }
+
+  function normalizePreviewBindings(rawPreviewFields) {
+    if (Array.isArray(rawPreviewFields)) {
+      return rawPreviewFields.reduce(function (result, binding, index) {
+        var normalizedBinding = normalizePreviewBinding(binding, binding && binding.previewKey ? binding.previewKey : "binding_" + String(index));
+        result[normalizedBinding.previewKey || String(index)] = normalizedBinding;
+        return result;
+      }, Object.create(null));
+    }
+    var source = rawPreviewFields && typeof rawPreviewFields === "object" ? rawPreviewFields : {};
+    return Object.keys(source).reduce(function (result, previewKey) {
+      result[previewKey] = normalizePreviewBinding(source[previewKey], previewKey);
+      return result;
+    }, Object.create(null));
+  }
+
+  function normalizeFormPreviewSurfaceSpec(rawSpec) {
+    var spec = readOptions(rawSpec);
+    var previewFields = normalizePreviewBindings(spec.previewFields || spec.bindings);
+    if (!Object.keys(previewFields).length) {
+      throw new Error("form_preview_surface spec.previewFields is required.");
+    }
+    return {
+      selector: normalizeText(spec.selector),
+      formRoot: asElement(spec.formRoot),
+      resolveRoot: readFunction(spec.resolveRoot),
+      allowDialog: !!spec.allowDialog,
+      previewFields: previewFields,
+      visibleWhen: readFunction(spec.visibleWhen),
+      beforeSync: readFunction(spec.beforeSync),
+      afterSync: readFunction(spec.afterSync),
+    };
+  }
+
+  function buildFormPreviewSurfaceRuntimeOptions(spec, rawOptions) {
+    var options = readOptions(rawOptions);
+    return {
+      selector: normalizeText(options.selector || spec.selector),
+      formRoot: asElement(options.formRoot) || spec.formRoot,
+      resolveRoot: readFunction(options.resolveRoot) || spec.resolveRoot,
+      allowDialog: Object.prototype.hasOwnProperty.call(options, "allowDialog")
+        ? !!options.allowDialog
+        : spec.allowDialog,
+    };
+  }
+
+  function normalizePreviewPayload(rawPayload) {
+    return rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload) ? rawPayload : {};
+  }
+
+  function syncFormPreviewBinding(binding, payload, runtimeOptions, rawAdapterOptions) {
+    var adapterOptions = readOptions(rawAdapterOptions);
+    var previewKey = binding.previewKey;
+    var value = previewKey ? payload[previewKey] : "";
+    if (binding.formatter) {
+      value = binding.formatter(value, payload, adapterOptions);
+    }
+    var normalizedValue = normalizeText(value);
+    var visible = binding.hideWhenEmpty ? !!normalizedValue : true;
+    if (binding.writeField && binding.fieldName) {
+      setFormFieldPreviewValue(binding.fieldName, normalizedValue, Object.assign({}, runtimeOptions, {
+        onlyWhenEmpty: !!adapterOptions.onlyWhenEmpty,
+        allowWhenFocused: !!adapterOptions.allowWhenFocused,
+      }));
+    }
+    var targetNode = binding.targetNode
+      || (binding.targetResolver ? resolvePreviewTarget(binding.targetResolver, runtimeOptions) : null)
+      || resolvePreviewTarget(binding.targetSelector, runtimeOptions);
+    if (typeof binding.writer === "function") {
+      binding.writer(targetNode, normalizedValue, payload, adapterOptions);
+    } else if (binding.writeTarget && targetNode instanceof HTMLElement) {
+      replaceTextContent(targetNode, normalizedValue);
+    }
+    if (targetNode instanceof HTMLElement) {
+      setPreviewNodeVisibility(targetNode, visible);
+    }
+    return {
+      previewKey: previewKey,
+      value: normalizedValue,
+      visible: visible,
+      targetNode: targetNode,
+    };
+  }
+
+  function buildFormPreviewSurfaceAdapter(rawSpec) {
+    var spec = normalizeFormPreviewSurfaceSpec(rawSpec);
+
+    function applySync(rawPayload, rawOptions, skipVisibilityGuard) {
+      var payload = normalizePreviewPayload(rawPayload);
+      var runtimeOptions = buildFormPreviewSurfaceRuntimeOptions(spec, rawOptions);
+      var adapterOptions = readOptions(rawOptions);
+      if (!skipVisibilityGuard && typeof spec.visibleWhen === "function" && !spec.visibleWhen(payload, adapterOptions)) {
+        clear(rawOptions);
+        return [];
+      }
+      if (typeof spec.beforeSync === "function") {
+        spec.beforeSync(payload, adapterOptions);
+      }
+      var results = Object.keys(spec.previewFields).map(function (previewKey) {
+        return syncFormPreviewBinding(spec.previewFields[previewKey], payload, runtimeOptions, adapterOptions);
+      });
+      if (typeof spec.afterSync === "function") {
+        spec.afterSync(results, payload, adapterOptions);
+      }
+      return results;
+    }
+
+    function sync(rawPayload, rawOptions) {
+      return applySync(rawPayload, rawOptions, false);
+    }
+
+    function clear(rawOptions) {
+      return applySync({}, Object.assign({}, readOptions(rawOptions), { allowWhenFocused: true }), true);
+    }
+
+    function readState() {
+      return {
+        selector: spec.selector,
+        allowDialog: spec.allowDialog,
+        previewKeys: Object.keys(spec.previewFields),
+        fieldNames: readStringList(Object.keys(spec.previewFields).map(function (previewKey) {
+          return spec.previewFields[previewKey].fieldName;
+        })),
+      };
+    }
+
+    return {
+      sync: sync,
+      clear: clear,
+      readState: readState,
+    };
+  }
+
   var surfaceLayerApi = requireSurfaceLayerApi();
 
   surfaceLayerApi.resolveManagedFormRoot = resolveManagedFormRoot;
+  surfaceLayerApi.resolvePreviewTarget = resolvePreviewTarget;
   surfaceLayerApi.resolveFormFieldRoot = resolveFormFieldRoot;
   surfaceLayerApi.readFormFieldText = readFormFieldText;
   surfaceLayerApi.setFormFieldPreviewValue = setFormFieldPreviewValue;
   surfaceLayerApi.replaceTextContent = replaceTextContent;
   surfaceLayerApi.setPreviewNodeVisibility = setPreviewNodeVisibility;
+  surfaceLayerApi.normalizeFormPreviewSurfaceSpec = normalizeFormPreviewSurfaceSpec;
+  surfaceLayerApi.buildFormPreviewSurfaceAdapter = buildFormPreviewSurfaceAdapter;
 
   window.OdooSurfaceLayers = surfaceLayerApi;
 })();

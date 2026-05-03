@@ -35,7 +35,10 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
 7. `form-preview-surface`
    - usar cuando el formulario necesita hidratar previews visibles o espejos readonly dentro del DOM
+   - es una superficie consumible real en documentos transaccionales: resumenes comerciales, espejos de condiciones, referencias visibles y bloques de totales que dependen del estado vivo del browser
    - concentra lectura/escritura de field previews y visibilidad de nodos
+   - el runtime canonico debe consumirse via `buildFormPreviewSurfaceAdapter(spec)` cuando el proyecto necesite un controller reusable y no solo helpers sueltos
+   - no debe quedar implicita dentro de `commercial-policy-surface` ni de `form-totals-surface`; se ensambla explicita cuando el formulario necesita mirrors visibles
 
 8. `form-header-identity-surface`
    - usar cuando el formulario necesita mantener sincronizados los controles de identidad del header, su referencia visible y el ultimo segmento navegable del breadcrumb
@@ -126,6 +129,9 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `default-persistence`
 - `terms-and-conditions`
 
+Regla adicional:
+- si el documento expone mirrors readonly de condiciones, referencias comerciales, totales o bloques previos/posteriores a lineas, `form-preview-surface` no es opcional cosmetica; es la superficie canonica que debe ensamblarse explicitamente
+
 ### Formulario operativo editable
 
 - `form-layout-surface`
@@ -157,6 +163,14 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 - `partner-defaults` si el panel depende de defaults server-side por cliente
 - `commercial-policy-surface` si el panel ademas expone policy sync o hydration de browser
 - `form-action-bridge-surface` si el panel tambien dispara acciones server-side desde el browser
+
+### Preview transaccional puro
+
+- `form-preview-surface`
+- `commercial-policy-surface` si el preview depende de politica comercial o defaults vivos del browser
+- `form-totals-surface` si el preview necesita breakdown fiscal o totales visibles sincronizados
+
+Usar esta combinacion cuando el formulario no necesita todo el shell de captura, pero si necesita espejos readonly consistentes durante la edicion de un documento transaccional.
 
 ### Catalogo maestro
 
@@ -193,7 +207,8 @@ Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las su
 - para `line-picker-surface`, los adapters deben declarar `managedFormEnhancers`, `x2manyField`, `itemField` y cualquier selector excepcional de forma explicita; no debe reabsorberse en wiring implicito del shell
 - para `record-context-surface`, los adapters deben declarar `slots`, `valueKey`, readers relacionales y renderers explicitamente; no debe reabsorberse en presets del shell ni en wiring implicito por formulario
 - para `commercial-capture-context-surface`, los adapters deben declarar `panelSelector`, `recordModel`, `recordFieldMap`, `partnerFieldMap`, `formFieldMap`, `referenceMeta` y cualquier `slotOverrides` de forma explicita; el copy/noise compartido de politica comercial vive en `commercial-policy-surface`, no en presets inline del proyecto
-- para `form-defaults-surface` y `form-preview-surface`, los adapters deben declarar loaders, enrichers, field maps y preview targets explicitamente; no debe revivirse `form_context.js` ni wiring local ad hoc
+- para `form-defaults-surface` y `form-preview-surface`, los adapters deben declarar loaders, enrichers, field maps, preview targets y cualquier formatter/writer explicitamente; no debe revivirse `form_context.js` ni wiring local ad hoc
+- para `form-preview-surface`, los adapters de documentos transaccionales deben declarar que bloques readonly consumen el estado vivo del formulario y que targets son responsabilidad del preview layer; no debe esconderse esa sincronizacion en renderers locales de invoice, quotation, rental o similares
 - para `form-header-identity-surface`, los adapters deben declarar `fieldMap`, `displayRefBuilder`, `documentSeriesNormalizer`, `breadcrumbRoot`, `titleSync` y cualquier hook opcional de persistencia de forma explicita; no debe revivirse la heuristica Rental del header ni wiring por labels del breadcrumb
 - para `form-action-bridge-surface`, los adapters deben declarar `actionId`, `payloadBuilder`, `contextBuilder`, `successHandler` y cualquier gating o confirmacion de forma explicita; no debe esconderse dentro de `commercial-policy-surface` ni revivir puentes implicitos por nombre de boton o callback legacy
 - para `form-layout-surface` y sus paquetes hermanos, el host debe declarar access rules, persistence, settings metadata y editores por contratos explicitos; no debe reconstruirse el monolito de `form_section_layout`

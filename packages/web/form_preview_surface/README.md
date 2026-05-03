@@ -14,13 +14,60 @@ This package must stay generic:
 
 Public API on `window.OdooSurfaceLayers`:
 - `resolveManagedFormRoot(options)`
+- `resolvePreviewTarget(target, options)`
 - `resolveFormFieldRoot(fieldName, options)`
 - `readFormFieldText(fieldName, options)`
 - `setFormFieldPreviewValue(fieldName, value, options)`
 - `replaceTextContent(node, text)`
 - `setPreviewNodeVisibility(node, visible)`
+- `normalizeFormPreviewSurfaceSpec(spec)`
+- `buildFormPreviewSurfaceAdapter(spec)`
+
+## Canonical adapter contract
+
+`form-preview-surface` is consumable as a real shared runtime, not only as loose DOM helpers.
+
+Use `buildFormPreviewSurfaceAdapter(spec)` when a project or another shared package needs a canonical preview controller with:
+- `sync(payload, options)`
+- `clear(options)`
+- `readState()`
+
+### Minimal spec
+
+```js
+window.OdooSurfaceLayers.buildFormPreviewSurfaceAdapter({
+  selector: ".o_form_view",
+  previewFields: {
+    displayReference: {
+      fieldName: "x_document_display_ref",
+      targetSelector: ".o_rp_document_display_ref",
+    },
+    branchLabel: {
+      fieldName: "x_origin_branch_id",
+      targetSelector: "[data-surface-preview='branch']",
+      hideWhenEmpty: true,
+    },
+  },
+});
+```
+
+Each preview binding may declare:
+- `fieldName`
+- `targetSelector`
+- `resolveTarget`
+- `targetNode`
+- `format(value, payload, options)`
+- `write(node, value, payload, options)`
+- `hideWhenEmpty`
+- `writeField`
+- `writeTarget`
+
+The canonical rule is:
+- if the consumer only needs field/value hydration or DOM mirrors, use this package directly
+- if the consumer needs business meaning, labels, or source-model wiring, keep that in the adapter package above it
 
 Consumers should provide only:
 - optional form root selectors/resolvers
-- field names to read or hydrate
+- field names or preview targets to read/hydrate
+- optional formatting/writing behavior through `spec`
 - optional focus/empty-write behavior through `options`

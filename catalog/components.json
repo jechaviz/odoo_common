@@ -113,7 +113,11 @@
     "features": [
       "form root resolution",
       "field preview hydration",
-      "preview visibility sync"
+      "preview visibility sync",
+      "preview target resolution",
+      "preview adapter builder",
+      "transactional document readonly mirrors",
+      "commercial and totals preview targets"
     ]
   },
   {

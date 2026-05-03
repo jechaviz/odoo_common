@@ -18,6 +18,8 @@
   "capabilities": [
     "form-root-resolution",
     "field-preview-hydration",
-    "preview-visibility-sync"
+    "preview-visibility-sync",
+    "preview-target-resolution",
+    "preview-surface-adapter"
   ]
 }

@@ -148,6 +148,12 @@
       "target_relative": "src/odoo_common/action_menu_upserts",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "report-upserts",
+      "target_relative": "src/odoo_common/report_upserts",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

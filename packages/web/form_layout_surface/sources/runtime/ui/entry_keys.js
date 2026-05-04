@@ -2,6 +2,12 @@
   "use strict";
   v2.ui_builder = v2.ui_builder || {};
   var _state = v2.state = v2.state || {};
+  var cleanText = v2.cleanText || function (value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  };
+  var currentLocaleCode = v2.currentLocaleCode || function () {
+    return "en_US";
+  };
 
   // Source: lib/odoo/web/form_section_layout/runtime/ui/entry_keys.js
 

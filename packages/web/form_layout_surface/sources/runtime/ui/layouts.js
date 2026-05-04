@@ -2,6 +2,25 @@
   "use strict";
   v2.ui_builder = v2.ui_builder || {};
   var _state = v2.state = v2.state || {};
+  var FORM_ROOT_SELECTOR = v2.FORM_ROOT_SELECTOR || "[data-lib-scope-key]";
+  var LAYOUT_CONTAINER_CLASS = v2.LAYOUT_CONTAINER_CLASS || "o_lib_layout_container";
+  var LAYOUT_ITEM_HIDDEN_CLASS = v2.LAYOUT_ITEM_HIDDEN_CLASS || "o_lib_layout_item_hidden";
+  var LAYOUT_SETTINGS_TRIGGER_CLASS = v2.LAYOUT_SETTINGS_TRIGGER_CLASS || "o_lib_layout_settings_trigger";
+  var SECTION_SETTINGS_TRIGGER_CLASS = v2.SECTION_SETTINGS_TRIGGER_CLASS || "o_lib_section_settings_trigger";
+  var cleanText = v2.cleanText || function (value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  };
+  var layoutDefaultItemKey = v2.layoutDefaultItemKey || function () {
+    return "";
+  };
+  var layoutItemIsVisible = v2.layoutItemIsVisible || function () {
+    return true;
+  };
+  var canAccessLayoutSettings = v2.canAccessLayoutSettings || function () {
+    return false;
+  };
+  var openSectionSettingsPanel = v2.openSectionSettingsPanel || function () {};
+  var applySettingsTriggerIcon = v2.applySettingsTriggerIcon || function () {};
 
   // Source: lib/odoo/web/form_section_layout/runtime/ui/layouts.js
 

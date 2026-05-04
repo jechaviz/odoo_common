@@ -2,6 +2,14 @@
   "use strict";
   v2.ui_builder = v2.ui_builder || {};
   var _state = v2.state = v2.state || {};
+  var FORM_ROOT_SELECTOR = v2.FORM_ROOT_SELECTOR || "[data-lib-scope-key]";
+  var SETTINGS_PANEL_ID = v2.SETTINGS_PANEL_ID || "o_lib_form_section_settings_panel";
+  var SUBTOTAL_CONTAINER_CLASS = v2.SUBTOTAL_CONTAINER_CLASS || "o_lib_subtotal_container";
+  var COLLAPSIBLE_GROUP_CLASS = v2.COLLAPSIBLE_GROUP_CLASS || "o_lib_collapsible_group";
+  var HEADER_CLASS = v2.HEADER_CLASS || "o_lib_section_header";
+  var SETTINGS_ICON_CLASS = v2.SETTINGS_ICON_CLASS || "fa fa-sliders";
+  var PENCIL_ICON_CLASS = v2.PENCIL_ICON_CLASS || "fa fa-pencil";
+  var CHECK_ICON_CLASS = v2.CHECK_ICON_CLASS || "fa fa-check";
 
   // Source: lib/odoo/web/form_section_layout/runtime/ui/action_helpers.js
 

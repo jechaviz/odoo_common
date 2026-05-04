@@ -2,6 +2,7 @@
   "use strict";
 
   var _state = v2.state = v2.state || {};
+  var FORM_ROOT_SELECTOR = v2.FORM_ROOT_SELECTOR || "[data-lib-scope-key]";
 
   function ensureStateLoaded() {
     if (_state.formLayoutLoadPromise) {
@@ -135,8 +136,6 @@
     observer.observe(document.body, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ["class"],
     });
   }
 

@@ -1311,8 +1311,6 @@
       handle.observer.observe(document.documentElement, {
         childList: true,
         subtree: true,
-        attributes: true,
-        attributeFilter: ["class", MANAGED_ATTR],
       });
     }
   }

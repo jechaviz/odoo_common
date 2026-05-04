@@ -2,6 +2,7 @@
   "use strict";
   v2.state = v2.state || {};
   var _state = v2.state = v2.state || {};
+  var SETTINGS_ICON_CLASS = v2.SETTINGS_ICON_CLASS || "fa fa-sliders";
 
   _state.formLayoutState = v2.emptyLayoutState();
 

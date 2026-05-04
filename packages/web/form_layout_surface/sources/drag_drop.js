@@ -2,6 +2,20 @@
   "use strict";
   v2.drag_drop = v2.drag_drop || {};
   var _state = v2.state = v2.state || {};
+  var FORM_ROOT_SELECTOR = v2.FORM_ROOT_SELECTOR || "[data-lib-scope-key]";
+  var COLLAPSIBLE_GROUP_CLASS = v2.COLLAPSIBLE_GROUP_CLASS || "o_lib_collapsible_group";
+  var DRAG_HANDLE_CLASS = v2.DRAG_HANDLE_CLASS || "o_lib_section_drag_handle";
+  var DRAGGING_CLASS = v2.DRAGGING_CLASS || "o_lib_section_dragging";
+  var DROP_BEFORE_CLASS = v2.DROP_BEFORE_CLASS || "o_lib_section_drop_before";
+  var DROP_AFTER_CLASS = v2.DROP_AFTER_CLASS || "o_lib_section_drop_after";
+  var SUBTOTAL_LINE_ROW_CLASS = v2.SUBTOTAL_LINE_ROW_CLASS || "o_lib_subtotal_line_row";
+  var SUBTOTAL_LINE_DROP_BEFORE_CLASS = v2.SUBTOTAL_LINE_DROP_BEFORE_CLASS || "o_lib_subtotal_line_drop_before";
+  var SUBTOTAL_LINE_DROP_AFTER_CLASS = v2.SUBTOTAL_LINE_DROP_AFTER_CLASS || "o_lib_subtotal_line_drop_after";
+  var findSectionHeader = v2.findSectionHeader || function () { return null; };
+  var computeScopeKey = v2.computeScopeKey || function () { return "unknown_model|unknown_view"; };
+  var storeCurrentOrderForForm = v2.storeCurrentOrderForForm || function () {};
+  var queueStatePersist = v2.queueStatePersist || function () { return Promise.resolve(null); };
+  var processFormNode = v2.processFormNode || function () {};
 
   function clearSubtotalDropMarkers(containerNode) {
     if (!(containerNode instanceof HTMLElement)) {

@@ -1450,8 +1450,6 @@
       shared.sidebarShellObserver.observe(document.documentElement, {
         childList: true,
         subtree: true,
-        attributes: true,
-        attributeFilter: ["class"],
       });
     }
     if (document.readyState === "loading") {

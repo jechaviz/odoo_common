@@ -2,6 +2,25 @@
   "use strict";
   v2.ui_builder = v2.ui_builder || {};
   var _state = v2.state = v2.state || {};
+  var LOCAL_STORAGE_PREFIX = v2.LOCAL_STORAGE_PREFIX || "odoo.lib.form_section_layout.v2.user_";
+  var DB_PARAM_PREFIX = v2.DB_PARAM_PREFIX || "odoo.lib.form_section_layout.v2.user_";
+  var DB_GLOBAL_PARAM_KEY = v2.DB_GLOBAL_PARAM_KEY || "odoo.lib.form_section_layout.v2.global";
+  var currentUserId = v2.currentUserId || function () {
+    return 0;
+  };
+  var dedupeKeys = v2.dedupeKeys || function (keys) {
+    var seen = new Set();
+    var output = [];
+    (Array.isArray(keys) ? keys : []).forEach(function (key) {
+      var normalized = String(key || "").trim();
+      if (!normalized || seen.has(normalized)) {
+        return;
+      }
+      seen.add(normalized);
+      output.push(normalized);
+    });
+    return output;
+  };
 
   // Source: lib/odoo/web/form_section_layout/runtime/ui/state_storage.js
 

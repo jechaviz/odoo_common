@@ -2,6 +2,41 @@
   "use strict";
   v2.ui_builder = v2.ui_builder || {};
   var _state = v2.state = v2.state || {};
+  var FORM_ROOT_SELECTOR = v2.FORM_ROOT_SELECTOR || "[data-lib-scope-key]";
+  var COLLAPSIBLE_GROUP_CLASS = v2.COLLAPSIBLE_GROUP_CLASS || "o_lib_collapsible_group";
+  var COLLAPSED_GROUP_CLASS = v2.COLLAPSED_GROUP_CLASS || "o_lib_section_is_collapsed";
+  var cleanText = v2.cleanText || function (value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  };
+  var dedupeKeys = v2.dedupeKeys || function (keys) {
+    var seen = new Set();
+    var output = [];
+    (Array.isArray(keys) ? keys : []).forEach(function (key) {
+      var normalized = String(key || "").trim();
+      if (!normalized || seen.has(normalized)) {
+        return;
+      }
+      seen.add(normalized);
+      output.push(normalized);
+    });
+    return output;
+  };
+  var getSectionGroups = v2.getSectionGroups || function () { return []; };
+  var normalizeStatePersistOptions = v2.normalizeStatePersistOptions || function () { return null; };
+  var ensureUserScopedKeys = v2.ensureUserScopedKeys || function () { return 0; };
+  var cloneLayoutState = v2.cloneLayoutState || function (state) { return Object.assign({}, state || {}); };
+  var writeLocalLayoutState = v2.writeLocalLayoutState || function () {};
+  var computeScopeKey = v2.computeScopeKey || function () { return "unknown_model|unknown_view"; };
+  var findSectionHeader = v2.findSectionHeader || function () { return null; };
+  var setGroupCollapsed = v2.setGroupCollapsed || function (groupNode, _headerNode, collapsed) {
+    if (groupNode instanceof HTMLElement) {
+      groupNode.classList.toggle(COLLAPSED_GROUP_CLASS, !!collapsed);
+    }
+  };
+  var collapsedEntryKey = v2.collapsedEntryKey || function (scopeKey, sectionKey) {
+    return String(scopeKey || "") + "|" + String(sectionKey || "");
+  };
+  var openSectionSettingsPanel = v2.openSectionSettingsPanel || function () {};
 
   // Source: lib/odoo/web/form_section_layout/runtime/ui/process_persistence.js
 

@@ -106,6 +106,12 @@
       "target_relative": "src/odoo_common/many2x_parent_form_autosave",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "common-component-sync",
+      "target_relative": "src/odoo_common/common_component_sync",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

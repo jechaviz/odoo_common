@@ -256,6 +256,18 @@
     ]
   },
   {
+    "key": "survey_publication",
+    "title": "Survey Publication",
+    "components": [
+      "survey-upserts"
+    ],
+    "use_cases": [
+      "survey pages",
+      "choice questions",
+      "managed answer options"
+    ]
+  },
+  {
     "key": "action_menu_publication",
     "title": "Action And Menu Publication",
     "components": [

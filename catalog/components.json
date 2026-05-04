@@ -643,6 +643,24 @@
     ]
   },
   {
+    "key": "survey-upserts",
+    "title": "Odoo Survey Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/survey_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/settings_intake.py"
+      }
+    ],
+    "features": [
+      "survey page upsert",
+      "survey question upsert",
+      "survey answer reconciliation"
+    ]
+  },
+  {
     "key": "action-menu-upserts",
     "title": "Action And Menu Upserts",
     "runtime": "python",

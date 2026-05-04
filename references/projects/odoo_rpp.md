@@ -38,6 +38,7 @@ Nivel actual:
 - base canonica para `packages/python/registry_lookup`
 - base canonica para `packages/python/product_catalog_upserts`
 - base canonica para `packages/python/sequence_upserts`
+- base canonica para `packages/python/survey_upserts`
 - base canonica para `packages/python/action_menu_upserts`
 - base canonica para `packages/python/view_upserts`
 - base canonica para `packages/python/custom_field_upserts`

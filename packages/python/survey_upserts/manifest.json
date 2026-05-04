@@ -1,0 +1,18 @@
+{
+  "key": "survey-upserts",
+  "title": "Odoo Survey Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "survey_upserts.py"
+  ],
+  "capabilities": [
+    "survey-page-upsert",
+    "survey-question-upsert",
+    "survey-answer-sync"
+  ]
+}

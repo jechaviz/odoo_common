@@ -1,0 +1,19 @@
+{
+  "key": "resource-config",
+  "title": "Resource Config Normalizers",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "resource_config.py"
+  ],
+  "capabilities": [
+    "deep-config-merge",
+    "string-tuple-accessors",
+    "string-mapping-accessors",
+    "nested-mapping-list-accessors"
+  ]
+}

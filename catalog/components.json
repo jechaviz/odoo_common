@@ -731,6 +731,29 @@
     ]
   },
   {
+    "key": "resource-config",
+    "title": "Resource Config Normalizers",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/resource_config",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/resource_config_accessors.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/yaml_resource_config.py"
+      }
+    ],
+    "features": [
+      "deep config merge",
+      "string tuple accessors",
+      "string mapping accessors",
+      "nested mapping list accessors"
+    ]
+  },
+  {
     "key": "product-catalog-upserts",
     "title": "Odoo Product Catalog Upserts",
     "runtime": "python",

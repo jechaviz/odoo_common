@@ -308,6 +308,18 @@
     ]
   },
   {
+    "key": "resource_config",
+    "title": "Resource Config",
+    "components": [
+      "resource-config"
+    ],
+    "use_cases": [
+      "normalizing project-loaded config mappings",
+      "merging declarative defaults with overrides",
+      "extracting string lists and nested mapping lists"
+    ]
+  },
+  {
     "key": "product_catalog_publication",
     "title": "Product Catalog Publication",
     "components": [

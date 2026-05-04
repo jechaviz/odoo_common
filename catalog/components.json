@@ -467,6 +467,37 @@
     ]
   },
   {
+    "key": "odoo-registry-lookup",
+    "title": "Odoo Registry Lookup",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/registry_lookup",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/model_id_lookup.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/xmlid_resolution.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/model_metadata_lookup.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_002.pyfrag"
+      }
+    ],
+    "features": [
+      "ir.model resolution",
+      "ir.model.fields resolution",
+      "ir.model.data XML ID resolution",
+      "fields_get metadata validation"
+    ]
+  },
+  {
     "key": "many2x-parent-form-autosave",
     "title": "Many2X Parent Form Autosave",
     "runtime": "web",

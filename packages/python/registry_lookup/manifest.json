@@ -1,0 +1,19 @@
+{
+  "key": "odoo-registry-lookup",
+  "title": "Odoo Registry Lookup",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "registry_lookup.py"
+  ],
+  "capabilities": [
+    "model-id-resolution",
+    "model-field-resolution",
+    "xml-id-resolution",
+    "fields-get-inspection"
+  ]
+}

@@ -171,6 +171,19 @@
     ]
   },
   {
+    "key": "odoo_registry_lookup",
+    "title": "Odoo Registry Lookup",
+    "components": [
+      "odoo-registry-lookup"
+    ],
+    "use_cases": [
+      "technical model resolution",
+      "field id resolution",
+      "strict XML ID lookups",
+      "fields_get metadata inspection"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

@@ -1,0 +1,19 @@
+{
+  "key": "action-menu-upserts",
+  "title": "Action And Menu Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "action_menu_upserts.py"
+  ],
+  "capabilities": [
+    "act-window-upsert",
+    "act-url-upsert",
+    "menu-upsert",
+    "menu-action-binding"
+  ]
+}

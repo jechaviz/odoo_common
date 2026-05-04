@@ -184,6 +184,19 @@
     ]
   },
   {
+    "key": "action_menu_publication",
+    "title": "Action And Menu Publication",
+    "components": [
+      "action-menu-upserts"
+    ],
+    "use_cases": [
+      "window actions",
+      "URL actions",
+      "root and child menus",
+      "menu action references"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

@@ -23,6 +23,13 @@ Requiere `surface-workspace-shell` y consume APIs canonicas de `window.OdooSurfa
 - `resolveOdooService`
 - `findVisibleForm`
 
+Servicios Odoo resueltos en runtime:
+- `action`
+- `orm`
+
+Fallback opcional:
+- si el caller no pasa `runtimeContext.controller`, el runtime puede inspeccionar `window.odoo.__WOWL_DEBUG__` para ubicar el `FormController` vivo cuando Odoo lo expone; los adapters deben preferir controller/actionService explicitos.
+
 ## API exportada
 
 - `buildFormActionBridgeConfig(rawSpec)`
@@ -52,6 +59,8 @@ Cada entrada declarativa en `managedFormEnhancers` debe usar:
 - `busyAttr`
 - `acceptButton(button, runtimeContext, meta, adapter)`
 
+`key` no es alias canonico de `bridgeKey`; los adapters nuevos deben declarar `bridgeKey` si necesitan separar multiples bridges.
+
 ### Persistencia
 
 - `persistBeforeAction`
@@ -65,15 +74,27 @@ La persistencia intenta, en este orden:
 
 ### Resolucion de accion
 
+- `actionRequest`
+- `actionId`
+- `allowButtonNameFallback`
 - `resolveActionRequest(button, runtimeContext, meta, adapter)`
 - `runServerActions`
+- `contextAttribute`
+- `parseButtonContext`
 - `resolveAdditionalContext(button, runtimeContext, meta, adapter)`
+
+Orden canonico:
+- `resolveActionRequest(...)` si existe
+- `actionRequest`/`actionId` declarativo
+- `button.getAttribute("name")` solo si `allowButtonNameFallback !== false`
 
 Si la accion es numerica y `runServerActions !== false`, el runtime ejecuta:
 
 - `orm.call("ir.actions.server", "run", [[actionId]], { context })`
 
 Si esa llamada devuelve una accion, el runtime la ejecuta.
+
+El parser de contexto del boton solo lee `active_model`, `active_id` y `active_ids` desde el atributo declarado por `contextAttribute` (default `context`). Desactivar con `parseButtonContext: false` cuando el contexto de negocio venga completo desde `resolveAdditionalContext`.
 
 ### Hooks opcionales
 
@@ -86,7 +107,10 @@ Si esa llamada devuelve una accion, el runtime la ejecuta.
 ```js
 window.OdooSurfaceLayers.buildFormActionBridgeConfig({
   enhancerKey: "formActionBridge",
+  bridgeKey: "server-action-bridge",
   buttonSelector: ".o_form_view button[type='action']",
+  actionId: 123,
+  allowButtonNameFallback: false,
   persistBeforeAction: true,
   resolveAdditionalContext: function (_button, _runtimeContext, meta) {
     return {

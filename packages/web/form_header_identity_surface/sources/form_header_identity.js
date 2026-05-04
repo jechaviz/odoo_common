@@ -19,6 +19,18 @@
     return candidate;
   }
 
+  var HEADER_IDENTITY_ENHANCER_KEY = "headerIdentity";
+  var DEFAULT_FORM_SELECTOR = ".o_form_view";
+  var DEFAULT_IDENTITY_SELECTOR = "[data-surface-header-identity='1']";
+  var DEFAULT_SLOT_SELECTOR = "[data-surface-header-identity-slot]";
+  var HEADER_IDENTITY_SLOT_ATTR = "data-surface-header-identity-slot";
+  var HEADER_IDENTITY_EMPTY_ATTR = "data-surface-header-identity-empty";
+  var HEADER_IDENTITY_VALUE_SELECTOR = "[data-surface-header-identity-value='1'], .o_surface_header_identity_value";
+  var DEFAULT_FIELD_ROOT_SELECTOR = "[name], [data-name]";
+  var DEFAULT_DROPDOWN_OPTION_SELECTOR = ".o-autocomplete--dropdown-item, .o_m2o_dropdown_option, [role='option'], [role='menuitem'], .dropdown-item, .ui-menu-item";
+  var DEFAULT_CONTROL_PANEL_SELECTOR = ".o_control_panel";
+  var CONTROL_PANEL_HOST_SELECTOR = ".o_content, .o_action, .o_view_controller";
+
   function normalizeText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
@@ -42,6 +54,19 @@
 
   function asElement(value) {
     return value instanceof HTMLElement ? value : null;
+  }
+
+  function closestElement(target, selector) {
+    var normalizedSelector = normalizeText(selector);
+    if (!(target instanceof HTMLElement) || !normalizedSelector) {
+      return null;
+    }
+    try {
+      var candidate = target.closest(normalizedSelector);
+      return candidate instanceof HTMLElement ? candidate : null;
+    } catch (_error) {
+      return null;
+    }
   }
 
   function replaceNodeText(node, text) {
@@ -75,12 +100,10 @@
     return replaceNodeText(node, text);
   }
 
-  function isBridgeDropdownOption(node) {
+  function isBridgeDropdownOption(node, adapter) {
     return !!(
       node instanceof HTMLElement &&
-      node.closest(
-        ".o-autocomplete--dropdown-item, .o_m2o_dropdown_option, [role='option'], [role='menuitem'], .dropdown-item, .ui-menu-item"
-      )
+      closestElement(node, adapter && adapter.dropdownOptionSelector)
     );
   }
 
@@ -125,7 +148,7 @@
       }),
       resolveItems: typeof breadcrumb.resolveItems === "function" ? breadcrumb.resolveItems : null,
       current: normalizeValueReader(breadcrumb.current),
-      controlPanelSelector: normalizeText(breadcrumb.controlPanelSelector || ".o_control_panel"),
+      controlPanelSelector: normalizeText(breadcrumb.controlPanelSelector || DEFAULT_CONTROL_PANEL_SELECTOR),
     };
   }
 
@@ -157,9 +180,11 @@
   function buildFormHeaderIdentityAdapter(rawSpec) {
     var spec = readObject(rawSpec);
     var adapter = {
-      enhancerKey: "headerIdentity",
-      formSelector: normalizeText(spec.formSelector || ".o_form_view"),
-      identitySelector: normalizeText(spec.identitySelector || "[data-surface-header-identity='1']"),
+      enhancerKey: HEADER_IDENTITY_ENHANCER_KEY,
+      formSelector: normalizeText(spec.formSelector || DEFAULT_FORM_SELECTOR),
+      identitySelector: normalizeText(spec.identitySelector || DEFAULT_IDENTITY_SELECTOR),
+      fieldRootSelector: normalizeText(spec.fieldRootSelector || DEFAULT_FIELD_ROOT_SELECTOR),
+      dropdownOptionSelector: normalizeText(spec.dropdownOptionSelector || DEFAULT_DROPDOWN_OPTION_SELECTOR),
       slots: normalizeSlotConfigs(spec.slots),
       title: normalizeValueReader(spec.title),
       breadcrumb: normalizeBreadcrumbConfig(spec.breadcrumb),
@@ -176,13 +201,15 @@
   }
 
   function buildFormHeaderIdentityConfig(rawSpec) {
-    return Object.assign({ enhancerKey: "headerIdentity" }, buildFormHeaderIdentityAdapter(rawSpec));
+    return Object.assign({ enhancerKey: HEADER_IDENTITY_ENHANCER_KEY }, buildFormHeaderIdentityAdapter(rawSpec));
   }
 
   function buildAdapterSignature(adapter) {
     return JSON.stringify({
       identitySelector: adapter.identitySelector,
       formSelector: adapter.formSelector,
+      fieldRootSelector: adapter.fieldRootSelector,
+      dropdownOptionSelector: adapter.dropdownOptionSelector,
       watchFieldNames: adapter.watchFieldNames,
       slotKeys: Object.keys(adapter.slots),
       slotFieldNames: Object.keys(adapter.slots).reduce(function (result, slotName) {
@@ -247,9 +274,9 @@
       return {};
     }
     return Array.prototype.slice.call(
-      identityRoot.querySelectorAll("[data-surface-header-identity-slot]")
+      identityRoot.querySelectorAll(DEFAULT_SLOT_SELECTOR)
     ).reduce(function (result, node) {
-      var slotName = normalizeText(node.getAttribute("data-surface-header-identity-slot"));
+      var slotName = normalizeText(node.getAttribute(HEADER_IDENTITY_SLOT_ATTR));
       if (slotName && !(result[slotName] instanceof HTMLElement) && node instanceof HTMLElement) {
         result[slotName] = node;
       }
@@ -267,7 +294,8 @@
     }
     if (adapter.breadcrumb.resolveItems) {
       try {
-        return (Array.isArray(adapter.breadcrumb.resolveItems(runtimeContext || {}, state, adapter)) ? adapter.breadcrumb.resolveItems(runtimeContext || {}, state, adapter) : [])
+        var resolvedItems = adapter.breadcrumb.resolveItems(runtimeContext || {}, state, adapter);
+        return (Array.isArray(resolvedItems) ? resolvedItems : [])
           .map(normalizeBreadcrumbItem)
           .filter(function (item) {
             return !!item.label;
@@ -343,15 +371,13 @@
     var value = normalizeText(slotState && slotState.value);
     slotNode.dataset.surfaceHeaderIdentityValue = value;
     if (value) {
-      slotNode.removeAttribute("data-surface-header-identity-empty");
+      slotNode.removeAttribute(HEADER_IDENTITY_EMPTY_ATTR);
       slotNode.setAttribute("title", value);
     } else {
-      slotNode.setAttribute("data-surface-header-identity-empty", "1");
+      slotNode.setAttribute(HEADER_IDENTITY_EMPTY_ATTR, "1");
       slotNode.removeAttribute("title");
     }
-    var explicitValueNode = slotNode.querySelector(
-      "[data-surface-header-identity-value='1'], .o_surface_header_identity_value"
-    );
+    var explicitValueNode = slotNode.querySelector(HEADER_IDENTITY_VALUE_SELECTOR);
     if (explicitValueNode instanceof HTMLElement) {
       setNodeText(explicitValueNode, value);
     }
@@ -405,10 +431,10 @@
       return explicitControlPanel;
     }
     return resolveScopedControlPanel({
-      hostNode: state && state.formRoot instanceof HTMLElement ? state.formRoot.closest(".o_content, .o_action, .o_view_controller") : null,
+      hostNode: state && state.formRoot instanceof HTMLElement ? closestElement(state.formRoot, CONTROL_PANEL_HOST_SELECTOR) : null,
       selector: state && state.adapter && state.adapter.breadcrumb
         ? state.adapter.breadcrumb.controlPanelSelector
-        : ".o_control_panel",
+        : DEFAULT_CONTROL_PANEL_SELECTOR,
     });
   }
 
@@ -446,12 +472,15 @@
     return state;
   }
 
-  function getWatchedFieldName(target, adapter) {
+  function getWatchedFieldName(target, adapter, formRoot) {
     if (!(target instanceof HTMLElement)) {
       return "";
     }
-    var fieldRoot = target.closest(".o_form_view [name], .o_form_view [data-name]");
+    var fieldRoot = closestElement(target, adapter && adapter.fieldRootSelector);
     if (!(fieldRoot instanceof HTMLElement)) {
+      return "";
+    }
+    if (formRoot instanceof HTMLElement && !formRoot.contains(fieldRoot)) {
       return "";
     }
     var fieldName = normalizeText(
@@ -502,7 +531,7 @@
       var target = event && event.target instanceof HTMLElement ? event.target : null;
       var entries = Array.isArray(bridgeState.entries) ? bridgeState.entries : [];
       for (var index = 0; index < entries.length; index += 1) {
-        var fieldName = getWatchedFieldName(target, entries[index].adapter);
+        var fieldName = getWatchedFieldName(target, entries[index].adapter, formRoot);
         if (fieldName) {
           bridgeState.lastFocusedField = fieldName;
           formRoot._surfaceFormHeaderIdentityBridge = bridgeState;
@@ -517,7 +546,7 @@
         var target = event && event.target instanceof HTMLElement ? event.target : null;
         var bridgeState = readObject(formRoot._surfaceFormHeaderIdentityBridge);
         var entries = Array.isArray(bridgeState.entries) ? bridgeState.entries : [];
-        if (entries.some(function (entry) { return !!getWatchedFieldName(target, entry.adapter); })) {
+        if (entries.some(function (entry) { return !!getWatchedFieldName(target, entry.adapter, formRoot); })) {
           scheduleBridgeSync(formRoot);
         }
       }, true);
@@ -529,7 +558,7 @@
       var target = event.target instanceof HTMLElement ? event.target : null;
       var bridgeState = readObject(formRoot._surfaceFormHeaderIdentityBridge);
       var entries = Array.isArray(bridgeState.entries) ? bridgeState.entries : [];
-      if (entries.some(function (entry) { return !!getWatchedFieldName(target, entry.adapter); })) {
+      if (entries.some(function (entry) { return !!getWatchedFieldName(target, entry.adapter, formRoot); })) {
         scheduleBridgeSync(formRoot);
       }
     }, true);
@@ -540,11 +569,11 @@
       }
       var bridgeState = readObject(formRoot._surfaceFormHeaderIdentityBridge);
       var entries = Array.isArray(bridgeState.entries) ? bridgeState.entries : [];
-      if (entries.some(function (entry) { return !!getWatchedFieldName(target, entry.adapter); })) {
+      if (entries.some(function (entry) { return !!getWatchedFieldName(target, entry.adapter, formRoot); })) {
         scheduleBridgeSync(formRoot);
         return;
       }
-      if (bridgeState.lastFocusedField && isBridgeDropdownOption(target)) {
+      if (bridgeState.lastFocusedField && entries.some(function (entry) { return isBridgeDropdownOption(target, entry.adapter); })) {
         scheduleBridgeSync(formRoot);
       }
     }, true);
@@ -583,7 +612,7 @@
       ? [rawConfigs]
       : [];
     return configs.filter(function (entry) {
-      return entry && typeof entry === "object" && String(entry.enhancerKey || "").trim().toLowerCase() === "headeridentity";
+      return entry && typeof entry === "object" && String(entry.enhancerKey || "").trim().toLowerCase() === HEADER_IDENTITY_ENHANCER_KEY.toLowerCase();
     }).map(buildFormHeaderIdentityAdapter);
   }
 
@@ -621,7 +650,7 @@
   });
 
   registerManagedFormEnhancer({
-    key: "headerIdentity",
+    key: HEADER_IDENTITY_ENHANCER_KEY,
     sync: syncManagedFormHeaderIdentities,
   });
   window.OdooSurfaceLayers = surfaceLayerApi;

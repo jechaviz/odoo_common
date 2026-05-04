@@ -21,6 +21,7 @@ No incluye:
 Requiere `surface-workspace-shell` y consume unicamente APIs canonicas de `window.OdooSurfaceLayers`:
 - `registerManagedFormEnhancer`
 - `readFieldText`
+- `findVisibleForm`
 - `resolveScopedControlPanel`
 - `syncCanonicalBreadcrumb`
 
@@ -37,8 +38,10 @@ Requiere `surface-workspace-shell` y consume unicamente APIs canonicas de `windo
 El paquete publica `form_header_identity.css` y es el unico owner permitido de:
 
 - `o_surface_header_identity_controls`
+- `o_surface_header_identity_control_group`
 - `o_surface_header_identity_control`
 - `o_surface_header_identity_control_label`
+- `o_surface_header_identity_value`
 - `data-surface-header-identity*`
 
 `surface-workspace-shell` no debe volver a cargar estos selectores.
@@ -52,6 +55,15 @@ Cada entrada declarativa en `managedFormEnhancers` debe usar:
 - `enhancerKey: "headerIdentity"`
 
 ## Contrato de adapter
+
+### Seleccion declarativa
+
+- `formSelector` default: `.o_form_view`
+- `identitySelector` default: `[data-surface-header-identity='1']`
+- `fieldRootSelector` default: `[name], [data-name]`
+- `dropdownOptionSelector` default: selectores canonicos de opciones autocomplete/dropdown de Odoo
+
+Si el markup del proyecto diverge, el adapter debe declarar estos selectores de forma explicita; el runtime no infiere identidad por labels ni por campos de negocio.
 
 ### Slots
 
@@ -92,23 +104,24 @@ Cada slot puede declarar:
 
 `watchFieldNames` permite endurecer que campos disparan resincronizacion local.
 Si no se declara, el runtime deriva el watch set desde `slots`, `title` y `breadcrumb.current`.
+La deteccion de campo usa `fieldRootSelector` y solo acepta nombres incluidos en `watchFieldNames`.
 
 ## Ejemplo minimo
 
 ```js
 window.OdooSurfaceLayers.buildFormHeaderIdentityConfig({
   enhancerKey: "headerIdentity",
-  watchFieldNames: ["x_series_id", "x_branch_id", "x_document_display_ref"],
+  watchFieldNames: ["series_field", "secondary_identity_field", "display_reference_field"],
   slots: {
     primary: {
-      fieldNames: ["x_series_id"],
+      fieldNames: ["series_field"],
     },
     secondary: {
-      fieldNames: ["x_branch_id"],
+      fieldNames: ["secondary_identity_field"],
     },
   },
   title: {
-    fieldNames: ["x_document_display_ref", "name"],
+    fieldNames: ["display_reference_field", "name"],
     fallback: "New",
     applyToDocumentTitle: true,
     targetSelector: ".o_surface_document_display_ref",
@@ -117,10 +130,10 @@ window.OdooSurfaceLayers.buildFormHeaderIdentityConfig({
     enabled: true,
     items: [
       { label: "Home", href: "/odoo", home: true },
-      { label: "Orders", href: "/odoo/orders" },
+      { label: "Records", href: "/odoo/records" },
     ],
     current: {
-      fieldNames: ["x_document_display_ref", "name"],
+      fieldNames: ["display_reference_field", "name"],
       fallback: "New",
     },
   },

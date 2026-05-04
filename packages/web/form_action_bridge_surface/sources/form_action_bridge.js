@@ -19,6 +19,22 @@
     return candidate;
   }
 
+  var FORM_ACTION_BRIDGE_ENHANCER_KEY = "formActionBridge";
+  var DEFAULT_BRIDGE_KEY = "form-action-bridge";
+  var DEFAULT_FORM_SELECTOR = ".o_form_view";
+  var DEFAULT_ACTION_BUTTON_SELECTOR = "button[type='action'], a[type='action'], [type='action'][role='button']";
+  var DEFAULT_SAVE_BUTTON_SELECTOR = ".o_form_button_save";
+  var DEFAULT_BUSY_ATTR = "data-surface-form-action-running";
+  var DEFAULT_CONTEXT_ATTR = "context";
+  var DEFAULT_WAIT_FOR_PERSIST_MS = 15000;
+  var MIN_WAIT_FOR_PERSIST_MS = 1000;
+  var RECORD_MATERIALIZATION_POLL_MS = 160;
+  var ODOO_ACTION_SERVICE = "action";
+  var ODOO_ORM_SERVICE = "orm";
+  var SERVER_ACTION_MODEL = "ir.actions.server";
+  var SERVER_ACTION_METHOD = "run";
+  var URL_ACTION_TYPE = "ir.actions.act_url";
+
   function normalizeText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
@@ -35,11 +51,63 @@
     return value instanceof HTMLElement ? value : null;
   }
 
+  function readFunction(value) {
+    return typeof value === "function" ? value : null;
+  }
+
+  function closestElement(target, selector) {
+    var normalizedSelector = normalizeText(selector);
+    if (!(target instanceof HTMLElement) || !normalizedSelector) {
+      return null;
+    }
+    try {
+      var candidate = target.closest(normalizedSelector);
+      return candidate instanceof HTMLElement ? candidate : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function querySelectorElement(root, selector) {
+    var normalizedSelector = normalizeText(selector);
+    if (!(root instanceof HTMLElement) || !normalizedSelector) {
+      return null;
+    }
+    try {
+      var candidate = root.querySelector(normalizedSelector);
+      return candidate instanceof HTMLElement ? candidate : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
   function readBooleanFlag(source, key, fallbackValue) {
     if (!source || !Object.prototype.hasOwnProperty.call(source, key)) {
       return !!fallbackValue;
     }
     return !!source[key];
+  }
+
+  function normalizeActionRequest(value) {
+    if (value == null || value === "") {
+      return null;
+    }
+    if (typeof value === "object") {
+      return value;
+    }
+    if (typeof value === "number") {
+      var numericValue = toInteger(value);
+      return numericValue > 0 ? numericValue : null;
+    }
+    var actionText = normalizeText(value);
+    if (!actionText) {
+      return null;
+    }
+    if (/^\d+$/.test(actionText)) {
+      var numericActionId = toInteger(actionText);
+      return numericActionId > 0 ? numericActionId : null;
+    }
+    return actionText;
   }
 
   function getDebugRoot() {
@@ -80,11 +148,7 @@
     if (!(target instanceof HTMLElement)) {
       return null;
     }
-    var selector = normalizeText(adapter.buttonSelector || "button[type='action'], a[type='action'], [type='action'][role='button']");
-    if (!selector) {
-      return null;
-    }
-    return target.closest(selector);
+    return closestElement(target, adapter.buttonSelector || DEFAULT_ACTION_BUTTON_SELECTOR);
   }
 
   function isButtonVisible(button) {
@@ -103,23 +167,30 @@
 
   function normalizeFormActionBridgeSpec(rawSpec) {
     var spec = readObject(rawSpec);
+    var explicitActionRequest = Object.prototype.hasOwnProperty.call(spec, "actionRequest")
+      ? normalizeActionRequest(spec.actionRequest)
+      : normalizeActionRequest(spec.actionId);
     return {
-      enhancerKey: "formActionBridge",
-      bridgeKey: normalizeText(spec.bridgeKey || spec.key || "form-action-bridge"),
-      formSelector: normalizeText(spec.formSelector || ".o_form_view"),
-      buttonSelector: normalizeText(spec.buttonSelector || "button[type='action'], a[type='action'], [type='action'][role='button']"),
-      saveButtonSelector: normalizeText(spec.saveButtonSelector || ".o_form_button_save"),
-      busyAttr: normalizeText(spec.busyAttr || "data-surface-form-action-running"),
+      enhancerKey: FORM_ACTION_BRIDGE_ENHANCER_KEY,
+      bridgeKey: normalizeText(spec.bridgeKey || DEFAULT_BRIDGE_KEY),
+      formSelector: normalizeText(spec.formSelector || DEFAULT_FORM_SELECTOR),
+      buttonSelector: normalizeText(spec.buttonSelector || DEFAULT_ACTION_BUTTON_SELECTOR),
+      saveButtonSelector: normalizeText(spec.saveButtonSelector || DEFAULT_SAVE_BUTTON_SELECTOR),
+      busyAttr: normalizeText(spec.busyAttr || DEFAULT_BUSY_ATTR),
+      contextAttribute: normalizeText(spec.contextAttribute || DEFAULT_CONTEXT_ATTR),
+      actionRequest: explicitActionRequest,
+      allowButtonNameFallback: readBooleanFlag(spec, "allowButtonNameFallback", true),
+      parseButtonContext: readBooleanFlag(spec, "parseButtonContext", true),
       persistBeforeAction: readBooleanFlag(spec, "persistBeforeAction", true),
       runServerActions: readBooleanFlag(spec, "runServerActions", true),
-      waitForPersistMs: Math.max(toInteger(spec.waitForPersistMs || 15000), 1000),
-      acceptButton: typeof spec.acceptButton === "function" ? spec.acceptButton : null,
-      resolveActionRequest: typeof spec.resolveActionRequest === "function" ? spec.resolveActionRequest : null,
-      resolveAdditionalContext: typeof spec.resolveAdditionalContext === "function" ? spec.resolveAdditionalContext : null,
-      shouldPersistBeforeAction: typeof spec.shouldPersistBeforeAction === "function" ? spec.shouldPersistBeforeAction : null,
-      onBeforeRun: typeof spec.onBeforeRun === "function" ? spec.onBeforeRun : null,
-      onAfterRun: typeof spec.onAfterRun === "function" ? spec.onAfterRun : null,
-      onError: typeof spec.onError === "function" ? spec.onError : null,
+      waitForPersistMs: Math.max(toInteger(spec.waitForPersistMs || DEFAULT_WAIT_FOR_PERSIST_MS), MIN_WAIT_FOR_PERSIST_MS),
+      acceptButton: readFunction(spec.acceptButton),
+      resolveActionRequest: readFunction(spec.resolveActionRequest),
+      resolveAdditionalContext: readFunction(spec.resolveAdditionalContext),
+      shouldPersistBeforeAction: readFunction(spec.shouldPersistBeforeAction),
+      onBeforeRun: readFunction(spec.onBeforeRun),
+      onAfterRun: readFunction(spec.onAfterRun),
+      onError: readFunction(spec.onError),
     };
   }
 
@@ -215,23 +286,23 @@
   function resolveManagedFormActionRequest(button, adapter, runtimeContext, meta) {
     if (adapter.resolveActionRequest) {
       try {
-        return adapter.resolveActionRequest(button, runtimeContext || {}, meta || {}, adapter);
+        return normalizeActionRequest(adapter.resolveActionRequest(button, runtimeContext || {}, meta || {}, adapter));
       } catch (_error) {
         return null;
       }
+    }
+    var explicitActionRequest = normalizeActionRequest(adapter.actionRequest);
+    if (explicitActionRequest != null && explicitActionRequest !== "") {
+      return explicitActionRequest;
+    }
+    if (adapter.allowButtonNameFallback === false) {
+      return null;
     }
     if (!(button instanceof HTMLElement)) {
       return null;
     }
     var actionName = normalizeText(button.getAttribute("name") || "");
-    if (!actionName) {
-      return null;
-    }
-    if (/^\d+$/.test(actionName)) {
-      var numericActionId = toInteger(actionName);
-      return numericActionId > 0 ? numericActionId : null;
-    }
-    return actionName;
+    return normalizeActionRequest(actionName);
   }
 
   function parseButtonContextValue(buttonContext, token) {
@@ -245,11 +316,12 @@
     return match && match[1] ? normalizeText(match[1]) : "";
   }
 
-  function parseAdditionalContextFromButton(button, meta) {
-    if (!(button instanceof HTMLElement)) {
+  function parseAdditionalContextFromButton(button, meta, adapter) {
+    var normalizedAdapter = adapter && typeof adapter === "object" ? adapter : {};
+    if (!(button instanceof HTMLElement) || normalizedAdapter.parseButtonContext === false) {
       return {};
     }
-    var contextText = String(button.getAttribute("context") || "").trim();
+    var contextText = String(button.getAttribute(normalizedAdapter.contextAttribute || DEFAULT_CONTEXT_ATTR) || "").trim();
     if (!contextText) {
       return {};
     }
@@ -276,7 +348,7 @@
   function resolveManagedFormAdditionalContext(button, adapter, runtimeContext, meta) {
     var controller = meta && meta.controller ? meta.controller : null;
     var action = meta && meta.action ? meta.action : null;
-    var mergedContext = Object.assign({}, (action && action.context) || {}, parseAdditionalContextFromButton(button, meta));
+    var mergedContext = Object.assign({}, (action && action.context) || {}, parseAdditionalContextFromButton(button, meta, adapter));
     if (adapter.resolveAdditionalContext) {
       try {
         mergedContext = Object.assign(
@@ -327,18 +399,18 @@
       roots.push(formRoot);
     }
     for (var index = 0; index < roots.length; index += 1) {
-      var candidate = roots[index].querySelector(adapter.saveButtonSelector);
+      var candidate = querySelectorElement(roots[index], adapter.saveButtonSelector);
       if (isButtonVisible(candidate)) {
         return candidate;
       }
     }
-    var fallbackCandidate = document.querySelector(adapter.saveButtonSelector);
+    var fallbackCandidate = querySelectorElement(document.documentElement, adapter.saveButtonSelector);
     return isButtonVisible(fallbackCandidate) ? fallbackCandidate : null;
   }
 
   function waitForRecordMaterialization(button, runtimeContext, previousRecordId, timeoutMs) {
     var initialRecordId = toInteger(previousRecordId);
-    var resolvedTimeoutMs = Math.max(toInteger(timeoutMs || 15000), 1000);
+    var resolvedTimeoutMs = Math.max(toInteger(timeoutMs || DEFAULT_WAIT_FOR_PERSIST_MS), MIN_WAIT_FOR_PERSIST_MS);
     return new Promise(function (resolve) {
       var settled = false;
       var intervalId = 0;
@@ -369,7 +441,7 @@
       timeoutId = window.setTimeout(function () {
         finish(readRecordId());
       }, resolvedTimeoutMs);
-      intervalId = window.setInterval(check, 160);
+      intervalId = window.setInterval(check, RECORD_MATERIALIZATION_POLL_MS);
       check();
     });
   }
@@ -422,7 +494,7 @@
     if (
       actionRequest &&
       typeof actionRequest === "object" &&
-      normalizeText(actionRequest.type) === "ir.actions.act_url" &&
+      normalizeText(actionRequest.type) === URL_ACTION_TYPE &&
       normalizeText(actionRequest.url)
     ) {
       var resolvedUrl = new URL(String(actionRequest.url || ""), window.location.origin).toString();
@@ -444,10 +516,10 @@
     var context = runtimeContext && typeof runtimeContext === "object" ? runtimeContext : {};
     var actionService = context.actionService && typeof context.actionService === "object"
       ? context.actionService
-      : await resolveOdooService("action");
+      : await resolveOdooService(ODOO_ACTION_SERVICE);
     var ormService = context.ormService && typeof context.ormService === "object"
       ? context.ormService
-      : await resolveOdooService("orm");
+      : await resolveOdooService(ODOO_ORM_SERVICE);
     if (!(button instanceof HTMLElement) || !(actionService && typeof actionService.doAction === "function")) {
       return false;
     }
@@ -503,8 +575,8 @@
     try {
       if (typeof actionRequest === "number" && adapter.runServerActions !== false && ormService && typeof ormService.call === "function") {
         var returnedAction = await ormService.call(
-          "ir.actions.server",
-          "run",
+          SERVER_ACTION_MODEL,
+          SERVER_ACTION_METHOD,
           [[actionRequest]],
           { context: additionalContext }
         ).catch(function () {
@@ -634,7 +706,7 @@
       ? [rawConfigs]
       : [];
     return configs.filter(function (entry) {
-      return entry && typeof entry === "object" && String(entry.enhancerKey || "").trim().toLowerCase() === "formactionbridge";
+      return entry && typeof entry === "object" && String(entry.enhancerKey || "").trim().toLowerCase() === FORM_ACTION_BRIDGE_ENHANCER_KEY.toLowerCase();
     }).map(normalizeFormActionBridgeSpec);
   }
 
@@ -683,7 +755,7 @@
   });
 
   registerManagedFormEnhancer({
-    key: "formActionBridge",
+    key: FORM_ACTION_BRIDGE_ENHANCER_KEY,
     sync: syncManagedFormActionBridges,
   });
   window.OdooSurfaceLayers = surfaceLayerApi;

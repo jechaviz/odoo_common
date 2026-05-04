@@ -1,0 +1,18 @@
+{
+  "key": "custom-field-upserts",
+  "title": "Custom Field Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "custom_field_upserts.py"
+  ],
+  "capabilities": [
+    "manual-model-upsert",
+    "manual-field-upsert",
+    "selection-field-reconcile"
+  ]
+}

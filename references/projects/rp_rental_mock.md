@@ -31,6 +31,7 @@ Nivel actual:
 - base canonica para `packages/python/registry_lookup`
 - base canonica para `packages/python/action_menu_upserts`
 - base canonica para `packages/python/view_upserts`
+- base canonica para `packages/python/custom_field_upserts`
 - base canonica para `packages/schema/terms_conditions`
 
 Regla de consumo:

@@ -209,6 +209,18 @@
     ]
   },
   {
+    "key": "custom_field_publication",
+    "title": "Custom Field Publication",
+    "components": [
+      "custom-field-upserts"
+    ],
+    "use_cases": [
+      "manual model rows",
+      "manual field rows",
+      "managed selection options"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

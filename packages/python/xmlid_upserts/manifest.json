@@ -1,0 +1,18 @@
+{
+  "key": "xmlid-upserts",
+  "title": "Odoo XML ID Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "xmlid_upserts.py"
+  ],
+  "capabilities": [
+    "xmlid-split",
+    "xmlid-upsert",
+    "strict-model-contract"
+  ]
+}

@@ -498,6 +498,32 @@
     ]
   },
   {
+    "key": "xmlid-upserts",
+    "title": "Odoo XML ID Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/xmlid_upserts",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_003.pyfrag"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/rental_tax_sync.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/security_profile_sync.py"
+      }
+    ],
+    "features": [
+      "XML ID split",
+      "ir.model.data upsert",
+      "strict target model contract"
+    ]
+  },
+  {
     "key": "action-menu-upserts",
     "title": "Action And Menu Upserts",
     "runtime": "python",

@@ -184,6 +184,18 @@
     ]
   },
   {
+    "key": "xmlid_publication",
+    "title": "XML ID Publication",
+    "components": [
+      "xmlid-upserts"
+    ],
+    "use_cases": [
+      "external ID publication",
+      "metadata rows for generated records",
+      "stable XML IDs for views, groups, and taxes"
+    ]
+  },
+  {
     "key": "action_menu_publication",
     "title": "Action And Menu Publication",
     "components": [

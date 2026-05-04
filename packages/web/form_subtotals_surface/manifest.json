@@ -33,12 +33,17 @@
     "styles/subtotals.css"
   ],
   "dependencies": [
+    "surface-workspace-shell",
     "form-layout-surface"
   ],
   "capabilities": [
     "subtotal-layout-storage",
     "subtotal-formula-rendering",
     "subtotal-edit-mode",
-    "subtotal-toggle-menu"
+    "subtotal-toggle-menu",
+    "subtotals-root-resolution",
+    "subtotals-surface-adapter",
+    "subtotals-runtime-installation",
+    "field-display-normalizers"
   ]
 }

@@ -77,6 +77,8 @@ No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
 17. `form-subtotals-surface`
     - usar cuando el formulario necesita editor/layout de subtotales desacoplado del resto del section-layout legacy
+    - el consumo canonico debe entrar por `buildFormSubtotalsSurfaceAdapter(spec)` cuando el proyecto necesite orchestration reusable y no solo acceso directo al runtime interno del layout
+    - si se consume el adapter canonico, debe cargarse tambien `surface-workspace-shell` porque la API shared vive en `window.OdooSurfaceLayers`
 
 18. `form-totals-surface`
     - usar cuando el formulario necesita normalizar `tax_totals`, derivar filas visibles de impuestos y sincronizar un bloque DOM de totales
@@ -210,6 +212,7 @@ Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las su
 - para `commercial-capture-context-surface`, los adapters deben declarar `panelSelector`, `recordModel`, `recordFieldMap`, `partnerFieldMap`, `formFieldMap`, `referenceMeta` y cualquier `slotOverrides` de forma explicita; el copy/noise compartido de politica comercial vive en `commercial-policy-surface`, no en presets inline del proyecto
 - para `form-defaults-surface` y `form-preview-surface`, los adapters deben declarar loaders, enrichers, field maps, preview targets y cualquier formatter/writer explicitamente; no debe revivirse `form_context.js` ni wiring local ad hoc
 - para `form-preview-surface`, los adapters de documentos transaccionales deben declarar que bloques readonly consumen el estado vivo del formulario y que targets son responsabilidad del preview layer; no debe esconderse esa sincronizacion en renderers locales de invoice, quotation, rental o similares
+- para `form-subtotals-surface`, los adapters deben declarar `root`/`selector`/`resolveRoot`, `scopeKey` o `resolveScopeKey`, cualquier `fieldDisplayNormalizers` y cualquier hook de proceso explicitamente; no debe revivirse wiring local alrededor de `processFormSubtotals(...)` ni normalizadores de display atados a campos `x_*`
 - para `form-totals-surface`, los adapters deben declarar `selector` o `resolveRoot`, `rowSelector`, `fallbackSelector` y cualquier formatter monetario o hook de visibilidad explicitamente; no debe revivirse el wiring inline de `form_totals.js`
 - para `form-header-identity-surface`, los adapters deben declarar `fieldMap`, `displayRefBuilder`, `documentSeriesNormalizer`, `breadcrumbRoot`, `titleSync` y cualquier hook opcional de persistencia de forma explicita; no debe revivirse la heuristica Rental del header ni wiring por labels del breadcrumb
 - para `form-action-bridge-surface`, los adapters deben declarar `actionId`, `payloadBuilder`, `contextBuilder`, `successHandler` y cualquier gating o confirmacion de forma explicita; no debe esconderse dentro de `commercial-policy-surface` ni revivir puentes implicitos por nombre de boton o callback legacy

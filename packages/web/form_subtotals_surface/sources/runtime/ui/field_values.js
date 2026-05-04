@@ -312,58 +312,106 @@
 
   v2.readFieldBooleanValue = readFieldBooleanValue;
 
-  function extractAssetNumberOnly(rawValue) {
-    return window.__o_lib_asset_number_utils_v1.extractAssetNumberValue(rawValue);
-  }
-
-  v2.extractAssetNumberOnly = extractAssetNumberOnly;
-
-  function bindAssetFieldNormalizeObserver(fieldNode, scheduleNormalize) {
-    window.__o_lib_asset_number_utils_v1.bindAssetNumberNormalizeObserver(fieldNode, scheduleNormalize);
-  }
-
-  v2.bindAssetFieldNormalizeObserver = bindAssetFieldNormalizeObserver;
-
-  function normalizeAssetNumberFieldDisplays(formNode) {
-    if (!(formNode instanceof HTMLElement)) {
-      return;
-    }
-    var fieldNodes = findFieldNodes(formNode, "x_asset_lot_id");
-    fieldNodes.forEach(function (fieldNode) {
-      if (!(fieldNode instanceof HTMLElement)) {
-        return;
-      }
-      var activeElement = document.activeElement;
-      if (
-        activeElement instanceof HTMLElement &&
-        fieldNode.contains(activeElement) &&
-        (activeElement instanceof HTMLInputElement ||
-          activeElement instanceof HTMLTextAreaElement ||
-          activeElement.isContentEditable === true)
-      ) {
-        return;
-      }
-      if (fieldNode.dataset.libAssetNumberBound !== "1") {
-        fieldNode.dataset.libAssetNumberBound = "1";
-        var scheduleNormalize = function () {
-          window.setTimeout(function () {
-            normalizeAssetNumberFieldDisplays(formNode);
-          }, 0);
-        };
-        fieldNode.addEventListener("blur", scheduleNormalize, true);
-        fieldNode.addEventListener("change", scheduleNormalize, true);
-        bindAssetFieldNormalizeObserver(fieldNode, scheduleNormalize);
-      }
-      var passiveDisplayValue = cleanText(fieldNode.textContent || "");
-      var passiveAssetNumber = extractAssetNumberOnly(passiveDisplayValue);
-      if (passiveAssetNumber && passiveAssetNumber !== passiveDisplayValue) {
-        fieldNode.textContent = passiveAssetNumber;
-      }
-
+  function normalizeFieldDisplaySpecs(rawSpecs) {
+    return (Array.isArray(rawSpecs) ? rawSpecs : []).filter(function (entry) {
+      return entry && typeof entry === "object" && !Array.isArray(entry);
     });
   }
 
-  v2.normalizeAssetNumberFieldDisplays = normalizeAssetNumberFieldDisplays;
+  v2.normalizeFieldDisplaySpecs = normalizeFieldDisplaySpecs;
+
+  function resolveFieldDisplayNodes(formNode, spec) {
+    if (!(formNode instanceof HTMLElement) || !(spec && typeof spec === "object")) {
+      return [];
+    }
+    if (typeof spec.resolveNodes === "function") {
+      var resolvedNodes = spec.resolveNodes(formNode, spec);
+      if (resolvedNodes instanceof HTMLElement) {
+        return [resolvedNodes];
+      }
+      return Array.prototype.slice.call(resolvedNodes || []).filter(function (node) {
+        return node instanceof HTMLElement;
+      });
+    }
+    var selector = cleanText(spec.selector || "");
+    if (selector) {
+      return Array.prototype.slice.call(formNode.querySelectorAll(selector)).filter(function (node) {
+        return node instanceof HTMLElement;
+      });
+    }
+    return findFieldNodes(formNode, cleanText(spec.fieldName || ""));
+  }
+
+  v2.resolveFieldDisplayNodes = resolveFieldDisplayNodes;
+
+  function normalizeFieldDisplayValue(rawValue, spec, fieldNode) {
+    var value = cleanText(rawValue || "");
+    if (typeof spec.normalize === "function") {
+      return cleanText(spec.normalize(value, fieldNode, spec) || "");
+    }
+    return value;
+  }
+
+  v2.normalizeFieldDisplayValue = normalizeFieldDisplayValue;
+
+  function fieldDisplayBindingFlag(spec, index) {
+    return "data-lib-field-display-normalizer-bound-" + (normalizeKey(spec.key || spec.fieldName || spec.selector || "") || "entry_" + String(index));
+  }
+
+  function normalizeFieldDisplayValues(formNode, rawSpecs) {
+    if (!(formNode instanceof HTMLElement)) {
+      return 0;
+    }
+    var specs = normalizeFieldDisplaySpecs(rawSpecs);
+    var normalizedCount = 0;
+    specs.forEach(function (spec, index) {
+      var fieldNodes = resolveFieldDisplayNodes(formNode, spec);
+      fieldNodes.forEach(function (fieldNode) {
+        if (!(fieldNode instanceof HTMLElement)) {
+          return;
+        }
+        var activeElement = document.activeElement;
+        if (
+          activeElement instanceof HTMLElement &&
+          fieldNode.contains(activeElement) &&
+          (activeElement instanceof HTMLInputElement ||
+            activeElement instanceof HTMLTextAreaElement ||
+            activeElement.isContentEditable === true)
+        ) {
+          return;
+        }
+        var bindingFlag = fieldDisplayBindingFlag(spec, index);
+        if (fieldNode.getAttribute(bindingFlag) !== "1") {
+          fieldNode.setAttribute(bindingFlag, "1");
+          var scheduleNormalize = function () {
+            window.setTimeout(function () {
+              normalizeFieldDisplayValues(formNode, specs);
+            }, 0);
+          };
+          fieldNode.addEventListener("blur", scheduleNormalize, true);
+          fieldNode.addEventListener("change", scheduleNormalize, true);
+          if (typeof spec.bindObserver === "function") {
+            spec.bindObserver(fieldNode, scheduleNormalize, spec);
+          } else if (spec.observeMutations === true && typeof MutationObserver === "function") {
+            new MutationObserver(scheduleNormalize).observe(fieldNode, {
+              childList: true,
+              characterData: true,
+              subtree: true,
+            });
+          }
+        }
+        var passiveDisplayValue = cleanText(fieldNode.textContent || "");
+        var normalizedDisplayValue = normalizeFieldDisplayValue(passiveDisplayValue, spec, fieldNode);
+        if (normalizedDisplayValue && normalizedDisplayValue !== passiveDisplayValue) {
+          fieldNode.textContent = normalizedDisplayValue;
+          normalizedCount += 1;
+        }
+      });
+    });
+    return normalizedCount;
+  }
+
+  v2.normalizeFieldDisplayValues = normalizeFieldDisplayValues;
 
   function readFormRecordId(formNode) {
     if (!(formNode instanceof HTMLElement)) {

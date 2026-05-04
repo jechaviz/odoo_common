@@ -841,6 +841,25 @@
     ]
   },
   {
+    "key": "phase-runtime",
+    "title": "Declarative Phase Runtime Contracts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/phase_runtime",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/core/phase_runtime.py"
+      }
+    ],
+    "features": [
+      "phase spec validation",
+      "explicit runner kwargs",
+      "phase status payloads",
+      "phase error payloads"
+    ]
+  },
+  {
     "key": "product-catalog-upserts",
     "title": "Odoo Product Catalog Upserts",
     "runtime": "python",

@@ -48,6 +48,7 @@ Nivel actual:
 - base canonica para `packages/python/text_asset_builders`
 - base canonica para `packages/python/text_templates`
 - base canonica para `packages/python/feature_catalog`
+- base canonica para `packages/python/phase_runtime`
 - base canonica para `packages/python/custom_field_upserts`
 - base canonica para `packages/python/security_upserts`
 

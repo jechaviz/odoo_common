@@ -369,6 +369,18 @@
     ]
   },
   {
+    "key": "phase_runtime",
+    "title": "Phase Runtime Contracts",
+    "components": [
+      "phase-runtime"
+    ],
+    "use_cases": [
+      "declaring ordered execution phases",
+      "forwarding explicit runner arguments",
+      "normalizing phase status and error payloads"
+    ]
+  },
+  {
     "key": "product_catalog_publication",
     "title": "Product Catalog Publication",
     "components": [

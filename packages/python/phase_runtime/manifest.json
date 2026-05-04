@@ -1,0 +1,19 @@
+{
+  "key": "phase-runtime",
+  "title": "Declarative Phase Runtime Contracts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "phase_runtime.py"
+  ],
+  "capabilities": [
+    "phase-spec-validation",
+    "explicit-runner-kwargs",
+    "phase-status-payloads",
+    "phase-error-payloads"
+  ]
+}

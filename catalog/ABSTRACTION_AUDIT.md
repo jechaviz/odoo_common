@@ -9,14 +9,14 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 33 total, 33 canonical.
+- Python packages: 34 total, 34 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
 ## Canonical Surfaces Already Extracted
 
 - `odoo_fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract, common component sync, view fragment assembly, navigation blueprints, generic record upserts.
-- `odoo_rpp`: form layout core, section headers, section visibility, settings panel, chatter toggle, subtotals, layout state, many2x parent autosave, defaults persistence, partner defaults, taxation helpers, resource config normalizers, workflow config helpers, text asset builders, text template helpers, feature catalog helpers.
+- `odoo_rpp`: form layout core, section headers, section visibility, settings panel, chatter toggle, subtotals, layout state, many2x parent autosave, defaults persistence, partner defaults, taxation helpers, resource config normalizers, workflow config helpers, text asset builders, text template helpers, feature catalog helpers, phase runtime contracts.
 - `rp-rental-mock`: form defaults, preview, header identity, action bridge, commercial policy, totals, partner language defaults, terms and conditions.
 - `odoo_rpp` + `rp-rental-mock`: strict tax group and tax upserts with explicit company/country/group contracts.
 - `odoo_rpp` + `rp-rental-mock`: strict binary attachment upserts for `ir.attachment` payload publication.
@@ -63,6 +63,7 @@ Scope:
 - Added: `text-asset-builders` canonicalizes manifest-ordered text assembly and build manifests without globbing, inferred ordering, JS/CSS transforms, or Odoo publication.
 - Added: `text-templates` canonicalizes strict template loading and deterministic token rendering without path fallback, globbing, silent missing-token replacement, or Jinja/QWeb rendering.
 - Added: `feature-catalog` canonicalizes feature specs, serialization, install-list validation, and dependency checks without runner execution, exception fallbacks, logging, or partial installs.
+- Added: `phase-runtime` canonicalizes phase specs, explicit runner kwargs, status payloads, and error payloads without executing runners, retrying, logging, swallowing exceptions, or depending on project exception classes.
 - Added: `product-catalog-upserts` canonicalizes product category, pricelist, and fixed-price pricelist item publication without rental-period normalization, legacy rule migration, field detection, or old-list deactivation.
 - Added: `sequence-upserts` canonicalizes `ir.sequence` publication without business-model binding, next-number scans, project slugification, or `number_next_actual` compatibility.
 - Added: `survey-upserts` canonicalizes survey page/question/answer publication without settings introspection, dry-run branching, generated-key parsing, or stale page/question deletion.

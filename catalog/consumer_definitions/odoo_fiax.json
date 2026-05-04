@@ -124,6 +124,12 @@
       "target_relative": "src/odoo_common/navigation_blueprints",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "backend-web-assets",
+      "target_relative": "src/odoo_common/backend_web_assets",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

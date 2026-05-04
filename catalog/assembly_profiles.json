@@ -155,6 +155,19 @@
     ]
   },
   {
+    "key": "view_fragment_assembly",
+    "title": "View Fragment Assembly",
+    "components": [
+      "view-fragment-assembly",
+      "view-upserts"
+    ],
+    "use_cases": [
+      "fragment-based inherited view arch generation",
+      "schema-driven form extensions",
+      "strict view publication from declared fragments"
+    ]
+  },
+  {
     "key": "binary_attachment_publication",
     "title": "Binary Attachment Publication",
     "components": [

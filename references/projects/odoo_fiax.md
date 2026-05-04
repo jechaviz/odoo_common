@@ -25,6 +25,7 @@ Nivel actual:
 - base canonica para `packages/schema/form_capture_shell`
 - base canonica para `packages/schema/record_context_layout`
 - base canonica para `packages/python/common_component_sync`
+- base canonica para `packages/python/view_fragment_assembly`
 
 Definicion de consumo:
 

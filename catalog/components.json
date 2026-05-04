@@ -462,6 +462,24 @@
     ]
   },
   {
+    "key": "view-fragment-assembly",
+    "title": "View Fragment Assembly",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/view_fragment_assembly",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/views.py"
+      }
+    ],
+    "features": [
+      "view fragment registry",
+      "strict XML arch assembly",
+      "view blueprint serialization"
+    ]
+  },
+  {
     "key": "tax-upserts",
     "title": "Odoo Tax Upserts",
     "runtime": "python",

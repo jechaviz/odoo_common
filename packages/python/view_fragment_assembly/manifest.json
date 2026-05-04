@@ -1,0 +1,18 @@
+{
+  "key": "view-fragment-assembly",
+  "title": "View Fragment Assembly",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_fiax",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "view_fragment_assembly.py"
+  ],
+  "capabilities": [
+    "view-fragment-registry",
+    "strict-view-arch-assembly",
+    "view-blueprint-serialization"
+  ]
+}

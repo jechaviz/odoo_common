@@ -435,6 +435,32 @@
     ]
   },
   {
+    "key": "binary-attachment-upserts",
+    "title": "Odoo Binary Attachment Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/binary_attachment_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/web_client_assets.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_002.pyfrag"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/backend_web_asset_sync.py"
+      }
+    ],
+    "features": [
+      "binary attachment upsert",
+      "attachment checksum",
+      "base64 content publication"
+    ]
+  },
+  {
     "key": "backend-web-assets",
     "title": "Backend Web Asset Publisher",
     "runtime": "python",

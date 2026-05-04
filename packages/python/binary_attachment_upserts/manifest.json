@@ -1,0 +1,18 @@
+{
+  "key": "binary-attachment-upserts",
+  "title": "Odoo Binary Attachment Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "binary_attachment_upserts.py"
+  ],
+  "capabilities": [
+    "binary-attachment-upsert",
+    "attachment-checksum",
+    "base64-content-publication"
+  ]
+}

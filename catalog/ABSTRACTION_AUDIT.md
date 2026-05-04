@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 22 total, 22 canonical.
+- Python packages: 23 total, 23 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
@@ -19,6 +19,7 @@ Scope:
 - `odoo_rpp`: form layout core, section headers, section visibility, settings panel, chatter toggle, subtotals, layout state, many2x parent autosave, defaults persistence, partner defaults, taxation helpers.
 - `rp-rental-mock`: form defaults, preview, header identity, action bridge, commercial policy, totals, partner language defaults, terms and conditions.
 - `odoo_rpp` + `rp-rental-mock`: strict tax group and tax upserts with explicit company/country/group contracts.
+- `odoo_rpp` + `rp-rental-mock`: strict binary attachment upserts for `ir.attachment` payload publication.
 - `odoo_rpp` + `rp-rental-mock`: backend web asset publication via explicit attachment-backed `ir.asset` specs.
 - `odoo_rpp` + `rp-rental-mock`: server automation upserts for `ir.actions.server` and `base.automation` from explicit specs.
 - `odoo_rpp` + `rp-rental-mock`: strict code-based cron upserts with explicit user/model contracts.
@@ -45,6 +46,7 @@ Scope:
 - Fixed: catalog validation is now repeatable through `catalog/validate_catalog.ps1`.
 - Updated: source-derived guidance now states archive-only traceability and does not present those packages as fallback support or recommended assembly targets.
 - Added: `tax-upserts` canonicalizes `account.tax.group` and `account.tax` publication without country-specific fiscal canon, XML ID lookup, field detection, fallback group creation, or account-copy behavior.
+- Added: `binary-attachment-upserts` canonicalizes `ir.attachment` binary publication without orphan cleanup, `ir.asset` writes, version-field detection, or checksum-only metadata skips.
 - Added: `backend-web-assets` canonicalizes attachment-backed `ir.asset` publication, fingerprinting, token replacement, and explicit managed cleanup without direct bootstrap injection or version-field fallbacks.
 - Added: `server-automation-upserts` canonicalizes server-action/base-automation bundle sync around modern explicit `usage` and `trigger_field_ids` contracts.
 - Added: `cron-upserts` canonicalizes code-based `ir.cron` publication without user-resolution fallback, version field detection, missing-model returns, or legacy function crons.
@@ -81,18 +83,19 @@ Scope:
 2. Audit canonical runtime files for literal project routes and hard-coded `x_*` fields, excluding docs/examples and intentionally configurable Python defaults.
 3. Move any remaining project consumers away from source-derived packages once each project adapter has parity evidence; do not add common fallbacks to keep those consumers alive.
 4. Replace tax helpers with `tax-upserts`; keep fiscal country/state selection, XML ID publication, and reference-account copying project-local.
-5. Adapt `odoo_rpp` and `rp-rental-mock` publication scripts to call `backend-web-assets` once each project has a thin spec adapter and live Odoo evidence.
-6. Adapt automation installers to call `server-automation-upserts` through project-specific advice/pointcut adapters.
-7. Replace cron installers with `cron-upserts`; keep user lookup policy and dry-run behavior project-local.
-8. Replace local XML ID/model/field helper copies with `odoo-registry-lookup` where callers can tolerate strict missing-metadata errors.
-9. Replace XML ID publication helpers with `xmlid-upserts`; keep target-record creation and dry-run behavior project-local.
-10. Replace export/import metadata helpers with `data-exchange-upserts`; keep stale mapping cleanup project-local.
-11. Replace product category/pricelist helpers with `product-catalog-upserts`; keep legacy pricing cleanup and rental-specific rate derivation project-local.
-12. Replace sequence helpers with `sequence-upserts`; keep sequence assignment and next-number derivation project-local.
-13. Replace survey page/question/answer writes with `survey-upserts`; keep settings-option discovery and stale generated record deletion project-local.
-14. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
-15. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
-16. Replace report installers with `report-upserts`; keep report cleanup project-local.
-17. Replace mail template writes with `mail-template-upserts`; keep XML ID lookup and legacy `report_template` compatibility project-local.
-18. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
-19. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.
+5. Replace general binary attachment writes with `binary-attachment-upserts`; keep stale/orphan cleanup project-local.
+6. Adapt `odoo_rpp` and `rp-rental-mock` publication scripts to call `backend-web-assets` once each project has a thin spec adapter and live Odoo evidence.
+7. Adapt automation installers to call `server-automation-upserts` through project-specific advice/pointcut adapters.
+8. Replace cron installers with `cron-upserts`; keep user lookup policy and dry-run behavior project-local.
+9. Replace local XML ID/model/field helper copies with `odoo-registry-lookup` where callers can tolerate strict missing-metadata errors.
+10. Replace XML ID publication helpers with `xmlid-upserts`; keep target-record creation and dry-run behavior project-local.
+11. Replace export/import metadata helpers with `data-exchange-upserts`; keep stale mapping cleanup project-local.
+12. Replace product category/pricelist helpers with `product-catalog-upserts`; keep legacy pricing cleanup and rental-specific rate derivation project-local.
+13. Replace sequence helpers with `sequence-upserts`; keep sequence assignment and next-number derivation project-local.
+14. Replace survey page/question/answer writes with `survey-upserts`; keep settings-option discovery and stale generated record deletion project-local.
+15. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
+16. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
+17. Replace report installers with `report-upserts`; keep report cleanup project-local.
+18. Replace mail template writes with `mail-template-upserts`; keep XML ID lookup and legacy `report_template` compatibility project-local.
+19. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
+20. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.

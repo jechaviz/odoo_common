@@ -131,6 +131,18 @@
     ]
   },
   {
+    "key": "binary_attachment_publication",
+    "title": "Binary Attachment Publication",
+    "components": [
+      "binary-attachment-upserts"
+    ],
+    "use_cases": [
+      "managed binary attachments",
+      "base64 payload publication",
+      "public attachment metadata"
+    ]
+  },
+  {
     "key": "transactional_form_preview",
     "title": "Transactional Form Preview",
     "components": [

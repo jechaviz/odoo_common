@@ -159,6 +159,18 @@
     ]
   },
   {
+    "key": "server_automation_bundle",
+    "title": "Server Automation Bundle",
+    "components": [
+      "server-automation-upserts"
+    ],
+    "use_cases": [
+      "server action upserts",
+      "base.automation pointcuts",
+      "declarative action plus trigger bundles"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

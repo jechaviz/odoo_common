@@ -440,6 +440,33 @@
     ]
   },
   {
+    "key": "server-automation-upserts",
+    "title": "Server Automation Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/automation_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/automation_upserts.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/automation_bundles.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_015.pyfrag"
+      }
+    ],
+    "features": [
+      "ir.actions.server upsert",
+      "base.automation upsert",
+      "trigger field resolution",
+      "declarative automation bundle sync"
+    ]
+  },
+  {
     "key": "many2x-parent-form-autosave",
     "title": "Many2X Parent Form Autosave",
     "runtime": "web",

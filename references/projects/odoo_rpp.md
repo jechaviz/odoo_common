@@ -32,6 +32,7 @@ Nivel actual:
 - base canonica para `packages/python/partner_defaults`
 - base canonica para `packages/python/taxation`
 - base canonica para `packages/python/backend_web_assets`
+- base canonica para `packages/python/automation_upserts`
 
 Regla de consumo:
 

@@ -1,0 +1,18 @@
+{
+  "key": "server-automation-upserts",
+  "title": "Server Automation Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "automation_upserts.py"
+  ],
+  "capabilities": [
+    "server-action-upsert",
+    "base-automation-upsert",
+    "automation-bundle-sync"
+  ]
+}

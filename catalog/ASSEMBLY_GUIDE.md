@@ -1,5 +1,7 @@
 # Assembly Guide
 
+Para migrar consumidores existentes, usar `catalog/CONSUMER_MIGRATION_CHECKLIST.md` junto con esta guia. La checklist convierte las auditorias por proyecto en inventario, reemplazo `source-derived`, contrato de adapters y evidencia minima de cierre.
+
 ## Regla base
 
 No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.

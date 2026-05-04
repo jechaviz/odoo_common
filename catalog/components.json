@@ -413,6 +413,33 @@
     ]
   },
   {
+    "key": "backend-web-assets",
+    "title": "Backend Web Asset Publisher",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/backend_web_assets",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/web_client_assets.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/backend_web_asset_sync.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/backend_web_asset_manifest.py"
+      }
+    ],
+    "features": [
+      "attachment-backed asset publication",
+      "ir.asset upsert",
+      "asset fingerprinting",
+      "explicit managed cleanup"
+    ]
+  },
+  {
     "key": "many2x-parent-form-autosave",
     "title": "Many2X Parent Form Autosave",
     "runtime": "web",

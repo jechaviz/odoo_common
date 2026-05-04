@@ -147,6 +147,18 @@
     ]
   },
   {
+    "key": "backend_web_asset_publication",
+    "title": "Backend Web Asset Publication",
+    "components": [
+      "backend-web-assets"
+    ],
+    "use_cases": [
+      "publishing canonical JS/CSS runtime slices",
+      "attachment-backed ir.asset rows",
+      "checksum-driven backend asset cache busting"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

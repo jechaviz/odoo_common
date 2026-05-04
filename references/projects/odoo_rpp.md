@@ -31,6 +31,7 @@ Nivel actual:
 - base canonica para `packages/python/many2x_parent_form_autosave`
 - base canonica para `packages/python/partner_defaults`
 - base canonica para `packages/python/taxation`
+- base canonica para `packages/python/backend_web_assets`
 
 Regla de consumo:
 

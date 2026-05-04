@@ -26,6 +26,7 @@ Nivel actual:
 - base canonica para `packages/web/commercial_policy_surface`
 - base canonica para `packages/web/form_totals_surface`
 - base canonica para `packages/python/partner_language_defaults`
+- base canonica para `packages/python/backend_web_assets`
 - base canonica para `packages/schema/terms_conditions`
 
 Regla de consumo:

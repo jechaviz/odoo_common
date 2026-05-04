@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 6 total, 6 canonical.
+- Python packages: 7 total, 7 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
@@ -18,6 +18,7 @@ Scope:
 - `fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract.
 - `odoo_rpp`: form layout core, section headers, section visibility, settings panel, chatter toggle, subtotals, layout state, many2x parent autosave, defaults persistence, partner defaults, taxation helpers.
 - `rp-rental-mock`: form defaults, preview, header identity, action bridge, commercial policy, totals, partner language defaults, terms and conditions.
+- `odoo_rpp` + `rp-rental-mock`: backend web asset publication via explicit attachment-backed `ir.asset` specs.
 
 ## Findings
 
@@ -28,6 +29,7 @@ Scope:
 - Fixed: the four source-derived web packages now declare `replacement_components` in their package manifests.
 - Fixed: catalog validation is now repeatable through `catalog/validate_catalog.ps1`.
 - Updated: source-derived guidance now states archive-only traceability and does not present those packages as fallback support or recommended assembly targets.
+- Added: `backend-web-assets` canonicalizes attachment-backed `ir.asset` publication, fingerprinting, token replacement, and explicit managed cleanup without direct bootstrap injection or version-field fallbacks.
 
 ## Remaining Source-Derived Archive Traces
 
@@ -48,3 +50,4 @@ Scope:
 1. Move project-specific subtotals field display formatting into thin project adapters that call `buildFormSubtotalsSurfaceAdapter(spec)`.
 2. Audit canonical runtime files for literal project routes and hard-coded `x_*` fields, excluding docs/examples and intentionally configurable Python defaults.
 3. Move any remaining project consumers away from source-derived packages once each project adapter has parity evidence; do not add common fallbacks to keep those consumers alive.
+4. Adapt `odoo_rpp` and `rp-rental-mock` publication scripts to call `backend-web-assets` once each project has a thin spec adapter and live Odoo evidence.

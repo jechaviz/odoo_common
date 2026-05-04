@@ -1,0 +1,18 @@
+{
+  "key": "backend-web-assets",
+  "title": "Backend Web Asset Publisher",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "backend_web_assets.py"
+  ],
+  "capabilities": [
+    "backend-web-asset-specs",
+    "ir-asset-publication",
+    "attachment-backed-web-assets"
+  ]
+}

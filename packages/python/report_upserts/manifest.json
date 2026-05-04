@@ -1,0 +1,18 @@
+{
+  "key": "report-upserts",
+  "title": "Odoo Report Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "report_upserts.py"
+  ],
+  "capabilities": [
+    "paperformat-upsert",
+    "report-layout-upsert",
+    "report-action-upsert"
+  ]
+}

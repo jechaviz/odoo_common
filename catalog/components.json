@@ -600,6 +600,29 @@
     ]
   },
   {
+    "key": "report-upserts",
+    "title": "Odoo Report Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/report_upserts",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_002.pyfrag"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/report_template_sync.py"
+      }
+    ],
+    "features": [
+      "paperformat upsert",
+      "report layout upsert",
+      "report action upsert",
+      "strict QWeb report contracts"
+    ]
+  },
+  {
     "key": "custom-field-upserts",
     "title": "Custom Field Upserts",
     "runtime": "python",

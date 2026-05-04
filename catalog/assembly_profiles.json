@@ -233,6 +233,18 @@
     ]
   },
   {
+    "key": "report_publication",
+    "title": "Report Publication",
+    "components": [
+      "report-upserts"
+    ],
+    "use_cases": [
+      "paperformats",
+      "report layouts",
+      "QWeb report actions"
+    ]
+  },
+  {
     "key": "custom_field_publication",
     "title": "Custom Field Publication",
     "components": [

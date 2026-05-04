@@ -44,79 +44,10 @@
     }
 
     try {
-      if (Boolean(await callKw("res.users", "has_group", [ADMIN_GROUP_XMLID], {}))) {
-        return true;
-      }
+      return Boolean(await callKw("res.users", "has_group", [ADMIN_GROUP_XMLID], {}));
     } catch (_err) {
-      // Try alternate call signature below.
-    }
-
-    var uid = currentUserId();
-    if (!uid) {
       return false;
     }
-    try {
-      if (Boolean(await callKw("res.users", "has_group", [[uid], ADMIN_GROUP_XMLID], {}))) {
-        return true;
-      }
-    } catch (_err) {
-      // Fallback to group-id lookup below.
-    }
-
-    var groups = [];
-    try {
-      groups = await loadCurrentUserGroupIds();
-    } catch (_groupErr) {
-      groups = [];
-    }
-    if (groups.length) {
-      var adminGroupId = await loadSystemAdminGroupId();
-      if (adminGroupId && groups.indexOf(adminGroupId) >= 0) {
-        return true;
-      }
-      try {
-        var roleRows = await callKw(
-          "res.groups",
-          "search_read",
-          [[["id", "in", groups]]],
-          { fields: ["name", "display_name"], limit: 5000 }
-        );
-        if (Array.isArray(roleRows)) {
-          var hasAdminRoleName = roleRows.some(function (row) {
-            var name = String((row && (row.display_name || row.name)) || "")
-              .trim()
-              .toLowerCase();
-            if (!name) {
-              return false;
-            }
-            return (
-              name === "role / administrator" ||
-              name === "rp administrator" ||
-              name.indexOf("administrator") >= 0
-            );
-          });
-          if (hasAdminRoleName) {
-            return true;
-          }
-        }
-      } catch (_err) {
-        // Continue to function fallback below.
-      }
-    }
-    try {
-      var functionRows = await callKw("res.users", "read", [[uid], ["function"]], {});
-      if (Array.isArray(functionRows) && functionRows.length) {
-        var functionValue = String((functionRows[0] && functionRows[0].function) || "")
-          .trim()
-          .toLowerCase();
-        if (functionValue.indexOf("admin") >= 0) {
-          return true;
-        }
-      }
-    } catch (_functionErr) {
-      // Ignore and fallback to false.
-    }
-    return false;
   }
 
   v2.isCurrentUserAdmin = isCurrentUserAdmin;
@@ -141,31 +72,7 @@
     if (_state.userGroupsFieldName) {
       return _state.userGroupsFieldName;
     }
-    try {
-      var rows = await callKw(
-        "ir.model.fields",
-        "search_read",
-        [[["model", "=", "res.users"], ["name", "in", ["group_ids", "groups_id"]]]],
-        { fields: ["name"], limit: 2 }
-      );
-      if (Array.isArray(rows) && rows.length) {
-        var names = rows
-          .map(function (row) {
-            return String((row && row.name) || "").trim();
-          })
-          .filter(Boolean);
-        if (names.indexOf("group_ids") >= 0) {
-          _state.userGroupsFieldName = "group_ids";
-        } else if (names.indexOf("groups_id") >= 0) {
-          _state.userGroupsFieldName = "groups_id";
-        }
-      }
-    } catch (_err) {
-      // Fallback below.
-    }
-    if (!_state.userGroupsFieldName) {
-      _state.userGroupsFieldName = "group_ids";
-    }
+    _state.userGroupsFieldName = "groups_id";
     return _state.userGroupsFieldName;
   }
 
@@ -220,26 +127,7 @@
           return groupId > 0;
         });
     } catch (_err) {
-      var fallbackFieldName = groupsFieldName === "group_ids" ? "groups_id" : "group_ids";
-      try {
-        var fallbackRows = await callKw("res.users", "read", [[uid], [fallbackFieldName]], {});
-        if (!Array.isArray(fallbackRows) || !fallbackRows.length) {
-          return [];
-        }
-        var fallbackGroups = fallbackRows[0] && fallbackRows[0][fallbackFieldName];
-        if (!Array.isArray(fallbackGroups)) {
-          return [];
-        }
-        return fallbackGroups
-          .map(function (groupId) {
-            return Number(groupId || 0);
-          })
-          .filter(function (groupId) {
-            return groupId > 0;
-          });
-      } catch (_fallbackErr) {
-        return [];
-      }
+      return [];
     }
   }
 
@@ -278,37 +166,7 @@
           return Boolean(role);
         });
     } catch (_err) {
-      try {
-        var fallbackRows = await callKw(
-          "res.groups",
-          "search_read",
-          [[]],
-          { fields: ["id", "name"], order: "name asc", limit: 5000 }
-        );
-        if (!Array.isArray(fallbackRows)) {
-          return [];
-        }
-        return fallbackRows
-          .map(function (row) {
-            var roleId = Number((row && row.id) || 0);
-            if (!roleId) {
-              return null;
-            }
-            var roleName = String((row && row.name) || "").trim();
-            if (!roleName) {
-              return null;
-            }
-            return {
-              id: roleId,
-              name: roleName,
-            };
-          })
-          .filter(function (role) {
-            return Boolean(role);
-          });
-      } catch (_fallbackErr) {
-        return [];
-      }
+      return [];
     }
   }
 

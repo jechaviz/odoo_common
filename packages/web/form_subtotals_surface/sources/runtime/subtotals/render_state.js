@@ -77,7 +77,7 @@
     return true;
   }
 
-  function ensureRequiredSubtotalLine(layout, allNativeRows, matcher, fallbackLine, insertAtStart) {
+  function ensureRequiredSubtotalLine(layout, allNativeRows, matcher, defaultLineSpec, insertAtStart) {
     var hasLine = layout.lines.some(function (line) {
       return matcher(line);
     });
@@ -86,7 +86,7 @@
     }
     var defaultLine = buildDefaultSubtotalLayout(allNativeRows).lines.find(matcher);
     if (!defaultLine) {
-      defaultLine = sanitizeSubtotalLine(fallbackLine, fallbackLine.id);
+      defaultLine = sanitizeSubtotalLine(defaultLineSpec, defaultLineSpec.id);
     }
     if (!defaultLine) {
       return false;
@@ -100,6 +100,17 @@
       }
     }
     return true;
+  }
+
+  function readCoreSubtotalFieldLabel(formNode, fieldName) {
+    var normalizedFieldName = cleanText(fieldName || "");
+    if (!normalizedFieldName) {
+      return "";
+    }
+    var modelName = computeModelName(formNode);
+    var definitions = readLoadedFieldDefinitions(modelName);
+    var fieldMeta = definitions && definitions[normalizedFieldName];
+    return cleanText((fieldMeta && fieldMeta.string) || "") || normalizedFieldName;
   }
 
   function prepareSubtotalLayoutForRender(containerNode, formNode, scopeKey, containerKey) {
@@ -133,7 +144,7 @@
         },
         {
           id: "amount_untaxed",
-          label: "Untaxed Amount",
+          label: readCoreSubtotalFieldLabel(formNode, "amount_untaxed"),
           sourceField: "amount_untaxed",
           formula: "{field:amount_untaxed}",
           removable: false,
@@ -151,7 +162,7 @@
         },
         {
           id: "amount_tax",
-          label: "Tax Amount",
+          label: readCoreSubtotalFieldLabel(formNode, "amount_tax"),
           sourceField: "amount_tax",
           formula: "{field:amount_tax}",
           removable: false,
@@ -173,7 +184,7 @@
         },
         {
           id: "amount_total",
-          label: "Total",
+          label: readCoreSubtotalFieldLabel(formNode, "amount_total"),
           sourceField: "amount_total",
           formula: "{field:amount_total}",
           removable: false,

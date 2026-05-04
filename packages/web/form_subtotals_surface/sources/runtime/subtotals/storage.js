@@ -105,7 +105,7 @@
       if (!_state.subtotalEditModes[editStateKey]) {
         return;
       }
-      var formNode = containerNode.closest(".o_form_view");
+      var formNode = containerNode.closest(FORM_ROOT_SELECTOR);
       if (!(formNode instanceof HTMLElement)) {
         return;
       }
@@ -168,7 +168,7 @@
     if (!(formNode instanceof HTMLElement)) {
       return [];
     }
-    var containers = Array.prototype.slice.call(formNode.querySelectorAll(".oe_subtotal_footer"));
+    var containers = Array.prototype.slice.call(formNode.querySelectorAll("[data-lib-subtotal-container='1']"));
     return containers.filter(function (container) {
       return container instanceof HTMLElement;
     });
@@ -217,9 +217,8 @@
 
   async function syncBooleanFieldWidgets(formNode, fieldName, checked) {
     var nextChecked = Boolean(checked);
-    var recordId = readFormRecordId(formNode);
-    if (!recordId && syncBooleanFieldViaNativeForm(formNode, fieldName, nextChecked)) {
-      return true;
+    if (!readFormRecordId(formNode)) {
+      return false;
     }
     applyBooleanFieldWidgets(formNode, fieldName, nextChecked, false);
     writeBooleanFieldCache(formNode, fieldName, nextChecked);
@@ -277,47 +276,17 @@
     if (!(formNode instanceof HTMLElement)) {
       return;
     }
-    var taxTotalsNode = formNode.querySelector("[name='tax_totals'], [data-name='tax_totals']");
-    var subtotalRegion = taxTotalsNode instanceof HTMLElement ? taxTotalsNode.closest(".o_group, .o_inner_group, .oe_subtotal_footer, .o_form_sheet") : null;
-
-    SUBTOTAL_TOGGLE_FIELDS.forEach(function (fieldName) {
-      var nodes = findFieldNodes(formNode, fieldName);
-      nodes.forEach(function (node) {
-        if (!(node instanceof HTMLElement)) {
-          return;
-        }
-        var wrapper =
-          node.closest("div.d-flex.float-end") ||
-          node.closest(".o_row") ||
-          node.closest(".o_td_field") ||
-          node.closest(".o_field_widget");
-        if (!(wrapper instanceof HTMLElement)) {
-          return;
-        }
-        if (subtotalRegion instanceof HTMLElement && !subtotalRegion.contains(wrapper)) {
-          return;
-        }
+    formNode.querySelectorAll("[data-lib-subtotal-toggle-proxy='1']").forEach(function (wrapper) {
+      if (wrapper instanceof HTMLElement) {
         wrapper.classList.add(SUBTOTAL_TOGGLE_PROXY_HIDDEN_CLASS);
-      });
+      }
     });
   }
 
   v2.hideStandaloneSubtotalToggleFields = hideStandaloneSubtotalToggleFields;
 
   function formatSubtotalValue(formNode, amount) {
-    var currencySymbol = "$";
-    var candidates = Array.prototype.slice.call(formNode.querySelectorAll(".o_field_monetary, .o_tax_totals, .oe_subtotal_footer"));
-    for (var index = 0; index < candidates.length; index += 1) {
-      var text = cleanText(candidates[index].textContent || "");
-      if (!text) {
-        continue;
-      }
-      var symbolMatch = text.match(/([$€£¥])/);
-      if (symbolMatch && symbolMatch[1]) {
-        currencySymbol = symbolMatch[1];
-        break;
-      }
-    }
+    var currencySymbol = cleanText(formNode && formNode.getAttribute("data-lib-currency-symbol") || "") || "$";
     var numeric = Number.isFinite(Number(amount)) ? Number(amount) : 0;
     return currencySymbol + " " + numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }

@@ -11,8 +11,8 @@ This package owns:
 - optional field display normalizers declared by the host adapter
 
 This package stays business-neutral:
-- no invoice/rental model fallbacks
-- no hard-coded TERP/LDW defaults
+- no project model fallbacks
+- no hard-coded surcharge defaults
 - no hard-coded asset fields or project display formatters
 - no action-label discovery heuristics
 
@@ -22,6 +22,19 @@ This package stays business-neutral:
 - depends on `form-layout-surface` and shares `window.__o_lib_form_section_v2`
 - optional toggle menu hosts must be declared with `data-lib-subtotal-toggle-host="1"` or `data-lib-subtotal-toggle-host-selector`
 - extra toggle-backed source fields must be declared through `SUBTOTAL_TOGGLE_BY_SOURCE`, `SUBTOTAL_TOGGLE_FIELDS`, `SUBTOTAL_REFRESH_FIELDS`, and `SUBTOTAL_TOGGLE_MENU_ITEMS`
+- subtotal rows must be declared through DOM markers instead of label heuristics:
+- subtotal containers must declare `data-lib-subtotal-container="1"`
+- `data-lib-subtotal-anchor="1"` or container `data-lib-subtotal-anchor-selector` to place the rendered subtotal wrap
+- `data-lib-record-id` on the form root can supply record binding; URL, hash, ancestor, and descendant inference are intentionally not used
+- `data-lib-currency-symbol` on the form root controls rendered currency text
+- `data-lib-subtotal-source-field` to bind a custom source field
+- `data-lib-subtotal-seed="1"` to seed a native row into the editable layout
+- `data-lib-subtotal-label` and optional `data-lib-subtotal-value` provide seed-row metadata without reading visible labels
+- `data-lib-subtotal-line-type="charge|tax|special"` to classify custom seeded rows
+- `data-lib-subtotal-toggle-proxy="1"` marks native toggle wrappers that should be hidden when the surface owns the toggle
+- core amount line labels are read from loaded Odoo field definitions, falling back only to the technical field name
+- admin checks use the Odoo `base.group_system` contract only; role names and user-function text are not inspected
+- many2one option loading uses the Odoo `name_search` contract only; adapters that need another lookup shape must provide it outside this surface
 
 ## Public API
 
@@ -57,9 +70,9 @@ window.OdooSurfaceLayers.buildFormSubtotalsSurfaceAdapter({
   },
   fieldDisplayNormalizers: [
     {
-      fieldName: "project_identifier_field",
+      fieldName: "external_reference",
       normalize: function (value) {
-        return window.__project_display_utils.normalizeIdentifier(value);
+        return String(value || "").trim();
       },
     },
   ],

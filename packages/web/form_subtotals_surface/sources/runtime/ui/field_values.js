@@ -425,12 +425,12 @@
       return 0;
     };
     var directCandidates = [
+      formNode.getAttribute("data-lib-record-id"),
+      formNode.dataset.libRecordId,
       formNode.getAttribute("data-res-id"),
       formNode.getAttribute("data-record-id"),
-      formNode.getAttribute("data-id"),
       formNode.dataset.resId,
       formNode.dataset.recordId,
-      formNode.dataset.id,
     ];
     for (var index = 0; index < directCandidates.length; index += 1) {
       var parsedDirect = parseRecordId(directCandidates[index]);
@@ -439,79 +439,9 @@
       }
     }
 
-    try {
-      var pathname = String(window.location.pathname || "");
-      var directPathPatterns = [];
-      for (var directPathIndex = 0; directPathIndex < directPathPatterns.length; directPathIndex += 1) {
-        var directPathMatch = pathname.match(directPathPatterns[directPathIndex]);
-        if (!directPathMatch || !directPathMatch[1]) {
-          continue;
-        }
-        var parsedDirectPath = parseRecordId(directPathMatch[1]);
-        if (parsedDirectPath > 0) {
-          return parsedDirectPath;
-        }
-      }
-    } catch (_pathnameErr) {
-      // Ignore malformed pathnames.
-    }
-
-    var nodeCandidates = [];
-    var ancestorNode = formNode.closest("[data-res-id], [data-record-id], [data-id]");
-    if (ancestorNode instanceof HTMLElement) {
-      nodeCandidates.push(ancestorNode);
-    }
-    var descendantNode = formNode.querySelector("[data-res-id], [data-record-id], [data-id]");
-    if (descendantNode instanceof HTMLElement) {
-      nodeCandidates.push(descendantNode);
-    }
-    for (var nodeIndex = 0; nodeIndex < nodeCandidates.length; nodeIndex += 1) {
-      var candidateNode = nodeCandidates[nodeIndex];
-      var nodeValues = [
-        candidateNode.getAttribute("data-res-id"),
-        candidateNode.getAttribute("data-record-id"),
-        candidateNode.getAttribute("data-id"),
-        candidateNode.dataset.resId,
-        candidateNode.dataset.recordId,
-        candidateNode.dataset.id,
-      ];
-      for (var valueIndex = 0; valueIndex < nodeValues.length; valueIndex += 1) {
-        var parsedNodeValue = parseRecordId(nodeValues[valueIndex]);
-        if (parsedNodeValue > 0) {
-          return parsedNodeValue;
-        }
-      }
-    }
-
-    try {
-      var hash = String(window.location.hash || "");
-      if (hash) {
-        var hashParams = new URLSearchParams(hash.replace(/^#/, ""));
-        var hashId = parseRecordId(hashParams.get("id") || hashParams.get("res_id"));
-        if (hashId > 0) {
-          return hashId;
-        }
-      }
-    } catch (_hashErr) {
-      // Ignore malformed hashes.
-    }
-
     var idFromField = Number(readFieldNumericValue(formNode, "id") || 0);
     if (Number.isFinite(idFromField) && idFromField > 0) {
       return Math.trunc(idFromField);
-    }
-
-    var pathname = String(window.location.pathname || "");
-    var pathPatterns = [/\/action-\d+\/(\d+)(?:\/|$)/];
-    for (var pathIndex = 0; pathIndex < pathPatterns.length; pathIndex += 1) {
-      var pathMatch = pathname.match(pathPatterns[pathIndex]);
-      if (!pathMatch || !pathMatch[1]) {
-        continue;
-      }
-      var parsed = Number(pathMatch[1] || 0);
-      if (Number.isFinite(parsed) && parsed > 0) {
-        return Math.trunc(parsed);
-      }
     }
     return 0;
   }

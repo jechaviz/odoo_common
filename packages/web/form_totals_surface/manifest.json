@@ -3,7 +3,6 @@
   "title": "Form Totals Surface",
   "status": "canonical",
   "language": "web",
-  "origin_project": "rp-rental-mock",
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
@@ -19,6 +18,8 @@
     "tax-totals-normalization",
     "tax-row-rendering",
     "tax-fallback-visibility",
+    "explicit-tax-row-contract",
+    "explicit-tax-payload-contract",
     "totals-root-resolution",
     "totals-surface-adapter"
   ]

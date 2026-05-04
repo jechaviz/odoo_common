@@ -16,24 +16,10 @@
     if (!sourceField) {
       return "";
     }
-    var lowered = normalizeKey(sourceField);
-    if (!lowered) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(sourceField)) {
       return "";
     }
-    if (
-      lowered.indexOf("o_field_input_") === 0 ||
-      lowered.indexOf("o_input_") === 0 ||
-      lowered.indexOf("field_input_") === 0
-    ) {
-      return "";
-    }
-    var normalized = sourceField;
-    if (/^(x_[a-z0-9_]+)_\d+$/i.test(normalized)) {
-      normalized = normalized.replace(/^(x_[a-z0-9_]+)_\d+$/i, "$1");
-    } else if (/^(amount_[a-z0-9_]+)_\d+$/i.test(normalized)) {
-      normalized = normalized.replace(/^(amount_[a-z0-9_]+)_\d+$/i, "$1");
-    }
-    return cleanText(normalized || "");
+    return sourceField;
   }
 
   v2.normalizeSubtotalSourceField = normalizeSubtotalSourceField;
@@ -42,52 +28,18 @@
     if (!(row instanceof HTMLElement)) {
       return "";
     }
-    var labelNode = row.querySelector("label");
-    var labelForValue = cleanText((labelNode && labelNode.getAttribute && labelNode.getAttribute("for")) || "");
-    var sourceField = "";
-    var fieldNode = row.querySelector("[name], [data-name]");
-    if (fieldNode instanceof HTMLElement) {
-      sourceField = cleanText(fieldNode.getAttribute("name") || fieldNode.getAttribute("data-name") || "");
-    }
-    if (!sourceField) {
-      sourceField = labelForValue;
-    }
-    sourceField = normalizeSubtotalSourceField(sourceField) || normalizeSubtotalSourceField(labelForValue);
-
-    var normalizedLabel = normalizeSubtotalLabel(labelText);
-    if (!sourceField && (normalizedLabel === "total" || normalizedLabel === "grand_total")) {
-      return "amount_total";
-    }
-    if (
-      !sourceField &&
-      (normalizedLabel === "tax" ||
-        normalizedLabel === "taxes" ||
-        normalizedLabel.indexOf("tax_amount") >= 0 ||
-        normalizedLabel.indexOf("tax") >= 0)
-    ) {
-      return "amount_tax";
-    }
-    if (!sourceField && (normalizedLabel.indexOf("untaxed") >= 0 || normalizedLabel.indexOf("subtotal") >= 0)) {
-      return "amount_untaxed";
-    }
-    return normalizeSubtotalSourceField(sourceField);
+    return normalizeSubtotalSourceField(row.getAttribute("data-lib-subtotal-source-field") || "");
   }
 
   v2.deriveSubtotalSourceField = deriveSubtotalSourceField;
 
   function isCoreSubtotalLine(labelText, sourceField) {
-    var normalizedLabel = normalizeSubtotalLabel(labelText);
-    var fieldKey = normalizeKey(sourceField || "");
-    if (normalizedLabel.indexOf("margin") >= 0 || fieldKey.indexOf("margin") >= 0) {
-      return true;
-    }
     return false;
   }
 
   v2.isCoreSubtotalLine = isCoreSubtotalLine;
 
   function isUntaxedSubtotalLine(labelText, sourceField, lineId) {
-    var normalizedLabel = normalizeSubtotalLabel(labelText);
     var fieldKey = normalizeKey(sourceField || "");
     var lineKey = normalizeKey(lineId || "");
     if (fieldKey === "amount_untaxed") {
@@ -96,7 +48,7 @@
     if (lineKey === "amount_untaxed") {
       return true;
     }
-    return normalizedLabel.indexOf("untaxed") >= 0 || normalizedLabel.indexOf("subtotal") >= 0;
+    return false;
   }
 
   v2.isUntaxedSubtotalLine = isUntaxedSubtotalLine;
@@ -108,26 +60,14 @@
     if (!labelText) {
       return false;
     }
-    if (isUntaxedSubtotalLine(labelText, sourceField)) {
+    var explicitSeed = cleanText(row.getAttribute("data-lib-subtotal-seed") || "").toLowerCase();
+    if (["1", "true", "yes", "y", "on"].indexOf(explicitSeed) >= 0) {
       return true;
     }
-    if (isCoreSubtotalLine(labelText, sourceField)) {
+    if (["0", "false", "no", "n", "off"].indexOf(explicitSeed) >= 0) {
       return false;
     }
-    var fieldKey = normalizeKey(sourceField || "");
-    if (fieldKey.indexOf("tax_totals") >= 0) {
-      return false;
-    }
-    if (fieldKey === "amount_tax" || isTaxSubtotalLine(labelText, sourceField)) {
-      return true;
-    }
-    var normalizedLabel = normalizeSubtotalLabel(labelText);
-    return (
-      normalizedLabel.indexOf("charge") >= 0 ||
-      fieldKey === "amount_total" ||
-      normalizedLabel === "total" ||
-      normalizedLabel === "grand_total"
-    );
+    return false;
   }
 
   v2.shouldSeedSubtotalLine = shouldSeedSubtotalLine;
@@ -146,9 +86,10 @@
       if (!shouldSeedSubtotalLine(row, labelText, sourceField)) {
         return;
       }
+      var explicitLineType = cleanText(row.getAttribute("data-lib-subtotal-line-type") || "").toLowerCase();
       var isUntaxed = isUntaxedSubtotalLine(labelText, sourceField);
       var isTax = isTaxSubtotalLine(labelText, sourceField);
-      var isTotal = normalizeKey(sourceField || "") === "amount_total" || normalizeSubtotalLabel(labelText) === "total";
+      var isTotal = normalizeKey(sourceField || "") === "amount_total";
       var normalizedSourceField = sourceField || (isUntaxed ? "amount_untaxed" : isTax ? "amount_tax" : isTotal ? "amount_total" : "");
       var lineId = normalizeKey(normalizedSourceField || labelText) || "line_" + String(index + 1);
       var line = sanitizeSubtotalLine(
@@ -159,7 +100,7 @@
           formula: normalizedSourceField ? "{field:" + normalizedSourceField + "}" : "{subtotal}",
           removable: isUntaxed || isTax || isTotal ? false : true,
           formulaLocked: isUntaxed || isTax || isTotal,
-          lineType: isUntaxed ? "base" : isTax ? "tax" : isTotal ? "total" : normalizeSubtotalLineType("", normalizedSourceField, labelText),
+          lineType: isUntaxed ? "base" : isTax ? "tax" : isTotal ? "total" : normalizeSubtotalLineType(explicitLineType, normalizedSourceField, labelText),
           sign: "positive",
         },
         lineId

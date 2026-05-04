@@ -41,53 +41,6 @@
 
   v2.applyBooleanFieldWidgets = applyBooleanFieldWidgets;
 
-  function findEditableBooleanInput(formNode, fieldName) {
-    var nodes = findFieldNodes(formNode, fieldName);
-    var fallback = null;
-    for (var index = 0; index < nodes.length; index += 1) {
-      var node = nodes[index];
-      var checkbox = null;
-      if (node instanceof HTMLInputElement && cleanText(node.type).toLowerCase() === "checkbox") {
-        checkbox = node;
-      } else if (node instanceof HTMLElement) {
-        checkbox = node.querySelector("input[type='checkbox']");
-      }
-      if (!(checkbox instanceof HTMLInputElement)) {
-        continue;
-      }
-      if (!checkbox.disabled) {
-        return checkbox;
-      }
-      if (!fallback) {
-        fallback = checkbox;
-      }
-    }
-    return fallback;
-  }
-
-  v2.findEditableBooleanInput = findEditableBooleanInput;
-
-  function syncBooleanFieldViaNativeForm(formNode, fieldName, checked) {
-    var checkbox = findEditableBooleanInput(formNode, fieldName);
-    if (!(checkbox instanceof HTMLInputElement) || checkbox.disabled) {
-      return false;
-    }
-    var nextChecked = Boolean(checked);
-    if (Boolean(checkbox.checked) !== nextChecked) {
-      checkbox.click();
-    }
-    writeBooleanFieldCache(formNode, fieldName, nextChecked);
-    window.setTimeout(function () {
-      scheduleRefresh();
-    }, 120);
-    window.setTimeout(function () {
-      scheduleRefresh();
-    }, 320);
-    return true;
-  }
-
-  v2.syncBooleanFieldViaNativeForm = syncBooleanFieldViaNativeForm;
-
   function applyNumericFieldWidgets(formNode, fieldName, numericValue) {
     var nodes = findFieldNodes(formNode, fieldName);
     var applied = false;

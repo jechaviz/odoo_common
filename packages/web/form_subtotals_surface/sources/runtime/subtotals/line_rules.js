@@ -8,14 +8,13 @@
   function normalizeSubtotalLineType(rawType, sourceField, label) {
     var typeName = cleanText(rawType || "").toLowerCase();
     var fieldKey = normalizeKey(sourceField || "");
-    var labelKey = normalizeSubtotalLabel(label || "");
-    if (fieldKey === "amount_untaxed" || labelKey.indexOf("untaxed") >= 0 || labelKey.indexOf("subtotal") >= 0) {
+    if (fieldKey === "amount_untaxed") {
       return "base";
     }
-    if (fieldKey === "amount_tax" || labelKey === "tax" || labelKey === "taxes" || labelKey.indexOf("tax_amount") >= 0) {
+    if (fieldKey === "amount_tax") {
       return "tax";
     }
-    if (fieldKey === "amount_total" || labelKey === "total" || labelKey === "grand_total") {
+    if (fieldKey === "amount_total") {
       return "total";
     }
     if (Object.prototype.hasOwnProperty.call(SUBTOTAL_TOGGLE_BY_SOURCE, fieldKey)) {
@@ -23,12 +22,6 @@
     }
     if (typeName === "charge" || typeName === "tax" || typeName === "special") {
       return typeName;
-    }
-    if (labelKey.indexOf("charge") >= 0 || labelKey.indexOf("fee") >= 0 || labelKey.indexOf("surcharge") >= 0) {
-      return "charge";
-    }
-    if (labelKey.indexOf("tax") >= 0) {
-      return "tax";
     }
     return "special";
   }
@@ -77,7 +70,6 @@
   v2.isAutoManagedSubtotalSourceField = isAutoManagedSubtotalSourceField;
 
   function isTaxSubtotalLine(labelText, sourceField, lineId) {
-    var normalizedLabel = normalizeSubtotalLabel(labelText);
     var fieldKey = normalizeKey(sourceField || "");
     var lineKey = normalizeKey(lineId || "");
     if (fieldKey === "amount_tax") {
@@ -86,7 +78,7 @@
     if (lineKey === "amount_tax") {
       return true;
     }
-    return normalizedLabel === "tax" || normalizedLabel === "taxes" || normalizedLabel.indexOf("tax_amount") >= 0;
+    return false;
   }
 
   v2.isTaxSubtotalLine = isTaxSubtotalLine;
@@ -121,11 +113,11 @@
 
   v2.isBackendManagedSubtotalLine = isBackendManagedSubtotalLine;
 
-  function sanitizeSubtotalLine(line, fallbackId) {
+  function sanitizeSubtotalLine(line, defaultId) {
     if (!line || typeof line !== "object") {
       return null;
     }
-    var lineId = cleanText(line.id || fallbackId || "");
+    var lineId = cleanText(line.id || defaultId || "");
     if (!lineId) {
       return null;
     }
@@ -133,15 +125,6 @@
     var formula = cleanText(line.formula || "");
     var sourceField = normalizeSubtotalSourceField(line.sourceField || "");
     var lineType = normalizeSubtotalLineType(line.lineType, sourceField, label);
-    if (!sourceField) {
-      if (lineType === "base" || isUntaxedSubtotalLine(label, sourceField, lineId)) {
-        sourceField = "amount_untaxed";
-      } else if (lineType === "tax" || isTaxSubtotalLine(label, sourceField, lineId)) {
-        sourceField = "amount_tax";
-      } else if (lineType === "total") {
-        sourceField = "amount_total";
-      }
-    }
     lineType = normalizeSubtotalLineType(lineType, sourceField, label);
     if ((!formula || !cleanText(formula)) && sourceField) {
       formula = "{field:" + sourceField + "}";

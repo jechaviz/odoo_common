@@ -102,8 +102,6 @@
       var persistPromise = queueStatePersist({
         scopeKey: scopeKey,
         containerKey: containerKey,
-      }).catch(function () {
-        // Keep local state as fallback.
       });
       try {
         await Promise.race([persistPromise, delayMs(8000)]);

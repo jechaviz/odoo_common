@@ -93,102 +93,45 @@
       if (!includeHiddenRows && child.classList.contains(SUBTOTAL_NATIVE_HIDDEN_CLASS)) {
         return false;
       }
-      if (!child.matches("div, section, article")) {
-        return false;
-      }
-      if (child.matches("div.d-flex") && child.querySelector("label")) {
+      if (cleanText(child.getAttribute("data-lib-subtotal-seed") || "").toLowerCase() === "1") {
         return true;
       }
-      if (child.querySelector("label")) {
-        return true;
-      }
-      var text = cleanText(child.textContent || "");
-      if (!text) {
-        return false;
-      }
-      var hasValueNode = Boolean(
-        child.querySelector(".o_field_monetary, .oe_currency_value, .o_field_widget, [name], [data-name], span")
-      );
-      return hasValueNode && /[:?]/.test(text);
+      return Boolean(normalizeSubtotalSourceField(child.getAttribute("data-lib-subtotal-source-field") || ""));
     });
   }
 
   v2.collectSubtotalNativeRows = collectSubtotalNativeRows;
 
+  function findExplicitSubtotalWrapInsertionAnchor(containerNode) {
+    if (!(containerNode instanceof HTMLElement)) {
+      return null;
+    }
+    var selector = cleanText(containerNode.getAttribute("data-lib-subtotal-anchor-selector") || "");
+    if (selector) {
+      var selectedAnchor = containerNode.querySelector(selector);
+      if (selectedAnchor instanceof HTMLElement) {
+        return selectedAnchor;
+      }
+    }
+    var markedAnchor = containerNode.querySelector("[data-lib-subtotal-anchor='1']");
+    return markedAnchor instanceof HTMLElement ? markedAnchor : null;
+  }
+
   function findSubtotalWrapInsertionAnchor(containerNode) {
     if (!(containerNode instanceof HTMLElement)) {
       return null;
     }
-    var children = Array.prototype.slice.call(containerNode.children);
-    for (var i = 0; i < children.length; i += 1) {
-      var child = children[i];
-      if (!(child instanceof HTMLElement)) {
-        continue;
-      }
-      if (
-        child.classList.contains(SUBTOTAL_LINES_WRAP_CLASS) ||
-        child.classList.contains(SUBTOTAL_CONFIG_TRIGGER_CLASS) ||
-        child.classList.contains(SUBTOTAL_RESTORE_TRIGGER_CLASS) ||
-        child.classList.contains(SUBTOTAL_SAVE_TRIGGER_CLASS) ||
-        child.classList.contains(SUBTOTAL_ERROR_ICON_CLASS)
-      ) {
-        continue;
-      }
-
-      var labelText = extractSubtotalRowLabelText(child);
-      var sourceField = deriveSubtotalSourceField(child, labelText);
-      var sourceKey = normalizeKey(sourceField || "");
-      var labelKey = normalizeSubtotalLabel(labelText || "");
-      var looksLikeSubtotalRow =
-        sourceKey === "amount_untaxed" ||
-        sourceKey === "amount_tax" ||
-        sourceKey === "amount_total" ||
-        sourceKey.indexOf("x_") === 0 ||
-        labelKey.indexOf("untaxed") >= 0 ||
-        labelKey.indexOf("subtotal") >= 0 ||
-        labelKey.indexOf("tax") >= 0 ||
-        labelKey === "total" ||
-        labelKey === "grand_total" ||
-        labelKey.indexOf("charge") >= 0 ||
-        labelKey.indexOf("terp") >= 0 ||
-        labelKey.indexOf("ldw") >= 0;
-      if (looksLikeSubtotalRow) {
-        return child;
-      }
-    }
-    return null;
+    return findExplicitSubtotalWrapInsertionAnchor(containerNode);
   }
 
   v2.findSubtotalWrapInsertionAnchor = findSubtotalWrapInsertionAnchor;
+  v2.findExplicitSubtotalWrapInsertionAnchor = findExplicitSubtotalWrapInsertionAnchor;
 
   function extractSubtotalRowLabelText(row) {
     if (!(row instanceof HTMLElement)) {
       return "";
     }
-    var labelNode = row.querySelector("label");
-    if (labelNode instanceof HTMLElement) {
-      var fromLabel = cleanText(labelNode.textContent || "");
-      if (fromLabel) {
-        return fromLabel;
-      }
-    }
-
-    var rawText = cleanText(row.textContent || "");
-    if (!rawText) {
-      return "";
-    }
-    var withoutAmounts = rawText
-      .replace(/[$€£¥]\s*[-+]?\d[\d,]*(?:\.\d+)?/g, "")
-      .replace(/[-+]?\d[\d,]*(?:\.\d+)?%?/g, "")
-      .trim();
-    if (!withoutAmounts) {
-      return "";
-    }
-    var colonIndex = withoutAmounts.indexOf(":");
-    if (colonIndex > 0) {
-      return cleanText(withoutAmounts.slice(0, colonIndex));
-    }
-    return cleanText(withoutAmounts);
+    return cleanText(row.getAttribute("data-lib-subtotal-label") || "");
   }
 
   v2.extractSubtotalRowLabelText = extractSubtotalRowLabelText;
@@ -209,26 +152,23 @@
     if (!(row instanceof HTMLElement)) {
       return 0;
     }
-    var candidates = row.querySelectorAll(
-      ".o_field_monetary, .oe_currency_value, .o_field_widget, [name], [data-name], span"
-    );
-    for (var i = 0; i < candidates.length; i += 1) {
-      var node = candidates[i];
-      if (!(node instanceof HTMLElement)) {
-        continue;
-      }
-      var textValue = parseNumericText(node.textContent || "");
-      if (textValue !== 0) {
-        return textValue;
-      }
-      if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement) {
-        var inputValue = parseNumericText(node.value);
-        if (inputValue !== 0) {
-          return inputValue;
-        }
-      }
+    var explicitValue = cleanText(row.getAttribute("data-lib-subtotal-value") || "");
+    if (explicitValue) {
+      return parseNumericText(explicitValue);
     }
-    return parseNumericText(row.textContent || "");
+    var sourceField = deriveSubtotalSourceField(row, extractSubtotalRowLabelText(row));
+    if (!sourceField) {
+      return 0;
+    }
+    var escaped = sourceField.replace(/'/g, "\\'");
+    var node = row.querySelector("[name='" + escaped + "'], [data-name='" + escaped + "']");
+    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement) {
+      return parseNumericText(node.value);
+    }
+    if (node instanceof HTMLElement) {
+      return parseNumericText(node.getAttribute("value") || node.textContent || "");
+    }
+    return 0;
   }
 
   v2.extractSubtotalRowNumericValue = extractSubtotalRowNumericValue;
@@ -245,36 +185,15 @@
       var label = extractSubtotalRowLabelText(row);
       var sourceField = deriveSubtotalSourceField(row, label);
       var fieldKey = cleanText(sourceField || "").toLowerCase();
+      if (!fieldKey) {
+        return;
+      }
       var value = extractSubtotalRowNumericValue(row);
       if (!Number.isFinite(Number(value))) {
         return;
       }
-      if (fieldKey) {
-        values[fieldKey] = Number(value);
-      }
-      var normalizedLabel = normalizeSubtotalLabel(label || "");
-      if ((normalizedLabel.indexOf("untaxed") >= 0 || normalizedLabel.indexOf("subtotal") >= 0) && !values.amount_untaxed) {
-        values.amount_untaxed = Number(value);
-      }
-      if (
-        normalizedLabel === "tax" ||
-        normalizedLabel === "taxes" ||
-        normalizedLabel.indexOf("tax_amount") >= 0
-      ) {
-        values.amount_tax = Number(value);
-      }
-      if ((normalizedLabel === "total" || normalizedLabel === "grand_total") && !values.amount_total) {
-        values.amount_total = Number(value);
-      }
+      values[fieldKey] = Number(value);
     });
-    if (
-      !Number.isFinite(Number(values.amount_tax)) &&
-      Number.isFinite(Number(values.amount_total)) &&
-      Number.isFinite(Number(values.amount_untaxed)) &&
-      Number(values.amount_total) >= Number(values.amount_untaxed)
-    ) {
-      values.amount_tax = Number(values.amount_total) - Number(values.amount_untaxed);
-    }
     return values;
   }
 

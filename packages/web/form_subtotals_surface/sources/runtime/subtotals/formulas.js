@@ -26,28 +26,20 @@
       return 0;
     }
 
-    var fallbackUntaxed = Number(nativeFieldValues && nativeFieldValues.amount_untaxed);
-    var fallbackTax = Number(nativeFieldValues && nativeFieldValues.amount_tax);
-    var fallbackTotal = Number(nativeFieldValues && nativeFieldValues.amount_total);
+    var seededUntaxed = Number(nativeFieldValues && nativeFieldValues.amount_untaxed);
+    var seededTax = Number(nativeFieldValues && nativeFieldValues.amount_tax);
+    var seededTotal = Number(nativeFieldValues && nativeFieldValues.amount_total);
     var subtotalAmount = readFieldNumericValue(formNode, "amount_untaxed");
     var taxAmount = readFieldNumericValue(formNode, "amount_tax");
     var totalAmount = readFieldNumericValue(formNode, "amount_total");
-    if (subtotalAmount === 0 && Number.isFinite(fallbackUntaxed)) {
-      subtotalAmount = fallbackUntaxed;
+    if (subtotalAmount === 0 && Number.isFinite(seededUntaxed)) {
+      subtotalAmount = seededUntaxed;
     }
-    if (taxAmount === 0 && Number.isFinite(fallbackTax)) {
-      taxAmount = fallbackTax;
+    if (taxAmount === 0 && Number.isFinite(seededTax)) {
+      taxAmount = seededTax;
     }
-    if (totalAmount === 0 && Number.isFinite(fallbackTotal)) {
-      totalAmount = fallbackTotal;
-    }
-    if (
-      taxAmount === 0 &&
-      Number.isFinite(totalAmount) &&
-      Number.isFinite(subtotalAmount) &&
-      Number(totalAmount) >= Number(subtotalAmount)
-    ) {
-      taxAmount = totalAmount - subtotalAmount;
+    if (totalAmount === 0 && Number.isFinite(seededTotal)) {
+      totalAmount = seededTotal;
     }
 
     if (lineTypeName === "base") {
@@ -96,15 +88,6 @@
       if (key.indexOf("field:") === 0) {
         var fieldName = cleanText(key.slice(6));
         var fieldValue = readFieldNumericValue(formNode, fieldName);
-        if (
-          fieldName === "amount_tax" &&
-          fieldValue === 0 &&
-          Number.isFinite(Number(totalAmount)) &&
-          Number.isFinite(Number(subtotalAmount)) &&
-          Number(totalAmount) >= Number(subtotalAmount)
-        ) {
-          fieldValue = Number(totalAmount) - Number(subtotalAmount);
-        }
         if (fieldValue === 0 && nativeFieldValues && Object.prototype.hasOwnProperty.call(nativeFieldValues, fieldName)) {
           fieldValue = Number(nativeFieldValues[fieldName] || 0);
         }

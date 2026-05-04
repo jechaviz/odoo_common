@@ -77,31 +77,6 @@
 
   v2.parseRelationOptionsFromNameSearch = parseRelationOptionsFromNameSearch;
 
-  function parseRelationOptionsFromSearchRead(rows) {
-    var options = [];
-    var seen = new Set();
-    if (!Array.isArray(rows)) {
-      return options;
-    }
-    rows.forEach(function (row) {
-      var label = cleanText((row && (row.display_name || row.name)) || "");
-      var recordId = Number((row && row.id) || 0) || 0;
-      var seenKey = recordId > 0 ? "id:" + String(recordId) : "name:" + label;
-      if (!label || seen.has(seenKey)) {
-        return;
-      }
-      seen.add(seenKey);
-      options.push({
-        value: label,
-        label: label,
-        id: recordId,
-      });
-    });
-    return options;
-  }
-
-  v2.parseRelationOptionsFromSearchRead = parseRelationOptionsFromSearchRead;
-
   function relationModelForField(modelName, fieldName, uiFieldMeta) {
     var definitions = readLoadedFieldDefinitions(modelName);
     var backendMeta = definitions[String(fieldName || "")];
@@ -155,35 +130,6 @@
     }
     var userContext = rpcUserContext();
 
-    function fallbackSearchRead() {
-      var domain = query
-        ? ["|", ["display_name", "ilike", query], ["name", "ilike", query]]
-        : [];
-      return callKw(
-        relationModel,
-        "search_read",
-        [domain],
-        {
-          fields: ["display_name", "name"],
-          limit: normalizedLimit,
-          order: "display_name asc",
-          context: userContext,
-        }
-      )
-        .then(function (rows) {
-          var parsed = parseRelationOptionsFromSearchRead(rows);
-          if (parsed.length) {
-            return parsed;
-          }
-          var cached = readRelationFieldOptions(modelName, fieldName);
-          return Array.isArray(cached) ? cached : [];
-        })
-        .catch(function () {
-          var cached = readRelationFieldOptions(modelName, fieldName);
-          return Array.isArray(cached) ? cached : [];
-        });
-    }
-
     return callKw(
       relationModel,
       "name_search",
@@ -195,10 +141,10 @@
         if (parsed.length) {
           return parsed;
         }
-        return fallbackSearchRead();
+        return readRelationFieldOptions(modelName, fieldName);
       })
       .catch(function () {
-        return fallbackSearchRead();
+        return readRelationFieldOptions(modelName, fieldName);
       });
   }
 
@@ -224,29 +170,6 @@
 
     var userContext = rpcUserContext();
 
-    function fallbackSearchRead() {
-      return callKw(
-        relationModel,
-        "search_read",
-        [[]],
-        {
-          fields: ["display_name", "name"],
-          limit: 120,
-          order: "display_name asc",
-          context: userContext,
-        }
-      )
-        .then(function (rows) {
-          var options = parseRelationOptionsFromSearchRead(rows);
-          _state.relationFieldOptionsByKey[key] = options;
-          return options;
-        })
-        .catch(function () {
-          _state.relationFieldOptionsByKey[key] = [];
-          return [];
-        });
-    }
-
     _state.relationFieldOptionsLoadByKey[key] = callKw(
       relationModel,
       "name_search",
@@ -259,10 +182,12 @@
           _state.relationFieldOptionsByKey[key] = options;
           return options;
         }
-        return fallbackSearchRead();
+        _state.relationFieldOptionsByKey[key] = [];
+        return [];
       })
       .catch(function () {
-        return fallbackSearchRead();
+        _state.relationFieldOptionsByKey[key] = [];
+        return [];
       })
       .finally(function () {
         delete _state.relationFieldOptionsLoadByKey[key];

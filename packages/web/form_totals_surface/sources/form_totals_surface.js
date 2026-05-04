@@ -18,6 +18,12 @@
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   }
 
+  function readStringArray(value) {
+    return Array.isArray(value)
+      ? value.map(normalizeScalarText).filter(Boolean)
+      : [];
+  }
+
   function asElement(value) {
     return value instanceof HTMLElement ? value : null;
   }
@@ -70,10 +76,31 @@
     return payload && typeof payload === "object" ? payload : null;
   }
 
+  function normalizeFormTotalsRowsSpec(rawSpec) {
+    var spec = readOptions(rawSpec);
+    var labelKeys = readStringArray(spec.labelKeys);
+    var amountKeys = readStringArray(spec.amountKeys);
+    return {
+      subtotalsKey: normalizeScalarText(spec.subtotalsKey) || "subtotals",
+      taxGroupsKey: normalizeScalarText(spec.taxGroupsKey) || "tax_groups",
+      groupsBySubtotalKey: normalizeScalarText(spec.groupsBySubtotalKey),
+      labelKeys: labelKeys.length ? labelKeys : ["group_label", "group_name", "name", "tax_group_name"],
+      amountKeys: amountKeys.length ? amountKeys : ["tax_amount_currency", "tax_amount"],
+      fallbackLabel: normalizeScalarText(spec.fallbackLabel),
+    };
+  }
+
+  function normalizeFormTotalsPayloadSpec(rawSpec) {
+    var spec = readOptions(rawSpec);
+    return {
+      taxTotalsKey: normalizeScalarText(spec.taxTotalsKey) || "tax_totals",
+      fallbackAmountKey: normalizeScalarText(spec.fallbackAmountKey),
+    };
+  }
+
   function readTaxGroupLabel(group, settings) {
-    var labelKeys = Array.isArray(settings && settings.labelKeys) && settings.labelKeys.length
-      ? settings.labelKeys
-      : ["group_label", "group_name", "name", "tax_group_name"];
+    var rowsSpec = normalizeFormTotalsRowsSpec(settings);
+    var labelKeys = rowsSpec.labelKeys;
     for (var index = 0; index < labelKeys.length; index += 1) {
       var key = labelKeys[index];
       var label = normalizeScalarText(group && group[key]);
@@ -81,13 +108,11 @@
         return label;
       }
     }
-    return "Tax Amount";
+    return rowsSpec.fallbackLabel;
   }
 
   function readTaxGroupAmount(group, settings) {
-    var amountKeys = Array.isArray(settings && settings.amountKeys) && settings.amountKeys.length
-      ? settings.amountKeys
-      : ["tax_amount_currency", "tax_amount"];
+    var amountKeys = normalizeFormTotalsRowsSpec(settings).amountKeys;
     for (var index = 0; index < amountKeys.length; index += 1) {
       var key = amountKeys[index];
       if (group && group[key] !== undefined && group[key] !== null) {
@@ -102,7 +127,7 @@
     if (!payload) {
       return [];
     }
-    var settings = options && typeof options === "object" ? options : {};
+    var settings = normalizeFormTotalsRowsSpec(options);
     var rows = [];
     var seenKeys = Object.create(null);
 
@@ -111,6 +136,9 @@
         return;
       }
       var label = readTaxGroupLabel(group, settings);
+      if (!label) {
+        return;
+      }
       var amount = readTaxGroupAmount(group, settings);
       var rowKey = label + "::" + amount.toFixed(2);
       if (seenKeys[rowKey]) {
@@ -123,23 +151,62 @@
       });
     }
 
-    var subtotals = Array.isArray(payload.subtotals) ? payload.subtotals : [];
+    var subtotals = Array.isArray(payload[settings.subtotalsKey]) ? payload[settings.subtotalsKey] : [];
     subtotals.forEach(function (subtotalRow) {
-      var taxGroups = Array.isArray(subtotalRow && subtotalRow.tax_groups) ? subtotalRow.tax_groups : [];
+      var taxGroups = Array.isArray(subtotalRow && subtotalRow[settings.taxGroupsKey])
+        ? subtotalRow[settings.taxGroupsKey]
+        : [];
       taxGroups.forEach(appendTaxGroup);
     });
 
-    if (!rows.length && payload.groups_by_subtotal && typeof payload.groups_by_subtotal === "object") {
-      Object.keys(payload.groups_by_subtotal).forEach(function (subtotalKey) {
-        var taxGroups = payload.groups_by_subtotal[subtotalKey];
-        if (!Array.isArray(taxGroups)) {
-          return;
-        }
-        taxGroups.forEach(appendTaxGroup);
-      });
+    if (!rows.length && settings.groupsBySubtotalKey) {
+      var groupsBySubtotal = payload[settings.groupsBySubtotalKey];
+      if (groupsBySubtotal && typeof groupsBySubtotal === "object") {
+        Object.keys(groupsBySubtotal).forEach(function (subtotalKey) {
+          var taxGroups = groupsBySubtotal[subtotalKey];
+          if (!Array.isArray(taxGroups)) {
+            return;
+          }
+          taxGroups.forEach(appendTaxGroup);
+        });
+      }
     }
 
     return rows;
+  }
+
+  function mergeFormTotalsRowsSpec(baseSpec, overrideSpec) {
+    return normalizeFormTotalsRowsSpec(Object.assign({}, normalizeFormTotalsRowsSpec(baseSpec), readOptions(overrideSpec)));
+  }
+
+  function mergeFormTotalsPayloadSpec(baseSpec, overrideSpec) {
+    return normalizeFormTotalsPayloadSpec(Object.assign({}, normalizeFormTotalsPayloadSpec(baseSpec), readOptions(overrideSpec)));
+  }
+
+  function readPayloadEnvelopeValue(rawPayload, key) {
+    if (!key || !(rawPayload && typeof rawPayload === "object")) {
+      return undefined;
+    }
+    if (!Object.prototype.hasOwnProperty.call(rawPayload, key)) {
+      return undefined;
+    }
+    return rawPayload[key];
+  }
+
+  function normalizeFormTotalsPayloadEnvelope(rawPayload, rawSpec) {
+    var payloadSpec = normalizeFormTotalsPayloadSpec(rawSpec);
+    if (rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)) {
+      var configuredTaxTotals = readPayloadEnvelopeValue(rawPayload, payloadSpec.taxTotalsKey);
+      var fallbackAmount = readPayloadEnvelopeValue(rawPayload, payloadSpec.fallbackAmountKey);
+      return {
+        taxTotals: configuredTaxTotals === undefined ? rawPayload : configuredTaxTotals,
+        fallbackAmount: fallbackAmount === undefined ? 0 : fallbackAmount,
+      };
+    }
+    return {
+      taxTotals: rawPayload,
+      fallbackAmount: 0,
+    };
   }
 
   function resolveElementList(root, selector) {
@@ -221,7 +288,8 @@
       replaceText: readFunction(spec.replaceText),
       formatAmount: readFunction(spec.formatAmount),
       money: readOptions(spec.money),
-      rows: readOptions(spec.rows),
+      rows: normalizeFormTotalsRowsSpec(spec.rows),
+      payload: normalizeFormTotalsPayloadSpec(spec.payload),
       beforeSync: readFunction(spec.beforeSync),
       afterSync: readFunction(spec.afterSync),
       visibleWhen: readFunction(spec.visibleWhen),
@@ -241,7 +309,8 @@
       replaceText: readFunction(options.replaceText) || spec.replaceText,
       formatAmount: readFunction(options.formatAmount) || spec.formatAmount,
       money: Object.assign({}, spec.money, readOptions(options.money)),
-      rows: Object.assign({}, spec.rows, readOptions(options.rows)),
+      rows: mergeFormTotalsRowsSpec(spec.rows, options.rows),
+      payload: mergeFormTotalsPayloadSpec(spec.payload, options.payload),
       beforeSync: readFunction(options.beforeSync) || spec.beforeSync,
       afterSync: readFunction(options.afterSync) || spec.afterSync,
       visibleWhen: readFunction(options.visibleWhen) || spec.visibleWhen,
@@ -255,6 +324,7 @@
     var fallbackSelector = normalizeScalarText(settings.fallbackSelector);
     var labelSelector = normalizeScalarText(settings.labelSelector) || "[data-surface-tax-label='1']";
     var amountSelector = normalizeScalarText(settings.amountSelector) || "[data-surface-tax-amount='1']";
+    var rowsSpec = normalizeFormTotalsRowsSpec(settings.rows);
     var replaceText = typeof settings.replaceText === "function" ? settings.replaceText : null;
     var formatAmount = typeof settings.formatAmount === "function"
       ? settings.formatAmount
@@ -286,11 +356,11 @@
         return false;
       }
       clear();
-      var rows = collectFormTotalsTaxRows(taxTotals, options || settings.rows);
+      var rows = collectFormTotalsTaxRows(taxTotals, options || rowsSpec);
       rows.slice(0, rowNodes.length).forEach(function (taxRow, index) {
         var row = rowNodes[index];
         var formattedAmount = formatAmount(taxRow.amount);
-        setNodeText(row.querySelector(labelSelector), normalizeScalarText(taxRow.label) || "Tax Amount", replaceText);
+        setNodeText(row.querySelector(labelSelector), taxRow.label, replaceText);
         var amountNode = row.querySelector(amountSelector);
         setNodeText(amountNode, formattedAmount, replaceText);
         if (amountNode instanceof HTMLElement) {
@@ -312,23 +382,6 @@
       clear: clear,
       sync: sync,
       syncFallback: syncFallback,
-    };
-  }
-
-  function normalizeFormTotalsPayloadEnvelope(rawPayload) {
-    if (rawPayload && typeof rawPayload === "object" && !Array.isArray(rawPayload)) {
-      return {
-        taxTotals: Object.prototype.hasOwnProperty.call(rawPayload, "taxTotals")
-          ? rawPayload.taxTotals
-          : rawPayload.tax_totals,
-        fallbackAmount: Object.prototype.hasOwnProperty.call(rawPayload, "fallbackAmount")
-          ? rawPayload.fallbackAmount
-          : rawPayload.amountTax,
-      };
-    }
-    return {
-      taxTotals: rawPayload,
-      fallbackAmount: 0,
     };
   }
 
@@ -356,7 +409,7 @@
 
     function sync(rawPayload, rawOptions) {
       var runtimeSpec = buildFormTotalsSurfaceRuntimeSpec(spec, rawOptions);
-      var envelope = normalizeFormTotalsPayloadEnvelope(rawPayload);
+      var envelope = normalizeFormTotalsPayloadEnvelope(rawPayload, runtimeSpec.payload);
       var visible = typeof runtimeSpec.visibleWhen === "function"
         ? !!runtimeSpec.visibleWhen(envelope, readOptions(rawOptions))
         : true;
@@ -389,6 +442,8 @@
         fallbackSelector: spec.fallbackSelector,
         labelSelector: spec.labelSelector,
         amountSelector: spec.amountSelector,
+        rows: normalizeFormTotalsRowsSpec(spec.rows),
+        payload: normalizeFormTotalsPayloadSpec(spec.payload),
       };
     }
 
@@ -401,6 +456,9 @@
 
   layers.formatFormTotalsMonetaryValue = formatFormTotalsMonetaryValue;
   layers.normalizeFormTotalsPayload = normalizeFormTotalsPayload;
+  layers.normalizeFormTotalsRowsSpec = normalizeFormTotalsRowsSpec;
+  layers.normalizeFormTotalsPayloadSpec = normalizeFormTotalsPayloadSpec;
+  layers.normalizeFormTotalsPayloadEnvelope = normalizeFormTotalsPayloadEnvelope;
   layers.collectFormTotalsTaxRows = collectFormTotalsTaxRows;
   layers.resolveFormTotalsRoot = resolveFormTotalsRoot;
   layers.normalizeFormTotalsSurfaceSpec = normalizeFormTotalsSurfaceSpec;

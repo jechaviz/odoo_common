@@ -145,26 +145,6 @@
     if (!(containerNode instanceof HTMLElement)) {
       return null;
     }
-    var roots = [];
-    var seenRoots = new Set();
-    var pushRoot = function (node) {
-      if (!(node instanceof HTMLElement) || seenRoots.has(node)) {
-        return;
-      }
-      seenRoots.add(node);
-      roots.push(node);
-    };
-
-    pushRoot(containerNode);
-    pushRoot(containerNode.parentElement);
-    pushRoot(containerNode.closest(".oe_subtotal_footer"));
-    pushRoot(containerNode.closest(".o_group, .o_inner_group, .o_form_sheet, .o_form_sheet_bg"));
-    var enclosingGroup = containerNode.closest(".o_group, .o_inner_group, .o_form_sheet, .o_form_sheet_bg");
-    if (enclosingGroup instanceof HTMLElement) {
-      pushRoot(enclosingGroup.parentElement);
-    }
-    pushRoot(containerNode.closest(".tab-pane, .o_notebook_content, .o_form_sheet"));
-
     var explicitSelector = cleanText(containerNode.dataset.libSubtotalToggleHostSelector || "");
     if (explicitSelector) {
       try {
@@ -177,15 +157,9 @@
       }
     }
 
-    for (var rootIndex = 0; rootIndex < roots.length; rootIndex += 1) {
-      var rootNode = roots[rootIndex];
-      if (!(rootNode instanceof HTMLElement)) {
-        continue;
-      }
-      var explicitHost = rootNode.querySelector("[data-lib-subtotal-toggle-host='1']");
-      if (explicitHost instanceof HTMLElement) {
-        return explicitHost;
-      }
+    var explicitHost = containerNode.querySelector("[data-lib-subtotal-toggle-host='1']");
+    if (explicitHost instanceof HTMLElement) {
+      return explicitHost;
     }
 
     return null;

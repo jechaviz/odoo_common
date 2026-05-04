@@ -1,18 +1,31 @@
 (function () {
     "use strict";
 
+    const bridgeSpec = Object.freeze({
+        moduleName: __MODULE_NAME_LITERAL__,
+        guardProperty: __GUARD_PROPERTY_LITERAL__,
+        debugProperty: __DEBUG_PROPERTY_LITERAL__,
+        logPrefix: __LOG_PREFIX_LITERAL__,
+        parentFormSelector: __PARENT_FORM_SELECTOR_LITERAL__,
+        x2manyFieldSelector: __X2MANY_FIELD_SELECTOR_LITERAL__,
+        modalSelector: __MODAL_SELECTOR_LITERAL__,
+        parentSaveMethodName: __PARENT_SAVE_METHOD_LITERAL__,
+        maxOwnerDepth: __MAX_OWNER_DEPTH__,
+        debugEventLimit: __DEBUG_EVENT_LIMIT__,
+    });
+
     const rootOdoo = window.odoo;
     if (!rootOdoo || typeof rootOdoo.define !== "function") {
-        console.warn("[many2x_parent_form_autosave] Odoo module loader is not available.");
+        console.warn("[" + bridgeSpec.logPrefix + "] Odoo module loader is not available.");
         return;
     }
-    if (rootOdoo.__rpMany2XParentFormAutosaveDefined) {
+    if (rootOdoo[bridgeSpec.guardProperty]) {
         return;
     }
-    rootOdoo.__rpMany2XParentFormAutosaveDefined = true;
-    rootOdoo.__rpMany2XParentFormAutosaveDebug = rootOdoo.__rpMany2XParentFormAutosaveDebug || { events: [] };
+    rootOdoo[bridgeSpec.guardProperty] = true;
+    rootOdoo[bridgeSpec.debugProperty] = rootOdoo[bridgeSpec.debugProperty] || { events: [] };
 
-    rootOdoo.define("rp.many2x_parent_form_autosave", [
+    rootOdoo.define(bridgeSpec.moduleName, [
         "@web/core/utils/patch",
         "@web/views/fields/relational_utils",
     ], function (require) {
@@ -20,22 +33,18 @@
         const { Many2XAutocomplete } = require("@web/views/fields/relational_utils");
 
         const pendingCommits = new WeakMap();
-        const debugState = rootOdoo.__rpMany2XParentFormAutosaveDebug;
+        const debugState = rootOdoo[bridgeSpec.debugProperty];
 
         function pushDebug(eventName, payload) {
             try {
                 debugState.last = { event: eventName, payload: payload || null, at: Date.now() };
                 debugState.events.push(debugState.last);
-                if (debugState.events.length > 40) {
+                if (debugState.events.length > bridgeSpec.debugEventLimit) {
                     debugState.events.shift();
                 }
             } catch (_debugErr) {
                 // Ignore debug serialization issues.
             }
-        }
-
-        function normalizeText(value) {
-            return String(value == null ? "" : value).trim();
         }
 
         function resolveRootNode(component) {
@@ -51,18 +60,6 @@
             return null;
         }
 
-        function isVisible(node) {
-            if (!(node instanceof HTMLElement)) {
-                return false;
-            }
-            const style = window.getComputedStyle(node);
-            if (!style || style.display === "none" || style.visibility === "hidden") {
-                return false;
-            }
-            const rect = node.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-        }
-
         function resolveOwLNode(component) {
             if (!component || !component.__owl__ || typeof component.__owl__ !== "object") {
                 return null;
@@ -75,38 +72,14 @@
             if (!(rootNode instanceof HTMLElement)) {
                 return null;
             }
-            const formNode = rootNode.closest(".o_form_view");
+            const formNode = rootNode.closest(bridgeSpec.parentFormSelector);
             if (!(formNode instanceof HTMLElement)) {
                 return null;
             }
-            if (formNode.closest(".modal")) {
+            if (formNode.closest(bridgeSpec.modalSelector)) {
                 return null;
             }
             return formNode;
-        }
-
-        function findVisibleSaveButton(formNode) {
-            if (!(formNode instanceof HTMLElement)) {
-                return null;
-            }
-            const documentRoot = formNode.ownerDocument || document;
-            const buttons = documentRoot.querySelectorAll(".o_form_button_save");
-            for (const button of buttons) {
-                if (!(button instanceof HTMLElement)) {
-                    continue;
-                }
-                if (button.closest(".modal")) {
-                    continue;
-                }
-                if (!isVisible(button)) {
-                    continue;
-                }
-                if (button instanceof HTMLButtonElement && button.disabled) {
-                    continue;
-                }
-                return button;
-            }
-            return null;
         }
 
         function resolveInlineEditorContext(component) {
@@ -115,7 +88,7 @@
                 return null;
             }
             const formNode = findParentFormNode(component);
-            const x2manyNode = rootNode.closest(".o_field_x2many");
+            const x2manyNode = rootNode.closest(bridgeSpec.x2manyFieldSelector);
             if (!(x2manyNode instanceof HTMLElement)) {
                 return null;
             }
@@ -123,7 +96,7 @@
             let record = null;
             let list = null;
             let formController = null;
-            for (let depth = 0; owlNode && depth < 12; depth += 1) {
+            for (let depth = 0; owlNode && depth < bridgeSpec.maxOwnerDepth; depth += 1) {
                 const owner = owlNode.component;
                 if (!record && owner && owner.props && owner.props.record) {
                     record = owner.props.record;
@@ -134,11 +107,7 @@
                 if (
                     !formController &&
                     owner &&
-                    (
-                        typeof owner.saveButtonClicked === "function" ||
-                        typeof owner.save === "function" ||
-                        (owner.model && owner.model.root && typeof owner.model.root.save === "function")
-                    )
+                    typeof owner[bridgeSpec.parentSaveMethodName] === "function"
                 ) {
                     formController = owner;
                 }
@@ -206,66 +175,22 @@
                 return false;
             }
             const formController = context.formController;
-            if (formController && typeof formController.saveButtonClicked === "function") {
-                try {
-                    const saved = await formController.saveButtonClicked({});
-                    pushDebug("persist_parent_controller_save_button_clicked", { saved: saved !== false });
-                    if (saved !== false) {
-                        return true;
-                    }
-                } catch (_controllerSaveErr) {
-                    pushDebug("persist_parent_controller_save_button_clicked_error", {
-                        message: String(_controllerSaveErr && _controllerSaveErr.message || _controllerSaveErr),
-                    });
-                }
-            }
-            if (formController && typeof formController.save === "function") {
-                try {
-                    const saved = await formController.save({});
-                    pushDebug("persist_parent_controller_save", { saved: saved !== false });
-                    if (saved !== false) {
-                        return true;
-                    }
-                } catch (_controllerDirectSaveErr) {
-                    pushDebug("persist_parent_controller_save_error", {
-                        message: String(_controllerDirectSaveErr && _controllerDirectSaveErr.message || _controllerDirectSaveErr),
-                    });
-                }
-            }
-            if (
-                formController &&
-                formController.model &&
-                formController.model.root &&
-                typeof formController.model.root.save === "function"
-            ) {
-                try {
-                    const saved = await formController.model.root.save({});
-                    pushDebug("persist_parent_root_save", { saved: saved !== false });
-                    if (saved !== false) {
-                        return true;
-                    }
-                } catch (_rootSaveErr) {
-                    pushDebug("persist_parent_root_save_error", {
-                        message: String(_rootSaveErr && _rootSaveErr.message || _rootSaveErr),
-                    });
-                }
-            }
-            if (!(context.formNode instanceof HTMLElement)) {
-                return false;
-            }
-            const saveButton = findVisibleSaveButton(context.formNode);
-            if (!(saveButton instanceof HTMLElement)) {
-                pushDebug("persist_parent_missing_button", null);
+            if (!formController || typeof formController[bridgeSpec.parentSaveMethodName] !== "function") {
+                pushDebug("persist_parent_missing_controller_method", {
+                    method: bridgeSpec.parentSaveMethodName,
+                });
                 return false;
             }
             try {
-                saveButton.focus();
-            } catch (_focusErr) {
-                // Ignore focus errors on detached nodes.
+                const saved = await formController[bridgeSpec.parentSaveMethodName]({});
+                pushDebug("persist_parent_controller_method", { saved: saved !== false });
+                return saved !== false;
+            } catch (_controllerSaveErr) {
+                pushDebug("persist_parent_controller_method_error", {
+                    message: String(_controllerSaveErr && _controllerSaveErr.message || _controllerSaveErr),
+                });
+                return false;
             }
-            saveButton.click();
-            pushDebug("persist_parent_click", { text: normalizeText(saveButton.textContent || "") });
-            return true;
         }
 
         function queueInlineCommit(component) {

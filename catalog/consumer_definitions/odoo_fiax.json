@@ -112,6 +112,12 @@
       "target_relative": "src/odoo_common/common_component_sync",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "view-fragment-assembly",
+      "target_relative": "src/odoo_common/view_fragment_assembly",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

@@ -131,6 +131,18 @@
     ]
   },
   {
+    "key": "odoo_runtime_primitives",
+    "title": "Odoo Runtime Primitives",
+    "components": [
+      "odoo-runtime-primitives"
+    ],
+    "use_cases": [
+      "domain literal construction",
+      "server action source snippets",
+      "many2one RPC value normalization"
+    ]
+  },
+  {
     "key": "binary_attachment_publication",
     "title": "Binary Attachment Publication",
     "components": [

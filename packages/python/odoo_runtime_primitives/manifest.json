@@ -1,0 +1,20 @@
+{
+  "key": "odoo-runtime-primitives",
+  "title": "Odoo Runtime Primitives",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "code_source.py",
+    "domain_literals.py",
+    "rpc_values.py"
+  ],
+  "capabilities": [
+    "odoo-domain-literal-builders",
+    "python-function-source-extraction",
+    "odoo-rpc-value-normalization"
+  ]
+}

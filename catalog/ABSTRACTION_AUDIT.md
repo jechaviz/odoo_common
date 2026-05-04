@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 23 total, 23 canonical.
+- Python packages: 24 total, 24 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
@@ -29,6 +29,7 @@ Scope:
 - `odoo_rpp` + `rp-rental-mock`: strict product catalog upserts for categories, pricelists, and fixed-price template rules.
 - `odoo_rpp`: strict `ir.sequence` upserts for sequence publication.
 - `odoo_rpp`: strict survey page/question/answer upserts for declarative survey publication.
+- `odoo_rpp`: strict Odoo runtime primitives for domain literals, server-action code snippets, and RPC many2one value normalization.
 - `odoo_rpp` + `rp-rental-mock`: exact action/menu upserts for window actions, URL actions, and menus.
 - `odoo_rpp` + `rp-rental-mock`: strict model-view and QWeb-view upserts.
 - `rp-rental-mock`: strict report publication for paperformats, report layouts, and QWeb report actions.
@@ -56,6 +57,7 @@ Scope:
 - Added: `product-catalog-upserts` canonicalizes product category, pricelist, and fixed-price pricelist item publication without rental-period normalization, legacy rule migration, field detection, or old-list deactivation.
 - Added: `sequence-upserts` canonicalizes `ir.sequence` publication without business-model binding, next-number scans, project slugification, or `number_next_actual` compatibility.
 - Added: `survey-upserts` canonicalizes survey page/question/answer publication without settings introspection, dry-run branching, generated-key parsing, or stale page/question deletion.
+- Added: `odoo-runtime-primitives` canonicalizes domain literal construction, Python function source extraction, and many2one RPC value normalization without connection management, XML ID lookup, field detection, or legacy action-server compatibility.
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views and QWeb views without legacy view cleanup or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.

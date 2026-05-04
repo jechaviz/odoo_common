@@ -413,6 +413,32 @@
     ]
   },
   {
+    "key": "odoo-runtime-primitives",
+    "title": "Odoo Runtime Primitives",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/odoo_runtime_primitives",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/domain_literals.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/code_source.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/core/odoo_values.py"
+      }
+    ],
+    "features": [
+      "Odoo domain literal builders",
+      "Python function source extraction",
+      "many2one RPC value normalization"
+    ]
+  },
+  {
     "key": "tax-upserts",
     "title": "Odoo Tax Upserts",
     "runtime": "python",

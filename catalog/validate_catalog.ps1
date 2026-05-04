@@ -105,15 +105,23 @@ foreach ($ManifestKey in $ManifestByKey.Keys) {
 }
 
 foreach ($Profile in $Profiles) {
+  $ProfileComponents = As-Array $Profile.components
   foreach ($ComponentKey in (As-Array $Profile.components)) {
     if (-not $ManifestByKey.ContainsKey($ComponentKey)) {
       $Errors.Add("assembly profile $($Profile.key) references unknown component: $ComponentKey")
+      continue
+    }
+    $Manifest = $ManifestByKey[$ComponentKey].manifest
+    foreach ($DependencyKey in (As-Array $Manifest.dependencies)) {
+      if ($ProfileComponents -notcontains $DependencyKey) {
+        $Errors.Add("assembly profile $($Profile.key) missing dependency for ${ComponentKey}: $DependencyKey")
+      }
     }
   }
 }
 
 if ($Errors.Count) {
-  $Errors | ForEach-Object { Write-Error $_ }
+  $Errors | ForEach-Object { Write-Output "ERROR: $_" }
   exit 1
 }
 

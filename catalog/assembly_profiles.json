@@ -15,6 +15,7 @@
     "key": "record_context_capture",
     "title": "Record Context Capture",
     "components": [
+      "surface-workspace-shell",
       "record-context-surface",
       "record-context-layout-contract",
       "commercial-capture-context-surface",
@@ -76,12 +77,14 @@
     "key": "adaptive_form_layout",
     "title": "Adaptive Form Layout",
     "components": [
+      "surface-workspace-shell",
       "form-layout-surface",
       "form-section-headers-surface",
       "form-section-visibility-surface",
       "form-settings-panel-surface",
       "form-chatter-toggle-surface",
       "form-subtotals-surface",
+      "default-persistence",
       "form-layout-state"
     ],
     "use_cases": [
@@ -96,6 +99,7 @@
     "key": "native_commercial_policy",
     "title": "Native Commercial Policy",
     "components": [
+      "surface-workspace-shell",
       "default-persistence",
       "partner-defaults",
       "partner-language-defaults",
@@ -118,6 +122,7 @@
     "key": "transactional_form_preview",
     "title": "Transactional Form Preview",
     "components": [
+      "surface-workspace-shell",
       "form-preview-surface",
       "commercial-policy-surface",
       "form-totals-surface"
@@ -132,6 +137,7 @@
     "key": "form_action_bridge",
     "title": "Form Action Bridge",
     "components": [
+      "surface-workspace-shell",
       "form-action-bridge-surface"
     ],
     "use_cases": [
@@ -156,6 +162,7 @@
     "key": "capture_shell_markup",
     "title": "Capture Shell Markup And Identity",
     "components": [
+      "surface-workspace-shell",
       "form-capture-shell-contract",
       "form-header-identity-surface"
     ],
@@ -185,6 +192,7 @@
       "surface-workspace-shell",
       "record-context-surface",
       "record-context-layout-contract",
+      "commercial-policy-surface",
       "commercial-capture-context-surface"
     ],
     "use_cases": [

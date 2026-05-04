@@ -345,6 +345,18 @@
     ]
   },
   {
+    "key": "feature_catalog",
+    "title": "Feature Catalog",
+    "components": [
+      "feature-catalog"
+    ],
+    "use_cases": [
+      "declaring installable capability catalogs",
+      "validating ordered install lists",
+      "serializing feature metadata"
+    ]
+  },
+  {
     "key": "product_catalog_publication",
     "title": "Product Catalog Publication",
     "components": [

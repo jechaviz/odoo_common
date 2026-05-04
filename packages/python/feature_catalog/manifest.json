@@ -1,0 +1,19 @@
+{
+  "key": "feature-catalog",
+  "title": "Declarative Feature Catalog",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "feature_catalog.py"
+  ],
+  "capabilities": [
+    "feature-spec-serialization",
+    "feature-key-indexing",
+    "install-list-validation",
+    "feature-dependency-validation"
+  ]
+}

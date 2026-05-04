@@ -800,6 +800,29 @@
     ]
   },
   {
+    "key": "feature-catalog",
+    "title": "Declarative Feature Catalog",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/feature_catalog",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/feature_catalog.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/reusable_feature_catalog.py"
+      }
+    ],
+    "features": [
+      "feature spec serialization",
+      "feature key indexing",
+      "install list validation",
+      "feature dependency validation"
+    ]
+  },
+  {
     "key": "product-catalog-upserts",
     "title": "Odoo Product Catalog Upserts",
     "runtime": "python",

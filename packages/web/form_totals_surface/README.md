@@ -84,3 +84,13 @@ Cada adapter debe declarar explicitamente:
 - `rows`
 - `payload`
 - cualquier `beforeSync`, `afterSync` o `visibleWhen`
+
+## Ejemplo de migracion
+
+Ver `examples/canonical_totals_adapter.js` para un adapter minimo que consume `tax_totals` de Odoo sin alias legacy.
+
+Checklist para consumidores:
+- declarar slots de fila y fallback en el DOM con atributos estables
+- pasar `tax_totals` directo o declarar `payload.taxTotalsKey`
+- declarar `rows.fallbackLabel` si se desea mostrar fila fallback sin grupos de impuestos
+- no leer labels desde texto visible ni usar selectores de proyecto como contrato compartido

@@ -27,3 +27,14 @@ Non-goals:
 - no URL, query, hash, path, ancestor, or descendant inference for scope identity
 - no class-prefix section key aliases
 - no section or layout keys generated from visible labels
+
+## Migration Example
+
+See `examples/minimal_form_layout_contract.html` for the smallest DOM contract a consumer should emit before installing the runtime.
+
+Migration checklist:
+- publish explicit `data-lib-scope-key` or `data-res-model` plus `data-view-id` on the form root
+- publish stable section/layout/item keys from server metadata, not translated labels
+- publish user-facing labels through `data-lib-section-label`, `data-lib-layout-label`, and `data-lib-layout-item-label`
+- load `form-layout-surface` before dependent settings/subtotal surfaces
+- remove project aliases and selector fallbacks before switching consumers to this package

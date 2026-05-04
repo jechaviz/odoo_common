@@ -43,3 +43,13 @@ Removed legacy aliases:
 - `.o-mail-Chatter` as a host container
 
 If a consumer needs non-standard or older markup, it must pass explicit `chatterSelectors`; the runtime does not infer chatter hosts from labels or broad legacy selector chains.
+
+## Migration Example
+
+See `examples/canonical_chatter_toggle_install.js` for strict host persistence wiring.
+
+Consumer readiness checklist:
+- provide boolean `getCollapsed` and `setCollapsed` hooks
+- pass explicit `chatterSelectors` only when the host uses non-standard current markup
+- do not reintroduce removed legacy aliases as shared defaults
+- keep persistence ownership in the host, not in this runtime

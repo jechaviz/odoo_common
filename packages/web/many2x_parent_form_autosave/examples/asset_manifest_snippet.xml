@@ -1,0 +1,7 @@
+<odoo>
+  <template id="assets_backend" inherit_id="web.assets_backend">
+    <xpath expr="." position="inside">
+      <script type="text/javascript" src="/my_module/static/src/js/many2x_parent_form_autosave.js"/>
+    </xpath>
+  </template>
+</odoo>

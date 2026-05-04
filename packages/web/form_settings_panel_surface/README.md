@@ -46,3 +46,13 @@ Technical defaults retained:
 
 - panel chrome copy such as `Section Settings`, `Layout Settings`, and empty-state notes is owned by this UI surface
 - an empty field/statusbar/default value means "no configured override"; it is not used as a missing-hook fallback
+
+## Migration Example
+
+See `examples/strict_host_adapter.js` for the smallest shape of an explicit adapter. It intentionally returns empty collections instead of hiding missing hooks behind fallbacks.
+
+Consumer readiness checklist:
+- call `install(hostApi)` once after loading the runtime and styles
+- provide every required hook up front; missing hooks should fail during integration
+- source labels from server/view metadata and explicit `data-lib-*` attributes
+- keep project roles, model-specific fields, and translated DOM text outside this package

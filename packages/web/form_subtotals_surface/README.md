@@ -91,3 +91,15 @@ The adapter contract is validated at build time:
 The canonical rule is:
 - if the consumer already owns the concrete form node and scope key, it may call `processFormSubtotals(...)` directly
 - if the consumer wants reusable orchestration, it must consume `buildFormSubtotalsSurfaceAdapter(spec)` instead of recreating local bootstrap code
+
+## Migration Examples
+
+Examples live in `examples/`:
+- `minimal_subtotals_dom.html` shows the required row/container markers without label inference.
+- `canonical_subtotals_adapter.js` shows reusable adapter installation through `window.OdooSurfaceLayers`.
+
+Consumer readiness checklist:
+- include `surface-workspace-shell` and `form-layout-surface` before this package
+- declare subtotal containers, anchors, labels, values, source fields, and toggle hosts through `data-lib-*` markers
+- pass field display normalizers explicitly when a field needs non-standard display cleanup
+- do not port project-specific amount labels, surcharge defaults, action labels, or broad selector chains into the shared package

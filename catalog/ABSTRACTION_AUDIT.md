@@ -83,17 +83,20 @@ Scope:
 
 - La extraccion de paquetes comunes desde las familias auditadas queda cerrada para esta pasada.
 - Las familias reutilizables restantes ya tienen paquetes canonicos o fueron rechazadas para `common` porque codifican politica de negocio del proyecto, fixtures de importacion, orquestacion de pruebas live, limpieza/reconciliacion destructiva o comportamiento de compatibilidad.
+- La pasada correctiva sobre `C:\git\customers\yo\odoo_fiax` promovio las capas neutrales adicionales: specs de backend assets desde sync bindings, resolvers exactos de registry, templates QWeb por key, y upsert generico por dominio exacto.
 - Cualquier trabajo posterior sobre consumidores debe pasar por `CONSUMER_MIGRATION_CHECKLIST.md`; no debe abrir mas fallbacks comunes ni ensamblajes source-derived.
 - Migrar consumidores requiere una politica explicita de import/distribucion para `C:\git\odoo\common` y evidencia base de paridad por proyecto antes de cambiar repos fuente.
 
 ## Intencionalmente Local Al Proyecto
 
 - Orquestacion de conexion/config/servicios Odoo: los callers mantienen ciclo de conexion, dry-run, retry, logging y politica de entorno mientras los paquetes comunes dependen de protocolos estrechos.
+- Runtime XML-RPC, seleccion de perfiles de secrets y aliases de perfil (`odoo_fiax`, `fiax`, `odoo`) quedan fuera de `common`; si se necesita conexion compartida, debe nacer como contrato estricto sin fallback de perfil.
+- Inyeccion directa en `web.webclient_bootstrap`, deteccion `head/head_web` y QWeb bootstrap patching quedan locales; `common` mantiene `ir.asset` como publicacion canonica y exige que cualquier XPath sea declarado por el adapter.
 - Loaders, seeds de workbook/catalogo, demo data y fixtures de validacion live: son herramientas de ingestion de datos o evidencia, no superficies canonicas de runtime Odoo.
 - Rental pricing, rental products, snapshots, compromisos de assets, auditorias de estado, limpieza de partners y reconciliacion: codifican reglas de negocio Rental y politica de limpieza.
 - Wizards de localization/setup/admin, descubrimiento de opciones de settings, asignacion de usuarios de seguridad y reglas de migracion de grupos: requieren decisiones de tenant y contexto Odoo live.
 - Legacy cleanup, orphan cleanup, deteccion de campos por version, aliases XML ID y rutas alternativas de matching: quedan fuera de `common` por la regla no-legacy/no-fallback.
-- FIAX CFDI, PDF, AI, PocketBase, datatable schemas y app state: son runtime de la aplicacion FIAX, no abstracciones comunes de Odoo.
+- FIAX CFDI, fiscal bridge, PDF/layout de reporte, AI, PocketBase, datatable schemas, production audit checks, catalog seeds y app state: son runtime/evidencia de la aplicacion FIAX, no abstracciones comunes de Odoo.
 
 ## Risk Register
 

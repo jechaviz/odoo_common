@@ -574,6 +574,34 @@
     ]
   },
   {
+    "key": "security-upserts",
+    "title": "Odoo Security Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/security_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/security_admin.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_003.pyfrag"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/security_profile_sync.py"
+      }
+    ],
+    "features": [
+      "module category upsert",
+      "security group upsert",
+      "model access upsert",
+      "record rule upsert",
+      "strict model resolution"
+    ]
+  },
+  {
     "key": "many2x-parent-form-autosave",
     "title": "Many2X Parent Form Autosave",
     "runtime": "web",

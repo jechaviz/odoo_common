@@ -221,6 +221,19 @@
     ]
   },
   {
+    "key": "security_publication",
+    "title": "Security Publication",
+    "components": [
+      "security-upserts"
+    ],
+    "use_cases": [
+      "module categories",
+      "security groups",
+      "model access rows",
+      "record rules"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

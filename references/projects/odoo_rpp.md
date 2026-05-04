@@ -37,6 +37,7 @@ Nivel actual:
 - base canonica para `packages/python/action_menu_upserts`
 - base canonica para `packages/python/view_upserts`
 - base canonica para `packages/python/custom_field_upserts`
+- base canonica para `packages/python/security_upserts`
 
 Regla de consumo:
 

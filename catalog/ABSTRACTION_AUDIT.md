@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 12 total, 12 canonical.
+- Python packages: 13 total, 13 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
@@ -24,6 +24,7 @@ Scope:
 - `odoo_rpp` + `rp-rental-mock`: exact action/menu upserts for window actions, URL actions, and menus.
 - `odoo_rpp` + `rp-rental-mock`: strict model-view and QWeb-view upserts.
 - `odoo_rpp` + `rp-rental-mock`: manual model/custom field upserts and managed selection reconciliation.
+- `odoo_rpp` + `rp-rental-mock`: strict security upserts for categories, groups, model access, and record rules.
 
 ## Findings
 
@@ -40,6 +41,7 @@ Scope:
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views and QWeb views without legacy view cleanup or alternate write forms.
 - Added: `custom-field-upserts` canonicalizes manual model/field creation, strict existing-field contract validation, and selection row reconciliation without legacy value migrations.
+- Added: `security-upserts` canonicalizes security publication without user assignment, version field detection, missing-metadata ignores, or legacy group absorption.
 
 ## Remaining Source-Derived Archive Traces
 
@@ -66,3 +68,4 @@ Scope:
 7. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
 8. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
 9. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
+10. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.

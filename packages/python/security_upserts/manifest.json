@@ -1,0 +1,19 @@
+{
+  "key": "security-upserts",
+  "title": "Odoo Security Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "security_upserts.py"
+  ],
+  "capabilities": [
+    "module-category-upsert",
+    "security-group-upsert",
+    "model-access-upsert",
+    "record-rule-upsert"
+  ]
+}

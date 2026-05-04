@@ -3,7 +3,6 @@
   "title": "Form Layout State Persistence",
   "status": "canonical",
   "language": "python",
-  "origin_project": "odoo_rpp",
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
@@ -14,6 +13,7 @@
     "default-persistence"
   ],
   "capabilities": [
+    "form-layout-state-spec",
     "form-layout-state-normalization",
     "config-parameter-layout-persistence",
     "statusbar-label-seeding"

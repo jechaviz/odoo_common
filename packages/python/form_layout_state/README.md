@@ -5,6 +5,7 @@ Helpers server-side para leer, normalizar y persistir el estado compartido que c
 ## Contiene
 
 - `sources/form_layout_state.py`
+  - `FormLayoutStateSpec` para declarar key global, claves top-level, locale y prefijo de labels
   - normalizacion de keys y merge del payload persistido
   - mixin para `ir.config_parameter`
   - helpers para sembrar labels de statusbar por locale

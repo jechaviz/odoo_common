@@ -1,9 +1,8 @@
 {
   "key": "taxation-helpers",
-  "title": "Reusable Taxation Helpers",
+  "title": "Reusable Taxation Spec Helpers",
   "status": "canonical",
   "language": "python",
-  "origin_project": "odoo_rpp",
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
@@ -11,6 +10,7 @@
     "taxation.py"
   ],
   "capabilities": [
-    "server-taxation-helpers"
+    "sales-tax-spec-upsert",
+    "taxation-connection-contract"
   ]
 }

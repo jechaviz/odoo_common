@@ -4,24 +4,39 @@ from __future__ import annotations
 
 import json
 import unicodedata
+from dataclasses import dataclass
 from typing import Any, Mapping
 
 from odoo_common.default_persistence import DefaultValuePersistenceMixin
 
 
-FORM_LAYOUT_GLOBAL_PARAM_KEY = "odoo.lib.form_section_layout.v2.global"
-_FORM_LAYOUT_TOP_LEVEL_KEYS = (
-    "collapsed",
-    "order",
-    "sectionVisible",
-    "fieldVisible",
-    "fieldDefaults",
-    "layoutItemVisible",
-    "layoutDefaults",
-    "settingsRoles",
-    "statusbarLabels",
-    "subtotalLayouts",
-)
+@dataclass(frozen=True)
+class FormLayoutStateSpec:
+    """Declare the persisted-state contract shared with the web runtime."""
+
+    global_param_key: str = "odoo.lib.form_section_layout.v2.global"
+    top_level_mapping_keys: tuple[str, ...] = (
+        "collapsed",
+        "order",
+        "sectionVisible",
+        "fieldVisible",
+        "fieldDefaults",
+        "layoutItemVisible",
+        "layoutDefaults",
+        "settingsRoles",
+        "statusbarLabels",
+        "subtotalLayouts",
+    )
+    chatter_collapsed_key: str = "chatterCollapsed"
+    statusbar_labels_key: str = "statusbarLabels"
+    statusbar_label_prefix: str = "statusbar_label"
+    default_locale_code: str = "en_us"
+
+
+DEFAULT_FORM_LAYOUT_STATE_SPEC = FormLayoutStateSpec()
+FORM_LAYOUT_GLOBAL_PARAM_KEY = DEFAULT_FORM_LAYOUT_STATE_SPEC.global_param_key
+DEFAULT_FORM_LAYOUT_LOCALE_CODE = DEFAULT_FORM_LAYOUT_STATE_SPEC.default_locale_code
+_FORM_LAYOUT_TOP_LEVEL_KEYS = DEFAULT_FORM_LAYOUT_STATE_SPEC.top_level_mapping_keys
 
 
 def normalize_form_layout_key(value: str) -> str:
@@ -51,43 +66,36 @@ def normalize_form_layout_key(value: str) -> str:
     return normalized
 
 
-def empty_form_layout_state() -> dict[str, Any]:
+def empty_form_layout_state(
+    spec: FormLayoutStateSpec = DEFAULT_FORM_LAYOUT_STATE_SPEC,
+) -> dict[str, Any]:
     """Return the persisted-state skeleton expected by the runtime."""
-    return {
-        "collapsed": {},
-        "order": {},
-        "sectionVisible": {},
-        "fieldVisible": {},
-        "fieldDefaults": {},
-        "layoutItemVisible": {},
-        "layoutDefaults": {},
-        "settingsRoles": {},
-        "statusbarLabels": {},
-        "subtotalLayouts": {},
-        "chatterCollapsed": None,
-    }
+    state: dict[str, Any] = {key: {} for key in spec.top_level_mapping_keys}
+    state[spec.chatter_collapsed_key] = None
+    return state
 
 
 def merge_form_layout_state(
     base_state: Mapping[str, Any] | None,
     patch_state: Mapping[str, Any] | None,
+    spec: FormLayoutStateSpec = DEFAULT_FORM_LAYOUT_STATE_SPEC,
 ) -> dict[str, Any]:
     """Merge a patch over the persisted state using the runtime's shallow-map semantics."""
-    merged = empty_form_layout_state()
+    merged = empty_form_layout_state(spec)
     if isinstance(base_state, Mapping):
-        for key in _FORM_LAYOUT_TOP_LEVEL_KEYS:
+        for key in spec.top_level_mapping_keys:
             raw_value = base_state.get(key)
             if isinstance(raw_value, Mapping):
                 merged[key].update(dict(raw_value))
-        if isinstance(base_state.get("chatterCollapsed"), bool):
-            merged["chatterCollapsed"] = bool(base_state["chatterCollapsed"])
+        if isinstance(base_state.get(spec.chatter_collapsed_key), bool):
+            merged[spec.chatter_collapsed_key] = bool(base_state[spec.chatter_collapsed_key])
     if isinstance(patch_state, Mapping):
-        for key in _FORM_LAYOUT_TOP_LEVEL_KEYS:
+        for key in spec.top_level_mapping_keys:
             raw_value = patch_state.get(key)
             if isinstance(raw_value, Mapping):
                 merged[key].update(dict(raw_value))
-        if isinstance(patch_state.get("chatterCollapsed"), bool):
-            merged["chatterCollapsed"] = bool(patch_state["chatterCollapsed"])
+        if isinstance(patch_state.get(spec.chatter_collapsed_key), bool):
+            merged[spec.chatter_collapsed_key] = bool(patch_state[spec.chatter_collapsed_key])
     return merged
 
 
@@ -95,12 +103,13 @@ def form_layout_statusbar_label_entry_key(
     scope_key: str,
     statusbar_key: str,
     item_key: str,
-    locale_code: str = "en_us",
+    locale_code: str = DEFAULT_FORM_LAYOUT_LOCALE_CODE,
+    spec: FormLayoutStateSpec = DEFAULT_FORM_LAYOUT_STATE_SPEC,
 ) -> str:
     """Build the persisted key used by runtime statusbar labels."""
-    locale = normalize_form_layout_key(locale_code) or "en_us"
+    locale = normalize_form_layout_key(locale_code) or spec.default_locale_code
     return (
-        "statusbar_label|"
+        f"{spec.statusbar_label_prefix}|"
         f"{locale}|{str(scope_key or '').strip()}|{normalize_form_layout_key(statusbar_key)}|{normalize_form_layout_key(item_key)}"
     )
 
@@ -110,7 +119,8 @@ def build_statusbar_labels_patch(
     scope_key: str,
     statusbar_key: str,
     item_labels: Mapping[str, str],
-    locale_code: str = "en_us",
+    locale_code: str = DEFAULT_FORM_LAYOUT_LOCALE_CODE,
+    spec: FormLayoutStateSpec = DEFAULT_FORM_LAYOUT_STATE_SPEC,
 ) -> dict[str, dict[str, str]]:
     """Build one persisted-state patch for default statusbar labels."""
     statusbar_labels: dict[str, str] = {}
@@ -124,39 +134,48 @@ def build_statusbar_labels_patch(
             statusbar_key=statusbar_key,
             item_key=normalized_item_key,
             locale_code=locale_code,
+            spec=spec,
         )
         statusbar_labels[entry_key] = clean_label
-    return {"statusbarLabels": statusbar_labels}
+    return {spec.statusbar_labels_key: statusbar_labels}
 
 
 class FormLayoutStatePersistenceMixin(DefaultValuePersistenceMixin):
     """Persist reusable `form_section_layout` defaults through `ir.config_parameter`."""
 
+    form_layout_state_spec: FormLayoutStateSpec = DEFAULT_FORM_LAYOUT_STATE_SPEC
+
     def read_global_form_layout_state(self) -> dict[str, Any]:
-        """Read the shared global runtime state used as the first fallback for all users."""
-        raw = self.read_config_param(FORM_LAYOUT_GLOBAL_PARAM_KEY, "")
+        """Read the shared global runtime state used as the base state for all users."""
+        spec = self.form_layout_state_spec
+        raw = self.read_config_param(spec.global_param_key, "")
         if not raw:
-            return empty_form_layout_state()
+            return empty_form_layout_state(spec)
         try:
             parsed = json.loads(raw)
         except Exception:
-            return empty_form_layout_state()
+            return empty_form_layout_state(spec)
         if not isinstance(parsed, Mapping):
-            return empty_form_layout_state()
-        return merge_form_layout_state(empty_form_layout_state(), parsed)
+            return empty_form_layout_state(spec)
+        return merge_form_layout_state(empty_form_layout_state(spec), parsed, spec)
 
     def write_global_form_layout_state(self, state: Mapping[str, Any]) -> dict[str, Any]:
         """Write the shared global runtime state and return the normalized payload."""
-        normalized = merge_form_layout_state(empty_form_layout_state(), state)
+        spec = self.form_layout_state_spec
+        normalized = merge_form_layout_state(empty_form_layout_state(spec), state, spec)
         self.write_config_param(
-            FORM_LAYOUT_GLOBAL_PARAM_KEY,
+            spec.global_param_key,
             json.dumps(normalized, ensure_ascii=True, sort_keys=True),
         )
         return normalized
 
     def merge_global_form_layout_state(self, patch_state: Mapping[str, Any]) -> dict[str, Any]:
         """Merge one patch into the shared global runtime state and persist it."""
-        merged = merge_form_layout_state(self.read_global_form_layout_state(), patch_state)
+        merged = merge_form_layout_state(
+            self.read_global_form_layout_state(),
+            patch_state,
+            self.form_layout_state_spec,
+        )
         return self.write_global_form_layout_state(merged)
 
     def upsert_global_statusbar_labels(
@@ -165,7 +184,7 @@ class FormLayoutStatePersistenceMixin(DefaultValuePersistenceMixin):
         scope_key: str,
         statusbar_key: str,
         item_labels: Mapping[str, str],
-        locale_code: str = "en_us",
+        locale_code: str = DEFAULT_FORM_LAYOUT_LOCALE_CODE,
     ) -> dict[str, Any]:
         """Merge default statusbar labels into the shared global runtime state."""
         patch = build_statusbar_labels_patch(
@@ -173,5 +192,6 @@ class FormLayoutStatePersistenceMixin(DefaultValuePersistenceMixin):
             statusbar_key=statusbar_key,
             item_labels=item_labels,
             locale_code=locale_code,
+            spec=self.form_layout_state_spec,
         )
         return self.merge_global_form_layout_state(patch)

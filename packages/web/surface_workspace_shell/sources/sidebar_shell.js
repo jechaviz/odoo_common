@@ -48,11 +48,11 @@
     return shared.sidebarShellSectionTrees;
   }
 
-  function getSidebarShellRootSectionKeyRegistry() {
-    if (!(shared.sidebarShellRootSectionKeys && typeof shared.sidebarShellRootSectionKeys === "object")) {
-      shared.sidebarShellRootSectionKeys = {};
+  function getSidebarShellRootSectionKeyEntries() {
+    if (!Array.isArray(shared.sidebarShellRootSectionKeyEntries)) {
+      shared.sidebarShellRootSectionKeyEntries = [];
     }
-    return shared.sidebarShellRootSectionKeys;
+    return shared.sidebarShellRootSectionKeyEntries;
   }
 
   surfaceLayerApi.registerSidebarShellSectionTree = function (sectionKey, treeEntries) {
@@ -69,22 +69,35 @@
     return false;
   };
 
+  surfaceLayerApi.registerSidebarShellSectionResolver = function (resolver) {
+    if (typeof resolver === "function") {
+      shared.sidebarShellSectionResolver = resolver;
+      scheduleSidebarShellStateSync();
+      return true;
+    }
+    delete shared.sidebarShellSectionResolver;
+    scheduleSidebarShellStateSync();
+    return false;
+  };
+
   surfaceLayerApi.registerSidebarShellRootSectionKeys = function (entries) {
-    var registry = getSidebarShellRootSectionKeyRegistry();
-    Object.keys(registry).forEach(function (key) {
-      delete registry[key];
-    });
+    shared.sidebarShellRootSectionKeyEntries = [];
     (Array.isArray(entries) ? entries : []).forEach(function (entry) {
       if (!(entry && typeof entry === "object")) {
         return;
       }
-      var label = normalizeLabel(String(entry.label || "").trim());
       var key = normalizeSidebarShellKey(entry.key || "");
-      if (label && key) {
-        registry[label] = key;
+      var selector = String(entry.selector || entry.rootSelector || "").trim();
+      if (!key || !selector) {
+        return;
       }
+      shared.sidebarShellRootSectionKeyEntries.push({
+        key: key,
+        selector: selector,
+      });
     });
-    return Object.keys(registry).length > 0;
+    scheduleSidebarShellStateSync();
+    return shared.sidebarShellRootSectionKeyEntries.length > 0;
   };
 
   function hasBackendHomeMenu() {
@@ -270,35 +283,66 @@
     });
   }
 
+  function readExplicitSidebarShellSectionKeyFromNode(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+    return normalizeSidebarShellKey(
+      node.dataset.surfaceSidebarSectionKey ||
+      node.dataset.surfaceSidebarItemKey ||
+      node.getAttribute("data-section") ||
+      node.dataset.section
+    );
+  }
+
+  function readNativeSidebarShellSectionKeyFromNode(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+    return normalizeSidebarShellKey(
+      (node.dataset.surfaceSidebarSectionKeySource ? "" : node.dataset.surfaceSidebarSectionKey) ||
+      node.dataset.surfaceSidebarItemKey ||
+      node.getAttribute("data-section") ||
+      node.dataset.section
+    );
+  }
+
+  function resolveSidebarShellSectionKeyFromRegistry(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+    var entries = getSidebarShellRootSectionKeyEntries();
+    for (var index = 0; index < entries.length; index += 1) {
+      var entry = entries[index];
+      try {
+        if (entry && entry.selector && node.matches(entry.selector)) {
+          return normalizeSidebarShellKey(entry.key);
+        }
+      } catch (_error) {}
+    }
+    return "";
+  }
+
   function resolveSidebarShellSectionKeyFromProvider(node) {
     if (!(node instanceof HTMLElement)) {
       return "";
     }
-    var rootSectionKeys = getSidebarShellRootSectionKeyRegistry();
     if (typeof shared.sidebarShellSectionResolver === "function") {
       try {
         return normalizeSidebarShellKey(shared.sidebarShellSectionResolver({
           node: node,
-          rootSectionKeys: rootSectionKeys,
+          explicitKey: readNativeSidebarShellSectionKeyFromNode(node),
         }));
       } catch (_error) {}
     }
-    var label = normalizeLabel(resolveSidebarShellMenuItemLabel(node));
-    return label && Object.prototype.hasOwnProperty.call(rootSectionKeys, label)
-      ? normalizeSidebarShellKey(rootSectionKeys[label])
-      : "";
+    return "";
   }
 
   function readSidebarShellSectionKeyFromNode(node) {
     if (!(node instanceof HTMLElement)) {
       return "";
     }
-    var explicitKey = normalizeSidebarShellKey(
-      node.dataset.surfaceSidebarSectionKey ||
-      node.dataset.surfaceSidebarItemKey ||
-      node.getAttribute("data-section") ||
-      node.dataset.section
-    );
+    var explicitKey = readExplicitSidebarShellSectionKeyFromNode(node);
     if (explicitKey) {
       return explicitKey;
     }
@@ -335,11 +379,16 @@
       if (!(node instanceof HTMLElement)) {
         return;
       }
-      var sectionKey = resolveSidebarShellSectionKeyFromProvider(node);
-      if (sectionKey) {
+      var explicitKey = readNativeSidebarShellSectionKeyFromNode(node);
+      var resolverKey = resolveSidebarShellSectionKeyFromProvider(node);
+      var registryKey = resolverKey ? "" : resolveSidebarShellSectionKeyFromRegistry(node);
+      var sectionKey = resolverKey || registryKey;
+      if (sectionKey && (!explicitKey || node.dataset.surfaceSidebarSectionKeySource)) {
         node.dataset.surfaceSidebarSectionKey = sectionKey;
-      } else if (node.dataset.surfaceSidebarSectionKey) {
+        node.dataset.surfaceSidebarSectionKeySource = resolverKey ? "resolver" : "registry";
+      } else if (node.dataset.surfaceSidebarSectionKeySource) {
         delete node.dataset.surfaceSidebarSectionKey;
+        delete node.dataset.surfaceSidebarSectionKeySource;
       }
     });
   }
@@ -538,7 +587,6 @@
         : "o_surface_sidebar_shell_menu_popover--synthetic-group"
     );
     nestedPopover.setAttribute("role", "menu");
-    nestedPopover.dataset.surfaceSidebarOwnerLabel = String(label || "").trim();
     if (itemKey) {
       nestedPopover.dataset.surfaceSidebarOwnerKey = itemKey;
     }
@@ -608,16 +656,19 @@
         ? lineageKey + "." + String(index + 1)
         : "tree." + String(index + 1);
       if (typeof rawEntry === "string") {
-        var rawLabel = String(rawEntry || "").trim();
-        return rawLabel ? { key: positionalKey, label: rawLabel, children: [] } : null;
+        return null;
       }
       if (!(rawEntry && typeof rawEntry === "object")) {
         return null;
       }
       var label = String(rawEntry.label || "").trim();
-      var entryKey = normalizeSidebarShellKey(rawEntry.key || positionalKey) || positionalKey;
+      var configuredKey = normalizeSidebarShellKey(rawEntry.key || "");
+      var entryKey = configuredKey || positionalKey;
       var children = normalizeSidebarShellTreeEntries(rawEntry.children, entryKey);
       if (!label) {
+        return null;
+      }
+      if (!configuredKey && !children.length) {
         return null;
       }
       return { key: entryKey, label: label, children: children };
@@ -671,22 +722,17 @@
       return null;
     }
     var itemsByKey = Object.create(null);
-    var itemsByLabel = Object.create(null);
     directItems.forEach(function (itemNode) {
       if (!(itemNode instanceof HTMLElement)) {
         return;
       }
       pushSidebarShellItemBucketEntry(itemsByKey, resolveSidebarShellMenuItemKey(itemNode), itemNode);
-      pushSidebarShellItemBucketEntry(itemsByLabel, resolveSidebarShellMenuItemLabel(itemNode), itemNode);
     });
     var consumedItems = [];
     for (var index = 0; index < leafEntries.length; index += 1) {
       var leafEntry = leafEntries[index];
       var expectedKey = normalizeSidebarShellKey(leafEntry && leafEntry.key || "");
-      var expectedLabel = normalizeSidebarShellKey(leafEntry && leafEntry.label || "");
-      var matchedItem =
-        consumeSidebarShellItemBucketEntry(itemsByKey, expectedKey, consumedItems) ||
-        consumeSidebarShellItemBucketEntry(itemsByLabel, expectedLabel, consumedItems);
+      var matchedItem = consumeSidebarShellItemBucketEntry(itemsByKey, expectedKey, consumedItems);
       if (!(matchedItem instanceof HTMLElement)) {
         return null;
       }
@@ -873,18 +919,12 @@
     }
     var depth = Math.max(Number(popoverNode.dataset.surfaceSidebarLevel || 1) || 1, 1);
     var ownerKey = resolveSidebarShellMenuItemKey(triggerNode) || String(popoverNode.dataset.surfaceSidebarOwnerKey || "").trim();
-    var ownerLabel = resolveSidebarShellMenuItemLabel(triggerNode) || String(popoverNode.dataset.surfaceSidebarOwnerLabel || "").trim();
     if (ownerKey) {
       popoverNode.dataset.surfaceSidebarOwnerKey = ownerKey;
     } else {
       delete popoverNode.dataset.surfaceSidebarOwnerKey;
     }
-    if (ownerLabel) {
-      popoverNode.dataset.surfaceSidebarOwnerLabel = ownerLabel;
-    } else {
-      delete popoverNode.dataset.surfaceSidebarOwnerLabel;
-    }
-    ensureSidebarShellPopoverHeader(popoverNode, ownerLabel, depth);
+    ensureSidebarShellPopoverHeader(popoverNode, "", depth);
     var items = getSidebarShellMenuItems(popoverNode);
     if (!items.length) {
       delete popoverNode.dataset.surfaceSidebarHierarchy;

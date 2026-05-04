@@ -6,7 +6,6 @@ Runtime canonico para autoabrir y sincronizar line pickers dentro de formularios
 
 Este paquete requiere `surface-workspace-shell` porque consume el bootstrap compartido en `window.OdooSurfaceLayers`:
 
-- `normalizeLabel`
 - `registerManagedFormEnhancer`
 
 ## Contrato
@@ -20,7 +19,11 @@ El enhancer registrado es `entryPicker` y solo recibe configuracion declarativa:
 
 - `x2manyField`
 - `itemField`
-- `addLineLabels`
 - `fieldSelector`
+- `addLineSelector`
+- `editableRowSelector`
+- `itemInputSelector`
 - `autoOpenOnAdd`
 - `autoOpenOnFocus`
+
+El runtime no selecciona botones por label ni cae a cualquier `.o_field_x2many` o combobox generico. Si el x2many tiene varios botones de alta o markup excepcional, el adapter debe declarar `addLineSelector`, `fieldSelector`, `editableRowSelector` o `itemInputSelector` explicitamente.

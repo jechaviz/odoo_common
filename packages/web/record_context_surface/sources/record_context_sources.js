@@ -78,31 +78,6 @@
     );
   }
 
-  async function searchRelationalRecordByLabel(ormService, modelName, label, fields, options) {
-    var normalizedLabel = normalizeRelationalText(label);
-    if (!normalizedLabel) {
-      return null;
-    }
-    var sharedOptions = Object.assign({ limit: 1, order: "id asc" }, options && typeof options === "object" ? options : {});
-    var exactDisplay = await searchReadFirst(
-      ormService,
-      modelName,
-      [["display_name", "=", normalizedLabel]],
-      fields,
-      sharedOptions
-    );
-    if (exactDisplay) {
-      return exactDisplay;
-    }
-    return searchReadFirst(
-      ormService,
-      modelName,
-      [["name", "=", normalizedLabel]],
-      fields,
-      sharedOptions
-    );
-  }
-
   function mergeRelationalFieldNames(configuredFields, requiredFields) {
     return normalizeFieldNameList([].concat(
       Array.isArray(configuredFields) ? configuredFields : [],
@@ -162,9 +137,6 @@
       },
       readRecordById: function (modelName, recordId, fields, options) {
         return readRelationalRecordById(ormService, modelName, recordId, fields, options);
-      },
-      searchRecordByLabel: function (modelName, label, fields, options) {
-        return searchRelationalRecordByLabel(ormService, modelName, label, fields, options);
       },
     };
   }
@@ -339,6 +311,7 @@
         : readFieldText,
       recordModel: normalizeRelationalText(spec.recordModel),
       enrichData: typeof spec.enrichData === "function" ? spec.enrichData : null,
+      resolvePartnerRecord: typeof spec.resolvePartnerRecord === "function" ? spec.resolvePartnerRecord : null,
       record: recordSchema,
       partner: partnerSchema,
       form: {
@@ -365,6 +338,63 @@
 
   function readScalarFieldValue(record, fieldName) {
     return fieldName ? normalizeRelationalText(record && record[fieldName]) : "";
+  }
+
+  function selectPartnerCommercialResolver(sourceSchema, role) {
+    var spec = sourceSchema && sourceSchema.spec && typeof sourceSchema.spec === "object"
+      ? sourceSchema.spec
+      : {};
+    var resolverName = role === "commercial"
+      ? "resolveCommercialPartner"
+      : role === "billing"
+      ? "resolveBillingPartner"
+      : role === "shipping"
+      ? "resolveShippingPartner"
+      : "";
+    return resolverName && typeof spec[resolverName] === "function"
+      ? spec[resolverName]
+      : sourceSchema && typeof sourceSchema.resolvePartnerRecord === "function"
+      ? sourceSchema.resolvePartnerRecord
+      : null;
+  }
+
+  async function resolvePartnerCommercialRecordFromHook(sourceSchema, role, context) {
+    var resolver = selectPartnerCommercialResolver(sourceSchema, role);
+    if (typeof resolver !== "function") {
+      return null;
+    }
+    var helpers = context && context.helpers;
+    var partnerFields = Array.isArray(context && context.partnerFields) ? context.partnerFields : [];
+    try {
+      var resolved = resolver(Object.assign({}, context || {}, { role: role }));
+      if (resolved && typeof resolved.then === "function") {
+        resolved = await resolved;
+      }
+      if (typeof resolved === "number" || /^\d+$/.test(String(resolved || "").trim())) {
+        return helpers.readRecordById("res.partner", resolved, partnerFields, { limit: 1, order: "id asc" });
+      }
+      if (Array.isArray(resolved)) {
+        var many2oneArrayValue = helpers.normalizeMany2oneValue(resolved);
+        return many2oneArrayValue.id > 0
+          ? helpers.readRecordById("res.partner", many2oneArrayValue.id, partnerFields, { limit: 1, order: "id asc" })
+          : null;
+      }
+      if (resolved && typeof resolved === "object") {
+        var hasLoadedField = partnerFields.some(function (fieldName) {
+          return Object.prototype.hasOwnProperty.call(resolved, fieldName);
+        });
+        if (hasLoadedField || resolved.display_name || resolved.name) {
+          return resolved;
+        }
+        var many2oneObjectValue = helpers.normalizeMany2oneValue(resolved);
+        return many2oneObjectValue.id > 0
+          ? helpers.readRecordById("res.partner", many2oneObjectValue.id, partnerFields, { limit: 1, order: "id asc" })
+          : null;
+      }
+    } catch (_error) {
+      return null;
+    }
+    return null;
   }
 
   async function resolvePartnerCommercialRecordContextData(sourceSchema, runtimeContext) {
@@ -416,13 +446,13 @@
     var billingValue = readMany2oneFieldValue(recordRow, recordFieldMap.billingPartner, helpers);
     var shippingValue = readMany2oneFieldValue(recordRow, recordFieldMap.shippingPartner, helpers);
     var currentConditionValue = readMany2oneFieldValue(recordRow, recordFieldMap.currentCondition, helpers);
-    var billingLabel = formFieldMap.billing
+    var billingFormValue = formFieldMap.billing
       ? fieldReader(formRoot, [formFieldMap.billing])
       : "";
-    var shippingLabel = formFieldMap.shipping
+    var shippingFormValue = formFieldMap.shipping
       ? fieldReader(formRoot, [formFieldMap.shipping])
       : "";
-    var currentConditionLabel = currentConditionValue.label || (
+    var currentConditionText = currentConditionValue.label || (
       formFieldMap.currentCondition
         ? fieldReader(formRoot, [formFieldMap.currentCondition])
         : ""
@@ -439,18 +469,64 @@
       : null;
 
     if (!commercialPartner) {
-      var partnerRow = await helpers.searchRecordByLabel("res.partner", billingLabel, partnerFields, { limit: 1, order: "id asc" });
-      var commercialFallback = helpers.normalizeMany2oneValue(partnerRow && partnerRow.commercial_partner_id);
-      commercialPartner = commercialFallback.id > 0
-        ? await helpers.readRecordById("res.partner", commercialFallback.id, partnerFields, { limit: 1, order: "id asc" })
-        : partnerRow;
-      billingPartner = billingPartner || partnerRow;
+      commercialPartner = await resolvePartnerCommercialRecordFromHook(sourceSchema, "commercial", {
+        spec: spec,
+        schema: sourceSchema,
+        runtimeContext: runtimeContext,
+        ormService: ormService,
+        helpers: helpers,
+        recordId: recordId,
+        recordRow: recordRow,
+        formRoot: formRoot,
+        fieldReader: fieldReader,
+        recordFieldMap: recordFieldMap,
+        partnerFieldMap: partnerFieldMap,
+        formFieldMap: formFieldMap,
+        partnerFields: partnerFields,
+        billingFormValue: billingFormValue,
+        shippingFormValue: shippingFormValue,
+      });
     }
-    if (!billingPartner && commercialPartner) {
-      billingPartner = commercialPartner;
+    if (!billingPartner) {
+      billingPartner = await resolvePartnerCommercialRecordFromHook(sourceSchema, "billing", {
+        spec: spec,
+        schema: sourceSchema,
+        runtimeContext: runtimeContext,
+        ormService: ormService,
+        helpers: helpers,
+        recordId: recordId,
+        recordRow: recordRow,
+        formRoot: formRoot,
+        fieldReader: fieldReader,
+        recordFieldMap: recordFieldMap,
+        partnerFieldMap: partnerFieldMap,
+        formFieldMap: formFieldMap,
+        partnerFields: partnerFields,
+        billingFormValue: billingFormValue,
+        shippingFormValue: shippingFormValue,
+        commercialPartner: commercialPartner,
+      });
     }
     if (!shippingPartner) {
-      shippingPartner = await helpers.searchRecordByLabel("res.partner", shippingLabel, partnerFields, { limit: 1, order: "id asc" });
+      shippingPartner = await resolvePartnerCommercialRecordFromHook(sourceSchema, "shipping", {
+        spec: spec,
+        schema: sourceSchema,
+        runtimeContext: runtimeContext,
+        ormService: ormService,
+        helpers: helpers,
+        recordId: recordId,
+        recordRow: recordRow,
+        formRoot: formRoot,
+        fieldReader: fieldReader,
+        recordFieldMap: recordFieldMap,
+        partnerFieldMap: partnerFieldMap,
+        formFieldMap: formFieldMap,
+        partnerFields: partnerFields,
+        billingFormValue: billingFormValue,
+        shippingFormValue: shippingFormValue,
+        commercialPartner: commercialPartner,
+        billingPartner: billingPartner,
+      });
     }
 
     var referenceValue = readMany2oneFieldValue(commercialPartner, partnerFieldMap.reference, helpers);
@@ -463,13 +539,13 @@
       identifier: readScalarFieldValue(commercialPartner, partnerFieldMap.identifier),
       reference: referenceValue.label || "",
       referenceId: referenceValue.id || 0,
-      condition: currentConditionLabel || defaultConditionValue.label || "",
+      condition: currentConditionText || defaultConditionValue.label || "",
       conditionId: currentConditionValue.id || 0,
       defaultConditionLabel: defaultConditionValue.label || "",
       defaultConditionId: defaultConditionValue.id || 0,
-      commercialPartnerId: commercialValue.id || 0,
-      billingPartnerId: billingValue.id || 0,
-      shippingPartnerId: shippingValue.id || 0,
+      commercialPartnerId: commercialValue.id || Number.parseInt(String(commercialPartner && commercialPartner.id || 0), 10) || 0,
+      billingPartnerId: billingValue.id || Number.parseInt(String(billingPartner && billingPartner.id || 0), 10) || 0,
+      shippingPartnerId: shippingValue.id || Number.parseInt(String(shippingPartner && shippingPartner.id || 0), 10) || 0,
     };
 
     if (typeof sourceSchema.enrichData !== "function") {

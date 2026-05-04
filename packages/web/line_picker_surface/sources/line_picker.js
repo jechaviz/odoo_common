@@ -20,17 +20,12 @@
   }
 
   var surfaceLayerApi = requireSurfaceLayerApi();
-  var normalizeSurfaceLabel = requireSurfaceLayerFunction(surfaceLayerApi, "normalizeLabel");
   var registerManagedFormEnhancer = requireSurfaceLayerFunction(surfaceLayerApi, "registerManagedFormEnhancer");
   var AUTO_OPEN_DELAY_MS = 70;
   var AUTO_OPEN_TIMEOUT_MS = 3200;
   var ENTRY_PICKER_ENHANCER_KEY = "entryPicker";
-  var DEFAULT_ENTRY_TRIGGER_LABELS = [
-    "Agregar una l\u00ednea",
-    "Agregar una linea",
-    "Add a line",
-    "Add line",
-  ];
+  var DEFAULT_ADD_LINE_TRIGGER_SELECTOR = ".o_field_x2many_list_row_add a, .o_field_x2many_list_row_add button";
+  var DEFAULT_EDITABLE_ROW_SELECTOR = "tr.o_data_row.o_selected_row, tr.o_selected_row";
 
   function asElement(value) {
     return value instanceof HTMLElement ? value : null;
@@ -45,30 +40,59 @@
     return styles.display !== "none" && styles.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
   }
 
-  function normalizeLabel(value) {
-    return String(normalizeSurfaceLabel(value) || "");
+  function normalizeSelector(value) {
+    return String(value || "").trim();
   }
 
-  function readText(node) {
-    return normalizeLabel(node instanceof HTMLElement ? node.textContent || "" : "");
+  function escapeCssAttributeValue(value) {
+    return String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  }
+
+  function queryVisibleElements(root, selector) {
+    if (!(root instanceof HTMLElement) || !selector) {
+      return [];
+    }
+    try {
+      return Array.prototype.slice.call(root.querySelectorAll(selector)).filter(function (node) {
+        return node instanceof HTMLElement && isVisible(node);
+      });
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  function findFirstVisible(root, selectors) {
+    for (var index = 0; index < selectors.length; index += 1) {
+      var matches = queryVisibleElements(root, selectors[index]);
+      if (matches.length) {
+        return matches[0];
+      }
+    }
+    return null;
+  }
+
+  function closestElement(node, selector) {
+    if (!(node instanceof HTMLElement) || !selector) {
+      return null;
+    }
+    try {
+      var match = node.closest(selector);
+      return match instanceof HTMLElement ? match : null;
+    } catch (_error) {
+      return null;
+    }
   }
 
   function buildLinePickerConfig(rawConfig) {
     var raw = rawConfig && typeof rawConfig === "object" ? rawConfig : {};
-    var addLineLabels = (Array.isArray(raw.addLineLabels) ? raw.addLineLabels : [])
-      .map(function (label) {
-        return String(label || "").trim();
-      })
-      .filter(Boolean);
-    if (!addLineLabels.length) {
-      addLineLabels = DEFAULT_ENTRY_TRIGGER_LABELS.slice();
-    }
     return {
       enhancerKey: ENTRY_PICKER_ENHANCER_KEY,
       x2manyField: String(raw.x2manyField || raw.fieldName || "").trim(),
       itemField: String(raw.itemField || raw.primaryField || "").trim(),
-      addLineLabels: addLineLabels,
-      fieldSelector: String(raw.fieldSelector || "").trim(),
+      fieldSelector: normalizeSelector(raw.fieldSelector),
+      addLineSelector: normalizeSelector(raw.addLineSelector || raw.triggerSelector),
+      editableRowSelector: normalizeSelector(raw.editableRowSelector || raw.rowSelector),
+      itemInputSelector: normalizeSelector(raw.itemInputSelector || raw.inputSelector),
       autoOpenOnAdd: raw.autoOpenOnAdd !== false,
       autoOpenOnFocus: raw.autoOpenOnFocus !== false,
     };
@@ -83,7 +107,7 @@
     return configs.filter(function (entry) {
       return entry && typeof entry === "object" && String(entry.enhancerKey || "").trim() === ENTRY_PICKER_ENHANCER_KEY;
     }).map(buildLinePickerConfig).filter(function (entry) {
-      return !!entry.itemField;
+      return !!(entry.itemField && (entry.x2manyField || entry.fieldSelector));
     });
   }
 
@@ -97,70 +121,37 @@
       selectors.push(config.fieldSelector);
     }
     if (config.x2manyField) {
+      var fieldName = escapeCssAttributeValue(config.x2manyField);
       selectors.push(
-        ".o_field_x2many[name='" + config.x2manyField + "']",
-        ".o_field_x2many[data-name='" + config.x2manyField + "']",
-        "[name='" + config.x2manyField + "'].o_field_x2many",
-        "[data-name='" + config.x2manyField + "'].o_field_x2many"
+        '.o_field_x2many[name="' + fieldName + '"]',
+        '.o_field_x2many[data-name="' + fieldName + '"]',
+        '[name="' + fieldName + '"].o_field_x2many',
+        '[data-name="' + fieldName + '"].o_field_x2many'
       );
     }
-    if (!selectors.length) {
-      selectors.push(".o_field_x2many");
-    }
-    for (var index = 0; index < selectors.length; index += 1) {
-      var match = scopeRoot.querySelector(selectors[index]);
-      if (match instanceof HTMLElement && isVisible(match)) {
-        return match;
-      }
-    }
-    return null;
+    return findFirstVisible(scopeRoot, selectors);
   }
 
   function resolveAddLineTrigger(fieldRoot, config) {
     if (!(fieldRoot instanceof HTMLElement)) {
       return null;
     }
-    var triggers = Array.prototype.slice.call(
-      fieldRoot.querySelectorAll(".o_field_x2many_list_row_add a, .o_field_x2many_list_row_add button")
-    ).filter(function (node) {
-      return node instanceof HTMLElement && isVisible(node);
-    });
-    if (!triggers.length) {
-      return null;
+    var selector = config.addLineSelector || DEFAULT_ADD_LINE_TRIGGER_SELECTOR;
+    var triggers = queryVisibleElements(fieldRoot, selector);
+    if (config.addLineSelector) {
+      return triggers[0] || null;
     }
-    var preferredLabels = config.addLineLabels.map(normalizeLabel);
-    var preferredTrigger = triggers.find(function (node) {
-      return preferredLabels.indexOf(readText(node)) >= 0;
-    });
-    if (preferredTrigger instanceof HTMLElement) {
-      return preferredTrigger;
-    }
-    var fallbackTrigger = triggers.find(function (node) {
-      var label = readText(node);
-      return label.indexOf("agregar una linea") >= 0 ||
-        label.indexOf("agregar linea") >= 0 ||
-        label.indexOf("add a line") >= 0 ||
-        label.indexOf("add line") >= 0;
-    });
-    return fallbackTrigger instanceof HTMLElement ? fallbackTrigger : triggers[0];
+    return triggers.length === 1 ? triggers[0] : null;
   }
 
-  function resolveEditableRow(fieldRoot) {
+  function resolveEditableRow(fieldRoot, config) {
     if (!(fieldRoot instanceof HTMLElement)) {
       return null;
     }
-    var candidates = [
-      "tr.o_data_row.o_selected_row",
-      "tr.o_selected_row",
-      "tr.o_data_row:last-of-type",
-    ];
-    for (var index = 0; index < candidates.length; index += 1) {
-      var row = fieldRoot.querySelector(candidates[index]);
-      if (row instanceof HTMLElement && isVisible(row)) {
-        return row;
-      }
+    if (config.editableRowSelector) {
+      return findFirstVisible(fieldRoot, [config.editableRowSelector]);
     }
-    return null;
+    return findFirstVisible(fieldRoot, [DEFAULT_EDITABLE_ROW_SELECTOR]);
   }
 
   function findLinePickerInput(row, config) {
@@ -168,30 +159,27 @@
       return null;
     }
     var selectors = [];
+    if (config.itemInputSelector) {
+      selectors.push(config.itemInputSelector);
+    }
     if (config.itemField) {
+      var itemField = escapeCssAttributeValue(config.itemField);
       selectors.push(
-        "[name='" + config.itemField + "'] .o-autocomplete--input",
-        "[data-name='" + config.itemField + "'] .o-autocomplete--input",
-        "td[name='" + config.itemField + "'] .o-autocomplete--input",
-        "td[data-name='" + config.itemField + "'] .o-autocomplete--input",
-        "[name='" + config.itemField + "'] input[role='combobox']",
-        "[data-name='" + config.itemField + "'] input[role='combobox']",
-        "[name='" + config.itemField + "'] [role='combobox']",
-        "[data-name='" + config.itemField + "'] [role='combobox']",
-        "td[name='" + config.itemField + "'] input",
-        "td[data-name='" + config.itemField + "'] input",
-        "div[name='" + config.itemField + "'] input",
-        "div[data-name='" + config.itemField + "'] input"
+        '[name="' + itemField + '"] .o-autocomplete--input',
+        '[data-name="' + itemField + '"] .o-autocomplete--input',
+        'td[name="' + itemField + '"] .o-autocomplete--input',
+        'td[data-name="' + itemField + '"] .o-autocomplete--input',
+        '[name="' + itemField + '"] input[role="combobox"]',
+        '[data-name="' + itemField + '"] input[role="combobox"]',
+        '[name="' + itemField + '"] [role="combobox"]',
+        '[data-name="' + itemField + '"] [role="combobox"]',
+        'td[name="' + itemField + '"] input',
+        'td[data-name="' + itemField + '"] input',
+        'div[name="' + itemField + '"] input',
+        'div[data-name="' + itemField + '"] input'
       );
     }
-    selectors.push(".o-autocomplete--input[role='combobox']", "input[role='combobox']");
-    for (var index = 0; index < selectors.length; index += 1) {
-      var input = row.querySelector(selectors[index]);
-      if (input instanceof HTMLElement && isVisible(input)) {
-        return input;
-      }
-    }
-    return null;
+    return findFirstVisible(row, selectors);
   }
 
   function openLinePicker(inputNode) {
@@ -231,7 +219,7 @@
       if (!(fieldRoot instanceof HTMLElement) || !fieldRoot.isConnected) {
         return;
       }
-      var row = resolveEditableRow(fieldRoot);
+      var row = resolveEditableRow(fieldRoot, config);
       var picker = findLinePickerInput(row, config);
       if (picker instanceof HTMLElement) {
         if (row instanceof HTMLElement) {
@@ -265,7 +253,7 @@
         if (!(target instanceof HTMLElement)) {
           return;
         }
-        var row = target.closest("tr.o_data_row, tr.o_selected_row");
+        var row = closestElement(target, config.editableRowSelector || "tr.o_data_row, tr.o_selected_row");
         if (!(row instanceof HTMLElement)) {
           return;
         }

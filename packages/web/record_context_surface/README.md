@@ -20,3 +20,6 @@ Consumers should provide only schema/config:
 - `formFieldMap`
 - `watchFieldNames`
 - optional `enrichData`
+- optional `resolvePartnerRecord` or role-specific partner resolvers when a project needs non-id partner resolution
+
+The shared partner-commercial adapter resolves partners by explicit many2one ids from the record by default. It does not search `res.partner` from visible field labels; projects that need that behavior must opt in through `resolveCommercialPartner`, `resolveBillingPartner`, `resolveShippingPartner`, or `resolvePartnerRecord`.

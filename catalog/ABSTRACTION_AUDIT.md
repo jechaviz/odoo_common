@@ -9,13 +9,13 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 26 total, 26 canonical.
+- Python packages: 27 total, 27 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
 ## Canonical Surfaces Already Extracted
 
-- `odoo_fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract, common component sync, view fragment assembly.
+- `odoo_fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract, common component sync, view fragment assembly, navigation blueprints.
 - `odoo_rpp`: form layout core, section headers, section visibility, settings panel, chatter toggle, subtotals, layout state, many2x parent autosave, defaults persistence, partner defaults, taxation helpers.
 - `rp-rental-mock`: form defaults, preview, header identity, action bridge, commercial policy, totals, partner language defaults, terms and conditions.
 - `odoo_rpp` + `rp-rental-mock`: strict tax group and tax upserts with explicit company/country/group contracts.
@@ -61,6 +61,7 @@ Scope:
 - Added: `odoo-runtime-primitives` canonicalizes domain literal construction, Python function source extraction, and many2one RPC value normalization without connection management, XML ID lookup, field detection, or legacy action-server compatibility.
 - Added: `common-component-sync` canonicalizes consumer sync manifests, catalog resolution, dependency-ordered file bindings, web publish-order checks, target-collision detection, and safe generated-copy pruning without component aliases, source-derived targets, path hacks, or manual copy policy.
 - Added: `view-fragment-assembly` canonicalizes strict XML view fragment registries, arch assembly, explicit substitutions, and view blueprint serialization without business fragments, folder fallbacks, approximate matching, or view upsert side effects.
+- Added: `navigation-blueprints` canonicalizes keyed window-action/menu blueprint construction and duplicate-key checks without business menu trees, ID resolution, upserts, aliases, or fallback name matching.
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views and QWeb views without legacy view cleanup or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.

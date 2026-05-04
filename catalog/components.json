@@ -480,6 +480,24 @@
     ]
   },
   {
+    "key": "navigation-blueprints",
+    "title": "Navigation Blueprints",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/navigation_blueprints",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/navigation.py"
+      }
+    ],
+    "features": [
+      "keyed window action blueprints",
+      "keyed menu blueprints",
+      "navigation blueprint indexing"
+    ]
+  },
+  {
     "key": "tax-upserts",
     "title": "Odoo Tax Upserts",
     "runtime": "python",

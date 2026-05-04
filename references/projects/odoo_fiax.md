@@ -26,6 +26,7 @@ Nivel actual:
 - base canonica para `packages/schema/record_context_layout`
 - base canonica para `packages/python/common_component_sync`
 - base canonica para `packages/python/view_fragment_assembly`
+- base canonica para `packages/python/navigation_blueprints`
 
 Definicion de consumo:
 

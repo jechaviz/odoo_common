@@ -1,0 +1,18 @@
+{
+  "key": "navigation-blueprints",
+  "title": "Navigation Blueprints",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_fiax",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "navigation_blueprints.py"
+  ],
+  "capabilities": [
+    "keyed-window-action-blueprints",
+    "keyed-menu-blueprints",
+    "navigation-blueprint-indexing"
+  ]
+}

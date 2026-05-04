@@ -168,6 +168,19 @@
     ]
   },
   {
+    "key": "navigation_blueprints",
+    "title": "Navigation Blueprints",
+    "components": [
+      "navigation-blueprints",
+      "action-menu-upserts"
+    ],
+    "use_cases": [
+      "keyed menu tree declarations",
+      "window action publication plans",
+      "strict action/menu sync adapters"
+    ]
+  },
+  {
     "key": "binary_attachment_publication",
     "title": "Binary Attachment Publication",
     "components": [

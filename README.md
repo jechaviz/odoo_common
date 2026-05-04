@@ -2,7 +2,7 @@
 
 Kit comun para ensamblar superficies nativas de Odoo a partir de piezas reutilizables extraidas de:
 
-- `C:\git\customers\yo\odoo_fiax`
+- `C:\git\customers\yo\fiax`
 - `C:\git\customers\yo\odoo_rpp`
 - `C:\git\customers\yo\rp-rental-mock`
 

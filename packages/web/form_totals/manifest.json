@@ -16,5 +16,8 @@
     "tax-breakdown",
     "fallback-tax-row",
     "totals-preview"
+  ],
+  "replacement_components": [
+    "form-totals-surface"
   ]
 }

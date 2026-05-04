@@ -11,3 +11,11 @@ Extraccion source-derived del runtime original de Rental para sincronizar descue
 
 - conservarlo solo para trazabilidad o adapters legacy
 - usar `commercial-policy-surface` para integraciones nuevas o extracciones canonicas
+
+## Reemplazos canonicos
+
+- `commercial-policy-surface`
+- `form-action-bridge-surface`
+- `record-context-surface`
+- `form-preview-surface`
+- `partner-defaults`

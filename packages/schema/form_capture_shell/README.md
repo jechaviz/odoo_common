@@ -6,8 +6,8 @@ No incluye renderer JS, estilos locales de negocio ni campos `x_*`. Define solo 
 
 ## Fuente de referencia
 
-- `C:\git\customers\yo\odoo_fiax\src\odoo_fiax_migration\templates\view_fragments\invoice_form_capture_shell.xml.tmpl`
-- `C:\git\customers\yo\odoo_fiax\src\odoo_fiax_migration\templates\view_fragments\invoice_form_identity_controls.xml.tmpl`
+- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\templates\view_fragments\invoice_form_capture_shell.xml.tmpl`
+- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\templates\view_fragments\invoice_form_identity_controls.xml.tmpl`
 - `C:\git\customers\yo\rp-rental-mock\odoo_migration\web_assets\rental_native_tabs`
 
 ## Lo Que Este Paquete Si Define

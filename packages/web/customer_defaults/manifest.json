@@ -16,5 +16,12 @@
     "customer-discount-sync",
     "discount-assignment-hydration",
     "server-action-bridge"
+  ],
+  "replacement_components": [
+    "commercial-policy-surface",
+    "form-action-bridge-surface",
+    "record-context-surface",
+    "form-preview-surface",
+    "partner-defaults"
   ]
 }

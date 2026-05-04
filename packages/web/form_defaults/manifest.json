@@ -19,5 +19,10 @@
     "branch-defaults",
     "series-defaults",
     "preview-hydration"
+  ],
+  "replacement_components": [
+    "form-defaults-surface",
+    "form-preview-surface",
+    "form-header-identity-surface"
   ]
 }

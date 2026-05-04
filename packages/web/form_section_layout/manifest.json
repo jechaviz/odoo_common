@@ -30,5 +30,14 @@
     "settings-panel",
     "subtotals-layout-shell",
     "chatter-collapse"
+  ],
+  "replacement_components": [
+    "form-layout-surface",
+    "form-section-headers-surface",
+    "form-section-visibility-surface",
+    "form-settings-panel-surface",
+    "form-chatter-toggle-surface",
+    "form-subtotals-surface",
+    "form-layout-state"
   ]
 }

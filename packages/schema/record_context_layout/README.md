@@ -6,9 +6,9 @@ No define modelos Odoo, labels de negocio, ni wiring ORM. Solo formaliza el mark
 
 ## Fuente de referencia
 
-- `C:\git\customers\yo\odoo_fiax\src\odoo_fiax_migration\templates\view_fragments\invoice_form_capture_shell.xml.tmpl`
-- `C:\git\customers\yo\odoo_fiax\src\odoo_fiax_migration\web_assets\odoo_surface_layers\record_context.js`
-- `C:\git\customers\yo\odoo_fiax\src\odoo_fiax_migration\web_assets\odoo_surface_layers\surface_layers.css`
+- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\templates\view_fragments\invoice_form_capture_shell.xml.tmpl`
+- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\web_assets\odoo_surface_layers\record_context.js`
+- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\web_assets\odoo_surface_layers\surface_layers.css`
 
 ## Lo Que Este Paquete Si Define
 

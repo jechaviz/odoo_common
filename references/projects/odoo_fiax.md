@@ -1,5 +1,9 @@
 # Source Project: odoo_fiax
 
+Workspace actual:
+
+- `C:\git\customers\yo\fiax`
+
 Rol principal en `common`:
 
 - shell nativo de workspace
@@ -15,3 +19,8 @@ Origen principal:
 Nivel actual:
 
 - base canonica para `packages/web/surface_workspace_shell`
+- base canonica para `packages/web/line_picker_surface`
+- base canonica para `packages/web/record_context_surface`
+- base canonica para `packages/web/commercial_capture_context_surface`
+- base canonica para `packages/schema/form_capture_shell`
+- base canonica para `packages/schema/record_context_layout`

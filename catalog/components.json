@@ -292,7 +292,11 @@
       "subtotal layout storage",
       "subtotal formula rendering",
       "subtotal edit mode",
-      "subtotal toggle menu"
+      "subtotal toggle menu",
+      "subtotals root resolution",
+      "subtotals adapter builder",
+      "subtotals runtime installation",
+      "field display normalizers"
     ]
   },
   {
@@ -555,8 +559,16 @@
     "package_path": "packages/schema/terms_conditions",
     "origins": [
       {
-        "project": "odoo_fiax",
-        "path": "src/odoo_fiax_migration/catalog_views.py"
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/docs/tnc.md"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/report_templates.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/templates/view_fragments/rental_order_form_terms_conditions_source.xml.tmpl"
       }
     ],
     "features": [

@@ -12,6 +12,9 @@ MODEL_VIEW_RESERVED_KEYS = frozenset(
 QWEB_VIEW_RESERVED_KEYS = frozenset(
     {"name", "type", "arch_db", "active", "mode", "inherit_id", "model"}
 )
+QWEB_TEMPLATE_RESERVED_KEYS = frozenset(
+    {"name", "type", "key", "arch_db", "active", "mode", "model"}
+)
 
 
 @runtime_checkable
@@ -106,6 +109,30 @@ class QWebViewSpec:
         )
 
 
+@dataclass(frozen=True)
+class QWebTemplateSpec:
+    """Declare one keyed QWeb template `ir.ui.view` record."""
+
+    name: str
+    key: str
+    arch_db: str
+    mode: str = "primary"
+    active: bool = True
+    extra_values: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "name", _clean_required_text(self.name, field_name="template name"))
+        object.__setattr__(self, "key", _clean_required_text(self.key, field_name="template key"))
+        object.__setattr__(self, "arch_db", _clean_required_text(self.arch_db, field_name="arch_db"))
+        object.__setattr__(self, "mode", _clean_required_text(self.mode, field_name="mode"))
+        object.__setattr__(self, "active", bool(self.active))
+        object.__setattr__(
+            self,
+            "extra_values",
+            _clean_extra_values(self.extra_values, reserved_keys=QWEB_TEMPLATE_RESERVED_KEYS),
+        )
+
+
 def upsert_model_view(conn: ViewUpsertConnection, spec: ModelViewSpec) -> int:
     """Create or update one model view by exact `(name, model, type)`."""
     normalized = spec if isinstance(spec, ModelViewSpec) else ModelViewSpec(**dict(spec))
@@ -163,6 +190,37 @@ def upsert_qweb_view(conn: ViewUpsertConnection, spec: QWebViewSpec) -> int:
         conn.write("ir.ui.view", [view_id], values)
         return view_id
     return _required_record_id(conn.create("ir.ui.view", values), context=f"created ir.ui.view {normalized.name}")
+
+
+def upsert_qweb_template(conn: ViewUpsertConnection, spec: QWebTemplateSpec) -> int:
+    """Create or update one keyed QWeb template by exact `(type=qweb, key)`."""
+    normalized = spec if isinstance(spec, QWebTemplateSpec) else QWebTemplateSpec(**dict(spec))
+    values = {
+        "name": normalized.name,
+        "type": "qweb",
+        "key": normalized.key,
+        "arch_db": normalized.arch_db,
+        "active": normalized.active,
+        "mode": normalized.mode,
+        "model": False,
+        **dict(normalized.extra_values),
+    }
+    existing_ids = conn.search(
+        "ir.ui.view",
+        [
+            ("type", "=", "qweb"),
+            ("key", "=", normalized.key),
+        ],
+        limit=1,
+    )
+    if existing_ids:
+        view_id = _required_record_id(existing_ids[0], context=f"ir.ui.view template {normalized.key}")
+        conn.write("ir.ui.view", [view_id], values)
+        return view_id
+    return _required_record_id(
+        conn.create("ir.ui.view", values),
+        context=f"created ir.ui.view template {normalized.key}",
+    )
 
 
 def _record_id(value: Any) -> int:

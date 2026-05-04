@@ -353,6 +353,7 @@
     "use_cases": [
       "model view publication",
       "inherited view extensions",
+      "keyed QWeb template publication",
       "QWeb extension views"
     ]
   },

@@ -819,11 +819,16 @@
       {
         "project": "rp-rental-mock",
         "path": "odoo_migration/backend_web_asset_sync.py"
+      },
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/run_migration.py"
       }
     ],
     "features": [
       "model view upsert",
       "qweb view upsert",
+      "qweb template upsert",
       "strict arch/arch_db contracts"
     ]
   },

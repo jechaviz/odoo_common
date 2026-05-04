@@ -13,6 +13,7 @@
   "capabilities": [
     "model-view-upsert",
     "qweb-view-upsert",
+    "qweb-template-upsert",
     "strict-view-specs"
   ]
 }

@@ -29,6 +29,7 @@ Nivel actual:
 - base canonica para `packages/python/navigation_blueprints`
 - mejora canonica en `packages/python/backend_web_assets`: derivar specs publicables desde bindings comunes sin bootstrap directo
 - mejora canonica en `packages/python/registry_lookup`: resolver acciones/vistas exactas sin ids FIAX ni fallback
+- mejora canonica en `packages/python/view_upserts`: publicar templates QWeb por `key` obligatorio
 
 Definicion de consumo:
 

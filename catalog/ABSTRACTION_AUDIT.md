@@ -65,7 +65,7 @@ Scope:
 - Added: `navigation-blueprints` canonicalizes keyed window-action/menu blueprint construction and duplicate-key checks without business menu trees, ID resolution, upserts, aliases, or fallback name matching.
 - Added: `backend-web-assets` now derives `BackendWebAssetSpec` rows from common sync bindings, preserving dependency and publish order while requiring explicit target-prefix stripping instead of route/path inference.
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
-- Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views and QWeb views without legacy view cleanup or alternate write forms.
+- Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views, QWeb views, and keyed QWeb templates without legacy view cleanup, key-to-name fallback, or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.
 - Added: `mail-template-upserts` canonicalizes `mail.template` publication through modern `report_template_ids` without XML ID resolution, legacy `report_template` fallback, field detection, or business-specific content.
 - Added: `custom-field-upserts` canonicalizes manual model/field creation, strict existing-field contract validation, and selection row reconciliation without legacy value migrations.

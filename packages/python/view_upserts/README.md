@@ -9,8 +9,10 @@ El modulo expone:
 - `ViewUpsertConnection`
 - `ModelViewSpec`
 - `QWebViewSpec`
+- `QWebTemplateSpec`
 - `upsert_model_view(conn, spec)`
 - `upsert_qweb_view(conn, spec)`
+- `upsert_qweb_template(conn, spec)`
 
 ## Connection Contract
 
@@ -22,7 +24,7 @@ El helper espera un objeto `conn` con estas operaciones:
 
 ## Spec
 
-`ModelViewSpec` usa el contrato de vistas de modelo con `arch`. `QWebViewSpec` usa el contrato QWeb con `arch_db` y `model=False`.
+`ModelViewSpec` usa el contrato de vistas de modelo con `arch`. `QWebViewSpec` usa el contrato QWeb extension con `arch_db`, `inherit_id` y `model=False`. `QWebTemplateSpec` publica templates QWeb por `key` obligatorio.
 
 Los `extra_values` son permitidos, pero no pueden sobrescribir campos reservados del contrato base.
 
@@ -30,11 +32,13 @@ Los `extra_values` son permitidos, pero no pueden sobrescribir campos reservados
 
 - upsert exacto de vistas por `(name, model, type)`
 - upsert exacto de vistas QWeb por `(name, type=qweb)`
+- upsert exacto de templates QWeb por `(type=qweb, key)`
 - preservar `inherit_id`, `mode`, `active` y valores adicionales declarados
 
 ## No Incluye
 
 - busqueda por `arch_db`
+- fallback de template QWeb desde `key` hacia `name`
 - limpieza de vistas legacy
 - reuso por nombres historicos
 - escritura con ID escalar alternativo

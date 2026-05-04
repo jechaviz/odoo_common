@@ -20,6 +20,8 @@
   "capabilities": [
     "record-context-slot-composition",
     "commercial-reference-meta-enrichment",
+    "reference-meta-field-configuration",
+    "reference-meta-summary-configuration",
     "condition-override-summary",
     "commercial-policy-copy-composition"
   ]

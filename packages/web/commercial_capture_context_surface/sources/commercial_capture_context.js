@@ -27,6 +27,11 @@
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   }
 
+  function readConfiguredText(objectValue, key, defaultValue) {
+    var object = readObject(objectValue);
+    return normalizeText(Object.prototype.hasOwnProperty.call(object, key) ? object[key] : defaultValue);
+  }
+
   function readStringList(values) {
     var seen = Object.create(null);
     var result = [];
@@ -65,9 +70,9 @@
     return {
       enabled: !!model,
       model: model,
-      nameField: normalizeText(referenceMeta.nameField || "name"),
-      currencyField: normalizeText(referenceMeta.currencyField || "currency_id"),
-      itemIdsField: normalizeText(referenceMeta.itemIdsField || "item_ids"),
+      nameField: readConfiguredText(referenceMeta, "nameField", "name"),
+      currencyField: readConfiguredText(referenceMeta, "currencyField", "currency_id"),
+      itemIdsField: readConfiguredText(referenceMeta, "itemIdsField", "item_ids"),
       extraFields: readStringList(referenceMeta.fields),
       currencyLabelKey: "referenceCurrencyLabel",
       itemCountKey: "referenceItemCount",
@@ -77,9 +82,9 @@
       includeItemCountInSummary: Object.prototype.hasOwnProperty.call(referenceMeta, "includeItemCountInSummary")
         ? !!referenceMeta.includeItemCountInSummary
         : true,
-      summarySeparator: normalizeText(referenceMeta.summarySeparator || " | "),
-      itemCountSingularLabel: normalizeText(referenceMeta.itemCountSingularLabel || "1 regla"),
-      itemCountPluralTemplate: normalizeText(referenceMeta.itemCountPluralTemplate || "{count} reglas"),
+      summarySeparator: readConfiguredText(referenceMeta, "summarySeparator", " | "),
+      itemCountSingularLabel: readConfiguredText(referenceMeta, "itemCountSingularLabel", "1 regla"),
+      itemCountPluralTemplate: readConfiguredText(referenceMeta, "itemCountPluralTemplate", "{count} reglas"),
     };
   }
 
@@ -87,11 +92,11 @@
     var copy = readObject(rawCopy);
     var policyCopy = normalizeCommercialPolicyCopy(copy);
     return {
-      primaryNameFallback: normalizeText(copy.primaryNameFallback || "Registro sin seleccionar"),
-      primaryDetailsFallback: normalizeText(copy.primaryDetailsFallback || "Selecciona un contacto para ver el resumen comercial."),
-      secondaryNameFallback: normalizeText(copy.secondaryNameFallback || "Mismo destino comercial"),
-      secondaryDetailsFallback: normalizeText(copy.secondaryDetailsFallback || "Este documento usa la direccion comercial principal mientras no asignes un destino secundario."),
-      identifierFallback: normalizeText(copy.identifierFallback || "-"),
+      primaryNameFallback: readConfiguredText(copy, "primaryNameFallback", "Registro sin seleccionar"),
+      primaryDetailsFallback: readConfiguredText(copy, "primaryDetailsFallback", "Selecciona un contacto para ver el resumen comercial."),
+      secondaryNameFallback: readConfiguredText(copy, "secondaryNameFallback", "Mismo destino comercial"),
+      secondaryDetailsFallback: readConfiguredText(copy, "secondaryDetailsFallback", "Este documento usa la direccion comercial principal mientras no asignes un destino secundario."),
+      identifierFallback: readConfiguredText(copy, "identifierFallback", "-"),
       referenceFallback: policyCopy.referenceFallback,
       referenceMetaFallback: policyCopy.referenceMetaFallback,
       conditionFallback: policyCopy.conditionFallback,
@@ -131,16 +136,28 @@
         referenceMetaSpec.itemIdsField,
       ])
     );
+    if (!fields.length) {
+      return {
+        reference: normalizeText(referenceValue && referenceValue.label),
+        referenceCurrencyLabel: "",
+        referenceItemCount: 0,
+      };
+    }
     var row = await helpers.searchReadFirst(
       referenceMetaSpec.model,
       [["id", "=", referenceId]],
       fields,
       { limit: 1, order: "id asc" }
     );
-    var currencyValue = helpers.normalizeMany2oneValue(row && row[referenceMetaSpec.currencyField]);
-    var itemIds = Array.isArray(row && row[referenceMetaSpec.itemIdsField]) ? row[referenceMetaSpec.itemIdsField] : [];
+    var currencyValue = referenceMetaSpec.currencyField
+      ? helpers.normalizeMany2oneValue(row && row[referenceMetaSpec.currencyField])
+      : {};
+    var itemIds = referenceMetaSpec.itemIdsField && Array.isArray(row && row[referenceMetaSpec.itemIdsField])
+      ? row[referenceMetaSpec.itemIdsField]
+      : [];
+    var referenceLabel = referenceMetaSpec.nameField ? normalizeText(row && row[referenceMetaSpec.nameField]) : "";
     return {
-      reference: normalizeText(row && row[referenceMetaSpec.nameField]) || normalizeText(referenceValue && referenceValue.label),
+      reference: referenceLabel || normalizeText(referenceValue && referenceValue.label),
       referenceCurrencyLabel: normalizeText(currencyValue.label),
       referenceItemCount: itemIds.length,
     };

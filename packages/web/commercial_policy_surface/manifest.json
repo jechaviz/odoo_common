@@ -19,6 +19,8 @@
     "policy-assignment-sync",
     "preview-field-hydration",
     "source-action-injection",
+    "spec-driven-model-field-maps",
+    "save-trigger-label-configuration",
     "policy-copy-semantics",
     "policy-note-rendering"
   ]

@@ -65,6 +65,18 @@ Si el bridge recibe un action ID valido, ejecuta:
 
 Si no se inyecta action ID, el bridge degrada a read/write e hydration visual sin correr server action.
 
+## Auditoria de neutralidad
+
+La auditoria de copy, campos y modelos queda asi:
+
+- los modelos fuente/destino entran por `spec.source.model` y `spec.target.model`; el unico modelo fijo del runtime es `ir.actions.server`, que pertenece al contrato tecnico de inyeccion de acciones de Odoo
+- los campos de negocio fuente entran por `spec.source.fields`, `spec.source.labelFields` y `spec.source.policyFieldMap`
+- los campos de write-back destino entran por `spec.target.sourceFieldName` y `spec.target.writeBackFieldMap`
+- el copy de politica comercial entra por `normalizeCommercialPolicyCopy(copy)` y puede sobreescribirse campo por campo; si una clave existe en `copy`, el runtime respeta su valor normalizado aunque sea vacio
+- el label del boton que dispara sync despues de guardar entra por `spec.behavior.saveButtonLabels`; el fallback `save` es solo una convencion tecnica de Odoo, no copy de proyecto
+
+Los defaults `id`, `display_name` y `name` son convenciones genericas de identidad Odoo para lectura minima. Adapters con campos `x_*`, labels traducidos o modelos especializados deben declararlos explicitamente en spec.
+
 ## Spec minimo
 
 ```js
@@ -109,6 +121,7 @@ window.OdooSurfaceLayers.installCommercialPolicySurfaceBridge({
   },
   behavior: {
     watchedFieldNames: ["x_policy_assignment_id", "partner_id"],
+    saveButtonLabels: ["save"],
     isManagedRoute: function () {
       return true;
     },

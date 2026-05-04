@@ -58,6 +58,8 @@ Y ademas los bloques propios de esta superficie:
 - `itemCountSingularLabel`
 - `itemCountPluralTemplate`
 
+Para adapters nuevos, declara `nameField`, `currencyField` e `itemIdsField` aunque coincidan con los defaults historicos de Odoo (`name`, `currency_id`, `item_ids`). Si la referencia comercial no expone moneda o lista de items, pasa esa clave como string vacio para desactivar su lookup y evitar que el fallback vuelva a entrar.
+
 `copy` fija el texto del panel de captura y compone la semantica canonica de politica comercial:
 
 - `primaryNameFallback`
@@ -75,6 +77,18 @@ Y ademas los bloques propios de esta superficie:
 - `changedConditionLabel`
 - `inheritedConditionLabel`
 - `explicitConditionLabel`
+
+## Auditoria de neutralidad
+
+La auditoria de copy, campos y modelos queda asi:
+
+- `recordModel`, `recordFieldMap`, `partnerFieldMap`, `formFieldMap`, `watchFieldNames` y `referenceMeta.model` entran por spec
+- los campos de metadata de referencia entran por `referenceMeta.nameField`, `referenceMeta.currencyField`, `referenceMeta.itemIdsField` y `referenceMeta.fields`
+- el resumen visual de metadata entra por `referenceMeta.includeCurrencyInSummary`, `referenceMeta.includeItemCountInSummary`, `referenceMeta.summarySeparator`, `referenceMeta.itemCountSingularLabel` y `referenceMeta.itemCountPluralTemplate`
+- el copy del panel entra por `copy`; si una clave existe en `copy`, el runtime respeta su valor normalizado aunque sea vacio
+- el copy y note renderer de politica comercial se componen desde `commercial-policy-surface`; no hay fallback chain local duplicada para esos textos
+
+Los ejemplos de `account.move`, `product.pricelist`, `invoice_payment_term_id` y similares son solo muestra de adapter. El runtime canonico no debe asumir esos modelos ni campos.
 
 ## Spec minimo
 
@@ -97,6 +111,9 @@ window.OdooSurfaceLayers.buildCommercialCaptureContextAdapter({
   watchFieldNames: ["partner_id", "invoice_payment_term_id", "pricelist_id"],
   referenceMeta: {
     model: "product.pricelist",
+    nameField: "name",
+    currencyField: "currency_id",
+    itemIdsField: "item_ids",
     itemCountSingularLabel: "1 regla",
     itemCountPluralTemplate: "{count} reglas",
   },

@@ -31,6 +31,11 @@
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   }
 
+  function readConfiguredText(objectValue, key, defaultValue) {
+    var object = readSpecObject(objectValue);
+    return normalizeText(Object.prototype.hasOwnProperty.call(object, key) ? object[key] : defaultValue);
+  }
+
   function requireSpecObject(value, path) {
     var objectValue = readSpecObject(value);
     if (!Object.keys(objectValue).length) {
@@ -79,16 +84,16 @@
   function normalizeCommercialPolicyCopy(rawCopy) {
     var copy = readSpecObject(rawCopy);
     return {
-      referenceFallback: normalizeText(copy.referenceFallback || "Tarifa base"),
-      referenceMetaFallback: normalizeText(copy.referenceMetaFallback || "Sin reglas"),
-      conditionFallback: normalizeText(copy.conditionFallback || "Sin default"),
-      conditionMetaFallback: normalizeText(copy.conditionMetaFallback || "Sin override"),
-      noteWithReferenceAndItems: normalizeText(copy.noteWithReferenceAndItems || "La referencia comercial ya tiene reglas activas."),
-      noteWithReferenceNoItems: normalizeText(copy.noteWithReferenceNoItems || "La referencia comercial existe, pero aun no tiene reglas activas."),
-      noteWithoutReference: normalizeText(copy.noteWithoutReference || "Este registro usa la politica comercial base."),
-      changedConditionLabel: normalizeText(copy.changedConditionLabel || "Ajustado en este registro"),
-      inheritedConditionLabel: normalizeText(copy.inheritedConditionLabel || "Heredado del contacto"),
-      explicitConditionLabel: normalizeText(copy.explicitConditionLabel || "Definido en este registro"),
+      referenceFallback: readConfiguredText(copy, "referenceFallback", "Tarifa base"),
+      referenceMetaFallback: readConfiguredText(copy, "referenceMetaFallback", "Sin reglas"),
+      conditionFallback: readConfiguredText(copy, "conditionFallback", "Sin default"),
+      conditionMetaFallback: readConfiguredText(copy, "conditionMetaFallback", "Sin override"),
+      noteWithReferenceAndItems: readConfiguredText(copy, "noteWithReferenceAndItems", "La referencia comercial ya tiene reglas activas."),
+      noteWithReferenceNoItems: readConfiguredText(copy, "noteWithReferenceNoItems", "La referencia comercial existe, pero aun no tiene reglas activas."),
+      noteWithoutReference: readConfiguredText(copy, "noteWithoutReference", "Este registro usa la politica comercial base."),
+      changedConditionLabel: readConfiguredText(copy, "changedConditionLabel", "Ajustado en este registro"),
+      inheritedConditionLabel: readConfiguredText(copy, "inheritedConditionLabel", "Heredado del contacto"),
+      explicitConditionLabel: readConfiguredText(copy, "explicitConditionLabel", "Definido en este registro"),
     };
   }
 

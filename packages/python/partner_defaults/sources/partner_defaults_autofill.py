@@ -18,7 +18,7 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 class PartnerDefaultsAutofillSpec:
     """Project wiring for syncing invoice/delivery/contact defaults from a customer.
 
-    Defaults describe the current Odoo/RP preset. Callers should override these
+    Defaults describe the current Odoo preset. Callers should override these
     names for other models or custom fields instead of depending on x_* literals
     outside this declarative contract.
     """

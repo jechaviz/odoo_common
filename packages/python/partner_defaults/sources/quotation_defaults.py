@@ -2,7 +2,7 @@
 Quotation/Order Address Defaults Capability
 ===========================================
 Handles address selection and "Set as Default" syncing on a configured order
-model. Defaults describe the current sale.order/RP custom-field preset.
+model. Defaults describe the current sale/order custom-field preset.
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ class QuotationDefaultsSpec:
     contact_field_help: str = "The specific contact person for this order."
     delivery_address_config_key: str = "group_sale_delivery_address"
     view_name: str = "RP Sale Order Address Defaults"
+    server_action_name_prefix: str = "RP"
 
     def view_arch(self) -> str:
         """Build the inherited form-view arch using declared field names."""
@@ -91,16 +92,15 @@ class QuotationDefaultsMixin(ViewInfrastructureMixin, XmlIdResolutionMixin):
             ),
         ]
 
-        for spec in field_specs:
+        for field_spec in field_specs:
             if not dry_run:
-                status = self._upsert_field(spec)
-                results["fields"].append({"name": spec.name, "status": status})
+                status = self._upsert_field(field_spec)
+                results["fields"].append({"name": field_spec.name, "status": status})
 
         # 2. Inject Fields into View
 
-        # Live instance has rental, which normally inherits from sale.view_order_form.
-        # However, in v19 SaaS, the rental primary view is often a placeholder.
-        # We inherit directly from the base sale view for maximum reliability.
+        # Some project-specific primary views are placeholders. Inheriting the
+        # declared base view keeps this setup stable across specialized modules.
         base_view_id = (
             self._resolve_xml_id(spec.base_view_xml_id, model="ir.ui.view")
             if spec.base_view_xml_id
@@ -136,21 +136,30 @@ class QuotationDefaultsMixin(ViewInfrastructureMixin, XmlIdResolutionMixin):
         ids = self.connection.search("ir.model.fields", [("model", "=", model_name), ("name", "=", field_name)])
         return ids[0] if ids else 0
 
-    def _upsert_server_action(self, name: str, model_name: str, code: str) -> int:
+    def _upsert_server_action(
+        self,
+        name: str,
+        model_name: str,
+        code: str,
+        *,
+        name_prefix: str = "RP",
+    ) -> int:
         """Helper to create a server action and return its ID."""
         model_id = self._get_model_id(model_name)
         if not model_id:
             return 0
+        normalized_prefix = str(name_prefix or "").strip()
+        action_name = f"{normalized_prefix} {name}".strip()
 
         vals = {
-            "name": f"RP {name}",
+            "name": action_name,
             "model_id": model_id,
             "state": "code",
             "code": code.strip(),
             "type": "ir.actions.server",
         }
 
-        existing = self.connection.search("ir.actions.server", [("name", "=", f"RP {name}"), ("model_id", "=", model_id)])
+        existing = self.connection.search("ir.actions.server", [("name", "=", action_name), ("model_id", "=", model_id)])
         if existing:
             self.connection.write("ir.actions.server", existing, vals)
             return existing[0]

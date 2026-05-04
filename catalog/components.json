@@ -754,6 +754,29 @@
     ]
   },
   {
+    "key": "workflow-config",
+    "title": "Workflow Config Helpers",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/workflow_config",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/workflow_steps.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/workflow_visibility.py"
+      }
+    ],
+    "features": [
+      "workflow step labels",
+      "workflow selection options",
+      "selection visibility expressions",
+      "xml invisible attributes"
+    ]
+  },
+  {
     "key": "product-catalog-upserts",
     "title": "Odoo Product Catalog Upserts",
     "runtime": "python",

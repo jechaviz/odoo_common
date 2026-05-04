@@ -320,6 +320,18 @@
     ]
   },
   {
+    "key": "workflow_config",
+    "title": "Workflow Config",
+    "components": [
+      "workflow-config"
+    ],
+    "use_cases": [
+      "workflow step selection fields",
+      "action/menu labels from one step catalog",
+      "selection-gated XML visibility"
+    ]
+  },
+  {
     "key": "product_catalog_publication",
     "title": "Product Catalog Publication",
     "components": [

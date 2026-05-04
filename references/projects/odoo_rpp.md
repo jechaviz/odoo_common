@@ -44,6 +44,7 @@ Nivel actual:
 - base canonica para `packages/python/action_menu_upserts`
 - base canonica para `packages/python/view_upserts`
 - base canonica para `packages/python/resource_config`
+- base canonica para `packages/python/workflow_config`
 - base canonica para `packages/python/custom_field_upserts`
 - base canonica para `packages/python/security_upserts`
 

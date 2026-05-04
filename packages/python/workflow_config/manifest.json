@@ -1,0 +1,19 @@
+{
+  "key": "workflow-config",
+  "title": "Workflow Config Helpers",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "workflow_config.py"
+  ],
+  "capabilities": [
+    "workflow-step-labels",
+    "workflow-selection-options",
+    "workflow-visibility-expressions",
+    "xml-invisible-attributes"
+  ]
+}

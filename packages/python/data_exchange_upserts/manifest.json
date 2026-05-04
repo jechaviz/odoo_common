@@ -1,0 +1,18 @@
+{
+  "key": "data-exchange-upserts",
+  "title": "Odoo Data Exchange Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "data_exchange_upserts.py"
+  ],
+  "capabilities": [
+    "export-template-upsert",
+    "import-mapping-upsert",
+    "exact-export-field-reset"
+  ]
+}

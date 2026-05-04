@@ -31,6 +31,7 @@ Nivel actual:
 - base canonica para `packages/python/cron_upserts`
 - base canonica para `packages/python/registry_lookup`
 - base canonica para `packages/python/xmlid_upserts`
+- base canonica para `packages/python/data_exchange_upserts`
 - base canonica para `packages/python/action_menu_upserts`
 - base canonica para `packages/python/view_upserts`
 - base canonica para `packages/python/report_upserts`

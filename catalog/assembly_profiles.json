@@ -208,6 +208,18 @@
     ]
   },
   {
+    "key": "data_exchange_publication",
+    "title": "Data Exchange Publication",
+    "components": [
+      "data-exchange-upserts"
+    ],
+    "use_cases": [
+      "saved export templates",
+      "import column mappings",
+      "repeatable data exchange metadata"
+    ]
+  },
+  {
     "key": "action_menu_publication",
     "title": "Action And Menu Publication",
     "components": [

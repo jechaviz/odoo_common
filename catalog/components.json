@@ -551,6 +551,28 @@
     ]
   },
   {
+    "key": "data-exchange-upserts",
+    "title": "Odoo Data Exchange Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/data_exchange_upserts",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_003.pyfrag"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_012.pyfrag"
+      }
+    ],
+    "features": [
+      "export template upsert",
+      "exact export field reset",
+      "import mapping upsert"
+    ]
+  },
+  {
     "key": "action-menu-upserts",
     "title": "Action And Menu Upserts",
     "runtime": "python",

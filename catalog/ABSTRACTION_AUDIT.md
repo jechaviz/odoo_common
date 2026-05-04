@@ -72,6 +72,22 @@ Scope:
 - `form-totals`: archive trace for the Rental totals extraction only. New consumers should assemble `form-totals-surface`.
 - `customer-defaults-web`: archive trace for the Rental customer policy extraction only. New consumers should assemble `commercial-policy-surface`, `form-action-bridge-surface`, `record-context-surface`, `form-preview-surface`, and `partner-defaults`.
 
+## Estado De Cierre
+
+- La extraccion de paquetes comunes desde las familias auditadas queda cerrada para esta pasada.
+- Las familias reutilizables restantes ya tienen paquetes canonicos o fueron rechazadas para `common` porque codifican politica de negocio del proyecto, fixtures de importacion, orquestacion de pruebas live, limpieza/reconciliacion destructiva o comportamiento de compatibilidad.
+- Cualquier trabajo posterior sobre consumidores debe pasar por `CONSUMER_MIGRATION_CHECKLIST.md`; no debe abrir mas fallbacks comunes ni ensamblajes source-derived.
+- Migrar consumidores requiere una politica explicita de import/distribucion para `C:\git\odoo\common` y evidencia base de paridad por proyecto antes de cambiar repos fuente.
+
+## Intencionalmente Local Al Proyecto
+
+- Orquestacion de conexion/config/servicios Odoo: los callers mantienen ciclo de conexion, dry-run, retry, logging y politica de entorno mientras los paquetes comunes dependen de protocolos estrechos.
+- Loaders, seeds de workbook/catalogo, demo data y fixtures de validacion live: son herramientas de ingestion de datos o evidencia, no superficies canonicas de runtime Odoo.
+- Rental pricing, rental products, snapshots, compromisos de assets, auditorias de estado, limpieza de partners y reconciliacion: codifican reglas de negocio Rental y politica de limpieza.
+- Wizards de localization/setup/admin, descubrimiento de opciones de settings, asignacion de usuarios de seguridad y reglas de migracion de grupos: requieren decisiones de tenant y contexto Odoo live.
+- Legacy cleanup, orphan cleanup, deteccion de campos por version, aliases XML ID y rutas alternativas de matching: quedan fuera de `common` por la regla no-legacy/no-fallback.
+- FIAX CFDI, PDF, AI, PocketBase, datatable schemas y app state: son runtime de la aplicacion FIAX, no abstracciones comunes de Odoo.
+
 ## Risk Register
 
 - Canonical examples still use concrete Odoo model and field names in docs/examples. That is acceptable as sample material, but runtime code should stay business-neutral.
@@ -79,25 +95,14 @@ Scope:
 - Source-derived artifacts still contain business fields and Rental paths by design. They are archive inputs only and should not be used as assembly targets for new projects.
 - The catalog schema has no dedicated `archive_only` flag. The policy remains documented through `status: source-derived`, `replacement_components`, this audit, and the assembly guide to avoid validator or downstream schema risk.
 
-## Next Abstraction Queue
+## Consumer Migration Gate
 
-1. Move project-specific subtotals field display formatting into thin project adapters that call `buildFormSubtotalsSurfaceAdapter(spec)`.
-2. Audit canonical runtime files for literal project routes and hard-coded `x_*` fields, excluding docs/examples and intentionally configurable Python defaults.
-3. Move any remaining project consumers away from source-derived packages once each project adapter has parity evidence; do not add common fallbacks to keep those consumers alive.
-4. Replace tax helpers with `tax-upserts`; keep fiscal country/state selection, XML ID publication, and reference-account copying project-local.
-5. Replace general binary attachment writes with `binary-attachment-upserts`; keep stale/orphan cleanup project-local.
-6. Adapt `odoo_rpp` and `rp-rental-mock` publication scripts to call `backend-web-assets` once each project has a thin spec adapter and live Odoo evidence.
-7. Adapt automation installers to call `server-automation-upserts` through project-specific advice/pointcut adapters.
-8. Replace cron installers with `cron-upserts`; keep user lookup policy and dry-run behavior project-local.
-9. Replace local XML ID/model/field helper copies with `odoo-registry-lookup` where callers can tolerate strict missing-metadata errors.
-10. Replace XML ID publication helpers with `xmlid-upserts`; keep target-record creation and dry-run behavior project-local.
-11. Replace export/import metadata helpers with `data-exchange-upserts`; keep stale mapping cleanup project-local.
-12. Replace product category/pricelist helpers with `product-catalog-upserts`; keep legacy pricing cleanup and rental-specific rate derivation project-local.
-13. Replace sequence helpers with `sequence-upserts`; keep sequence assignment and next-number derivation project-local.
-14. Replace survey page/question/answer writes with `survey-upserts`; keep settings-option discovery and stale generated record deletion project-local.
-15. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
-16. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
-17. Replace report installers with `report-upserts`; keep report cleanup project-local.
-18. Replace mail template writes with `mail-template-upserts`; keep XML ID lookup and legacy `report_template` compatibility project-local.
-19. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
-20. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.
+Esta auditoria no deja una cola abierta de abstraccion en `common`. Reemplazar consumidores de proyectos fuente por paquetes canonicos es una migracion separada de cada proyecto y debe seguir `catalog/CONSUMER_MIGRATION_CHECKLIST.md`.
+
+Puerta requerida antes de cambiar consumidores:
+
+- elegir una estrategia de paquete/import para `common` en vez de hacks `sys.path` o copias fuente
+- capturar evidencia del comportamiento actual del consumidor objetivo
+- reemplazar una capacidad por slice con un adapter delgado del proyecto
+- rechazar cualquier cambio que agregue aliases, compatibilidad legacy, fallbacks de version o dependencias runtime source-derived
+- ejecutar la validacion propia del proyecto consumidor antes de commitear

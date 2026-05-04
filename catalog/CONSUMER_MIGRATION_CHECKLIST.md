@@ -4,6 +4,8 @@ Objetivo: mover consumidores existentes hacia superficies canonicas de `common` 
 
 Esta checklist convierte las auditorias por proyecto en pasos de migracion. Aplica a consumers que hoy vienen de `fiax`, `odoo_rpp`, `rp-rental-mock` o nuevos proyectos que copian alguno de esos patrones.
 
+Estado: no es una cola pendiente de abstraccion en `common`. Es la puerta de seguridad para tocar consumidores cuando ya exista una decision explicita de import/distribucion y evidencia base de paridad.
+
 ## Regla Dura
 
 - No cargar paquetes `source-derived` en consumidores nuevos o migrados.
@@ -11,6 +13,14 @@ Esta checklist convierte las auditorias por proyecto en pasos de migracion. Apli
 - No venderizar archivos fuente de proyecto si ya existe componente canonico equivalente.
 - No resolver comportamiento por labels, action ids historicos, `workspaceHint`, selectors alternos ni nombres de negocio.
 - Si falta un dato de negocio, declararlo en el adapter del proyecto; no inferirlo dentro de `common`.
+
+## Precondicion De Consumo
+
+- Definir como el proyecto consumira `C:\git\odoo\common`: paquete publicado, submodulo, copia generada por pipeline o workspace editable controlado.
+- No usar imports improvisados, `sys.path` locales, copias manuales de `packages/` ni dependencias directas a rutas `source-derived`.
+- Capturar evidencia base antes del primer cambio: comando, prueba, screenshot o flujo manual verificable.
+- Migrar una capacidad por slice y commitear solo despues de validar el proyecto consumidor.
+- Si la precondicion no existe, cerrar como bloqueado de consumo; no crear fallback ni compatibilidad en `common`.
 
 ## 1. Inventario Del Consumer
 

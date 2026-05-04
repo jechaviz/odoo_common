@@ -3,7 +3,6 @@
   "title": "Form Chatter Toggle Surface",
   "status": "canonical",
   "language": "web",
-  "origin_project": "odoo_rpp",
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
@@ -16,6 +15,8 @@
   ],
   "capabilities": [
     "form-chatter-toggle",
+    "strict-chatter-state-adapter",
+    "odoo-chatter-host-selectors",
     "global-chatter-collapse",
     "form-chatter-layout-reflow"
   ]

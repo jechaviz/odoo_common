@@ -3,7 +3,6 @@
   "title": "Form Settings Panel Surface",
   "status": "canonical",
   "language": "web",
-  "origin_project": "odoo_rpp",
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
@@ -16,8 +15,10 @@
   ],
   "capabilities": [
     "form-settings-panel-shell",
+    "strict-host-adapter-contract",
     "section-settings-editor",
     "layout-settings-editor",
+    "explicit-section-label-contract",
     "statusbar-label-settings"
   ]
 }

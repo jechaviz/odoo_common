@@ -16,6 +16,7 @@
     if (layoutMeta.type !== "tabs") {
       return null;
     }
+    var layoutItems = surface.requireArray(layoutMeta.items, "layoutMeta.items for " + layoutKey);
     var defaultWrap = document.createElement("div");
     defaultWrap.className = "o_lib_settings_field_row";
     var defaultLabel = document.createElement("label");
@@ -28,17 +29,21 @@
     emptyOption.textContent = "-- No default --";
     defaultSelect.appendChild(emptyOption);
 
-    surface.readArray(layoutMeta.items).forEach(function (itemMeta) {
+    layoutItems.forEach(function (itemMeta) {
       var optionNode = document.createElement("option");
-      optionNode.value = itemMeta.key;
-      optionNode.textContent = surface.cleanText(itemMeta.label || itemMeta.key);
+      var itemKey = surface.requireText(itemMeta && itemMeta.key, "layout item key for " + layoutKey);
+      optionNode.value = itemKey;
+      optionNode.textContent = surface.requireText(itemMeta && itemMeta.label, "layout item label for " + itemKey);
       defaultSelect.appendChild(optionNode);
     });
 
-    defaultSelect.value = surface.cleanText(surface.hostCall("layoutDefaultItemKey", [scopeKey, layoutKey], ""));
+    defaultSelect.value = surface.cleanText(surface.hostCall("layoutDefaultItemKey", [scopeKey, layoutKey]));
     defaultSelect.addEventListener("change", function () {
       var defaultKey = surface.cleanText(defaultSelect.value || "");
-      var stateKey = surface.cleanText(surface.hostCall("layoutDefaultEntryKey", [scopeKey, layoutKey], ""));
+      var stateKey = surface.requireText(
+        surface.hostCall("layoutDefaultEntryKey", [scopeKey, layoutKey]),
+        "layoutDefaultEntryKey(" + scopeKey + ", " + layoutKey + ")"
+      );
       var bucket = surface.ensureLayoutStateBucket("layoutDefaults");
       if (defaultKey) {
         bucket[stateKey] = defaultKey;
@@ -71,9 +76,11 @@
       layoutItemsWrap.appendChild(defaultRow);
     }
 
-    surface.readArray(layoutMeta.items).forEach(function (itemMeta) {
-      var visibilityKey = surface.cleanText(
-        surface.hostCall("layoutItemVisibilityEntryKey", [scopeKey, layoutKey, itemMeta.key], "")
+    surface.requireArray(layoutMeta.items, "layoutMeta.items for " + layoutKey).forEach(function (itemMeta) {
+      var itemKey = surface.requireText(itemMeta && itemMeta.key, "layout item key for " + layoutKey);
+      var visibilityKey = surface.requireText(
+        surface.hostCall("layoutItemVisibilityEntryKey", [scopeKey, layoutKey, itemKey]),
+        "layoutItemVisibilityEntryKey(" + scopeKey + ", " + layoutKey + ", " + itemKey + ")"
       );
       var itemRow = document.createElement("div");
       itemRow.className = "o_lib_settings_field_row";
@@ -81,9 +88,12 @@
       itemToggle.className = "o_lib_settings_toggle";
       var itemCheckbox = document.createElement("input");
       itemCheckbox.type = "checkbox";
-      itemCheckbox.checked = Boolean(surface.hostCall("layoutItemIsVisible", [scopeKey, layoutKey, itemMeta.key], true));
+      itemCheckbox.checked = surface.requireBoolean(
+        surface.hostCall("layoutItemIsVisible", [scopeKey, layoutKey, itemKey]),
+        "layoutItemIsVisible(" + scopeKey + ", " + layoutKey + ", " + itemKey + ")"
+      );
       var itemLabel = document.createElement("span");
-      itemLabel.textContent = surface.cleanText(itemMeta.label || itemMeta.key);
+      itemLabel.textContent = surface.requireText(itemMeta && itemMeta.label, "layout item label for " + itemKey);
       itemToggle.appendChild(itemCheckbox);
       itemToggle.appendChild(itemLabel);
       itemRow.appendChild(itemToggle);
@@ -120,10 +130,7 @@
   }
 
   function buildLayoutSettingsRow(formNode, scopeKey, layoutMeta) {
-    var layoutKey = surface.cleanText(layoutMeta.key || "");
-    if (!layoutKey) {
-      return null;
-    }
+    var layoutKey = surface.requireText(layoutMeta && layoutMeta.key, "layoutMeta.key");
 
     var layoutRow = document.createElement("div");
     layoutRow.className = "o_lib_settings_section_row";
@@ -132,15 +139,21 @@
     var layoutHeader = document.createElement("div");
     layoutHeader.className = "o_lib_settings_section_header";
     var layoutLabel = document.createElement("div");
-    layoutLabel.textContent = surface.cleanText(layoutMeta.label || layoutKey);
+    layoutLabel.textContent = surface.requireText(layoutMeta.label, "layoutMeta.label for " + layoutKey);
     layoutHeader.appendChild(layoutLabel);
     layoutRow.appendChild(layoutHeader);
 
-    var layoutRoleKey = surface.cleanText(surface.hostCall("layoutSettingsRoleEntryKey", [scopeKey, layoutKey], ""));
+    var layoutRoleKey = surface.requireText(
+      surface.hostCall("layoutSettingsRoleEntryKey", [scopeKey, layoutKey]),
+      "layoutSettingsRoleEntryKey(" + scopeKey + ", " + layoutKey + ")"
+    );
     layoutRow.appendChild(
       surface.runtime.createSettingsRoleSelector({
         title: "Roles for layout settings button (admin always allowed)",
-        selectedRoleIds: surface.hostCall("layoutSettingsRoleIds", [scopeKey, layoutKey], []),
+        selectedRoleIds: surface.requireArray(
+          surface.hostCall("layoutSettingsRoleIds", [scopeKey, layoutKey]),
+          "layoutSettingsRoleIds(" + scopeKey + ", " + layoutKey + ")"
+        ),
         emptyText: "No roles found.",
         onChange: function (selectedRoleIds) {
           var bucket = surface.ensureLayoutStateBucket("settingsRoles");
@@ -166,10 +179,11 @@
       return layoutRows;
     }
 
-    var layoutMetas = surface.readArray(
+    var layoutMetas = surface.requireArray(
       Array.isArray(formNode.__libLayoutMeta)
         ? formNode.__libLayoutMeta
-        : surface.hostCall("collectLayoutContainers", [formNode, scopeKey], [])
+        : surface.hostCall("collectLayoutContainers", [formNode, scopeKey]),
+      "layout metadata"
     );
     if (!layoutMetas.length) {
       return layoutRows;
@@ -181,10 +195,7 @@
     bodyNode.appendChild(layoutTitle);
 
     layoutMetas.forEach(function (layoutMeta) {
-      var layoutKey = surface.cleanText(layoutMeta.key || "");
-      if (!layoutKey) {
-        return;
-      }
+      var layoutKey = surface.requireText(layoutMeta && layoutMeta.key, "layoutMeta.key");
       if (focusState && focusState.activeLayoutKey && layoutKey !== focusState.activeLayoutKey) {
         return;
       }

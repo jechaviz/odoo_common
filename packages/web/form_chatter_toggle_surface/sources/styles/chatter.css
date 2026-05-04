@@ -57,11 +57,7 @@
 .o_lib_global_chatter_collapsed .o-mail-Form-chatter.o-aside,
 .o_form_view.o_lib_form_chatter_collapsed .o-mail-Form-chatterContainer,
 .o_form_view.o_lib_form_chatter_collapsed .o-mail-ChatterContainer,
-.o_form_view.o_lib_form_chatter_collapsed .o_FormRenderer_chatterContainer,
-.o_form_view.o_lib_form_chatter_collapsed .o_ChatterContainer,
-.o_form_view.o_lib_form_chatter_collapsed .o-mail-Form-chatter,
-.o_form_view.o_lib_form_chatter_collapsed .oe_chatter,
-.o_form_view.o_lib_form_chatter_collapsed .o-mail-Chatter {
+.o_form_view.o_lib_form_chatter_collapsed .o-mail-Form-chatter {
     border: 0 !important;
     display: none !important;
     flex: 0 0 0 !important;

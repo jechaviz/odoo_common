@@ -69,7 +69,7 @@
     if (!(formNode instanceof HTMLElement) || !sectionKey) {
       return "";
     }
-    var groups = surface.readArray(surface.hostCall("getSectionGroups", [formNode], []));
+    var groups = surface.requireArray(surface.hostCall("getSectionGroups", [formNode]), "section groups");
     for (var index = 0; index < groups.length; index += 1) {
       var groupNode = groups[index];
       if (!(groupNode instanceof HTMLElement)) {
@@ -78,32 +78,32 @@
       if (surface.cleanText(groupNode.dataset.libSectionKey || "") !== sectionKey) {
         continue;
       }
-      var headerNode = surface.hostCall("findSectionHeader", [groupNode], null);
-      return surface.cleanText(
-        (headerNode && headerNode.dataset && headerNode.dataset.libSectionLabel) ||
-        (headerNode && headerNode.textContent) ||
-        sectionKey
+      var headerNode = surface.hostCall("findSectionHeader", [groupNode]);
+      return surface.requireText(
+        headerNode && headerNode.dataset && headerNode.dataset.libSectionLabel,
+        "data-lib-section-label for " + sectionKey
       );
     }
-    return sectionKey;
+    return "";
   }
 
   function resolveLayoutDisplayLabel(formNode, scopeKey, layoutKey) {
     if (!(formNode instanceof HTMLElement) || !layoutKey) {
       return "";
     }
-    var metas = surface.readArray(
+    var metas = surface.requireArray(
       Array.isArray(formNode.__libLayoutMeta)
         ? formNode.__libLayoutMeta
-        : surface.hostCall("collectLayoutContainers", [formNode, scopeKey], [])
+        : surface.hostCall("collectLayoutContainers", [formNode, scopeKey]),
+      "layout metadata"
     );
     for (var index = 0; index < metas.length; index += 1) {
       var meta = metas[index] || {};
       if (surface.cleanText(meta.key || "") === layoutKey) {
-        return surface.cleanText(meta.label || layoutKey);
+        return surface.requireText(meta.label, "layoutMeta.label for " + layoutKey);
       }
     }
-    return layoutKey;
+    return "";
   }
 
   surface.PANEL_OPEN_CLASS = PANEL_OPEN_CLASS;

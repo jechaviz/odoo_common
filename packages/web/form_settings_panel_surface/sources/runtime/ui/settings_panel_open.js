@@ -6,29 +6,44 @@
       return;
     }
     var state = surface.panelState();
-    var scopeKey = surface.cleanText(surface.hostCall("computeScopeKey", [formNode], ""));
-    if (focusSectionKey && !surface.hostCall("canAccessSectionSettings", [scopeKey, focusSectionKey], true)) {
+    var scopeKey = surface.requireText(surface.hostCall("computeScopeKey", [formNode]), "computeScopeKey()");
+    var normalizedSectionFocus = surface.cleanText(focusSectionKey || "");
+    if (
+      normalizedSectionFocus &&
+      !surface.requireBoolean(
+        surface.hostCall("canAccessSectionSettings", [scopeKey, normalizedSectionFocus]),
+        "canAccessSectionSettings(" + scopeKey + ", " + normalizedSectionFocus + ")"
+      )
+    ) {
       return;
     }
     var normalizedLayoutFocus = surface.cleanText(focusLayoutKey || "");
+    var isStatusbarFocus = normalizedLayoutFocus.indexOf(surface.STATUSBAR_FOCUS_PREFIX) === 0;
     if (
       normalizedLayoutFocus &&
-      normalizedLayoutFocus.indexOf(surface.STATUSBAR_FOCUS_PREFIX) === 0 &&
+      isStatusbarFocus &&
       !surface.isAdminUser()
     ) {
       return;
     }
-    if (normalizedLayoutFocus && !surface.hostCall("canAccessLayoutSettings", [scopeKey, normalizedLayoutFocus], true)) {
+    if (
+      normalizedLayoutFocus &&
+      !isStatusbarFocus &&
+      !surface.requireBoolean(
+        surface.hostCall("canAccessLayoutSettings", [scopeKey, normalizedLayoutFocus]),
+        "canAccessLayoutSettings(" + scopeKey + ", " + normalizedLayoutFocus + ")"
+      )
+    ) {
       return;
     }
     state.currentForm = formNode;
     state.currentScopeKey = scopeKey;
-    state.focusSectionKey = surface.cleanText(focusSectionKey || "");
+    state.focusSectionKey = normalizedSectionFocus;
     state.focusLayoutKey = normalizedLayoutFocus;
     if (state.focusSectionKey) {
       state.focusLayoutKey = "";
     }
-    surface.renderSectionSettingsPanel(formNode, scopeKey, focusSectionKey, normalizedLayoutFocus);
+    surface.renderSectionSettingsPanel(formNode, scopeKey, normalizedSectionFocus, normalizedLayoutFocus);
     var panel = surface.ensureSectionSettingsPanel();
     if (panel instanceof HTMLElement) {
       panel.classList.add(surface.PANEL_OPEN_CLASS);

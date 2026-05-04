@@ -49,15 +49,16 @@
     }
 
     var statusbarTitle = "Statusbar labels";
-    var knownStatusbars = surface.readArray(
+    var knownStatusbars = surface.requireArray(
       Array.isArray(formNode.__libStatusbarMeta)
         ? formNode.__libStatusbarMeta
-        : surface.hostCall("collectStatusbarMetas", [formNode, scopeKey], [])
+        : surface.hostCall("collectStatusbarMetas", [formNode, scopeKey]),
+      "statusbar metadata"
     );
     for (var index = 0; index < knownStatusbars.length; index += 1) {
       var statusbarMeta = knownStatusbars[index] || {};
       if (surface.cleanText(statusbarMeta.key || "") === activeStatusbarKey) {
-        statusbarTitle = surface.cleanText(statusbarMeta.label || statusbarTitle);
+        statusbarTitle = surface.requireText(statusbarMeta.label, "statusbarMeta.label for " + activeStatusbarKey);
         break;
       }
     }
@@ -109,7 +110,11 @@
           );
         }
       })
-      .catch(function () {});
+      .catch(function (error) {
+        window.setTimeout(function () {
+          throw error;
+        }, 0);
+      });
   }
 
   surface.STATUSBAR_FOCUS_PREFIX = STATUSBAR_FOCUS_PREFIX;

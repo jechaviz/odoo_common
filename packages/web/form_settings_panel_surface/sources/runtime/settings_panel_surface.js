@@ -10,41 +10,110 @@
     focusLayoutKey: ""
   };
 
+  var REQUIRED_HOST_METHODS = [
+    "applyStatusbarMetaLabels",
+    "backendFieldMetaFor",
+    "canAccessLayoutSettings",
+    "canAccessSectionSettings",
+    "collectLayoutContainers",
+    "collectSectionFieldMeta",
+    "collectStatusbarMetas",
+    "computeModelName",
+    "computeScopeKey",
+    "createFieldDefaultEditor",
+    "currentLocaleCode",
+    "ensureFieldDefinitionsLoadedForForm",
+    "ensureRelationFieldOptionsLoaded",
+    "fieldAllowsDefaultEditor",
+    "fieldDefaultEntryKey",
+    "fieldDefaultValue",
+    "fieldIsVisible",
+    "fieldVisibilityEntryKey",
+    "findSectionHeader",
+    "getSectionGroups",
+    "getState",
+    "layoutDefaultEntryKey",
+    "layoutDefaultItemKey",
+    "layoutItemIsVisible",
+    "layoutItemVisibilityEntryKey",
+    "layoutSettingsRoleEntryKey",
+    "layoutSettingsRoleIds",
+    "processFormNode",
+    "queueStatePersist",
+    "sectionIsVisible",
+    "sectionSettingsRoleEntryKey",
+    "sectionSettingsRoleIds",
+    "sectionVisibilityEntryKey",
+    "statusbarLabelEntryKey",
+    "statusbarLabelValue",
+    "updateFieldDefaultExpandedState"
+  ];
+
   surface.hostApi = surface.hostApi || null;
   surface.runtime = surface.runtime || {};
   surface.state = surface.state || {};
   surface.state.panel = surface.state.panel || Object.assign({}, DEFAULT_PANEL_STATE);
 
-  function readObject(value) {
-    return value && typeof value === "object" ? value : {};
-  }
-
   function cleanText(value) {
-    if (surface.hostApi && typeof surface.hostApi.cleanText === "function") {
-      return String(surface.hostApi.cleanText(value) || "");
+    if (value === null || typeof value === "undefined") {
+      return "";
     }
-    return String(value || "").replace(/\s+/g, " ").trim();
+    return String(value).replace(/\s+/g, " ").trim();
   }
 
-  function readArray(value) {
-    return Array.isArray(value) ? value : [];
+  function requireText(value, contractName) {
+    var text = cleanText(value);
+    if (!text) {
+      throw new Error("Form Settings Panel Surface requires " + contractName + ".");
+    }
+    return text;
   }
 
-  function hostCall(methodName, args, fallbackValue) {
+  function requireArray(value, contractName) {
+    if (!Array.isArray(value)) {
+      throw new Error("Form Settings Panel Surface requires " + contractName + " to be an array.");
+    }
+    return value;
+  }
+
+  function requireBoolean(value, contractName) {
+    if (typeof value !== "boolean") {
+      throw new Error("Form Settings Panel Surface requires " + contractName + " to be a boolean.");
+    }
+    return value;
+  }
+
+  function requireObject(value, contractName) {
+    if (!(value && typeof value === "object") || Array.isArray(value)) {
+      throw new Error("Form Settings Panel Surface requires " + contractName + " to be an object.");
+    }
+    return value;
+  }
+
+  function requireHostMethods(hostApi, methodNames) {
+    var missing = methodNames.filter(function (methodName) {
+      return !(hostApi && typeof hostApi[methodName] === "function");
+    });
+    if (missing.length) {
+      throw new Error("Form Settings Panel Surface host adapter is missing: " + missing.join(", ") + ".");
+    }
+  }
+
+  function hostCall(methodName, args) {
     var hostApi = surface.hostApi;
     if (!(hostApi && typeof hostApi[methodName] === "function")) {
-      return fallbackValue;
+      throw new Error("Form Settings Panel Surface host adapter is missing: " + methodName + ".");
     }
     return hostApi[methodName].apply(hostApi, Array.isArray(args) ? args : []);
   }
 
   function hostState() {
-    return readObject(hostCall("getState", [], surface.hostApi && surface.hostApi.state));
+    return requireObject(hostCall("getState", []), "getState()");
   }
 
   function hostLayoutState() {
     var state = hostState();
-    return readObject(state.formLayoutState);
+    return requireObject(state.formLayoutState, "getState().formLayoutState");
   }
 
   function panelState() {
@@ -60,31 +129,25 @@
   }
 
   function isAdminUser() {
-    return Boolean(hostState().formIsAdminUser);
+    return requireBoolean(hostState().formIsAdminUser, "getState().formIsAdminUser");
   }
 
   function availableRoleOptions() {
-    return readArray(hostState().availableRoleOptions);
+    return requireArray(hostState().availableRoleOptions, "getState().availableRoleOptions");
   }
 
   function queuePersist() {
-    hostCall("queueStatePersist", [], null);
+    hostCall("queueStatePersist", []);
   }
 
   function processFormNode(formNode) {
-    hostCall("processFormNode", [formNode], null);
+    hostCall("processFormNode", [formNode]);
   }
 
   function install(hostApi) {
-    surface.hostApi = readObject(hostApi);
-    return surface;
-  }
-
-  function autoInstallFromWindow() {
-    var hostApi = window.OdooCommonFormSettingsPanelSurfaceHost;
-    if (hostApi && typeof hostApi === "object") {
-      install(hostApi);
-    }
+    var nextHostApi = requireObject(hostApi, "a host adapter object");
+    requireHostMethods(nextHostApi, REQUIRED_HOST_METHODS);
+    surface.hostApi = nextHostApi;
     return surface;
   }
 
@@ -93,8 +156,12 @@
     return surface.state.panel;
   }
 
+  surface.REQUIRED_HOST_METHODS = REQUIRED_HOST_METHODS.slice();
   surface.cleanText = cleanText;
-  surface.readArray = readArray;
+  surface.requireText = requireText;
+  surface.requireArray = requireArray;
+  surface.requireBoolean = requireBoolean;
+  surface.requireObject = requireObject;
   surface.hostCall = hostCall;
   surface.hostState = hostState;
   surface.hostLayoutState = hostLayoutState;
@@ -105,6 +172,5 @@
   surface.queuePersist = queuePersist;
   surface.processFormNode = processFormNode;
   surface.install = install;
-  surface.autoInstallFromWindow = autoInstallFromWindow;
   surface.resetPanelState = resetPanelState;
 })(window.OdooCommonFormSettingsPanelSurface = window.OdooCommonFormSettingsPanelSurface || {});

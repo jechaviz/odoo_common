@@ -12,6 +12,8 @@ This package stays generic:
 - no project naming
 - no business field presets
 - no shell-specific compatibility wiring
+- no global host aliases or auto-install fallback
+- no copy inferred from visible DOM text
 
 ## Host Contract
 
@@ -21,11 +23,26 @@ The host runtime installs this package by calling:
 window.OdooCommonFormSettingsPanelSurface.install(hostApi);
 ```
 
-`hostApi` supplies form-specific state access and metadata readers. The package expects host-owned hooks for:
+`hostApi` supplies form-specific state access and metadata readers. Installation now validates the adapter up front; missing hooks throw instead of hiding editors or falling back to legacy behavior.
 
-- form state persistence and reprocessing
-- section, layout, and statusbar metadata collection
-- role access checks
-- field default editors and relation option loading
+Required hook groups:
 
-If a hook is missing, the panel degrades by hiding that editor rather than inventing fallback business behavior.
+- state and persistence: `getState`, `queueStatePersist`, `processFormNode`
+- scope and access: `computeScopeKey`, `canAccessSectionSettings`, `canAccessLayoutSettings`
+- section metadata: `getSectionGroups`, `findSectionHeader`, `collectSectionFieldMeta`
+- section state: `sectionVisibilityEntryKey`, `sectionSettingsRoleEntryKey`, `sectionIsVisible`, `sectionSettingsRoleIds`
+- field state/defaults: `fieldVisibilityEntryKey`, `fieldDefaultEntryKey`, `fieldIsVisible`, `fieldDefaultValue`, `fieldAllowsDefaultEditor`, `createFieldDefaultEditor`, `updateFieldDefaultExpandedState`
+- field backend loading: `backendFieldMetaFor`, `computeModelName`, `ensureFieldDefinitionsLoadedForForm`, `ensureRelationFieldOptionsLoaded`
+- layout metadata/state: `collectLayoutContainers`, `layoutDefaultEntryKey`, `layoutDefaultItemKey`, `layoutItemVisibilityEntryKey`, `layoutItemIsVisible`, `layoutSettingsRoleEntryKey`, `layoutSettingsRoleIds`
+- statusbar metadata/state: `collectStatusbarMetas`, `currentLocaleCode`, `statusbarLabelEntryKey`, `statusbarLabelValue`, `applyStatusbarMetaLabels`
+
+Explicit metadata contract:
+
+- section labels must come from `data-lib-section-label` on the section header returned by `findSectionHeader`; the surface does not read `textContent`
+- field, layout, layout item, role, statusbar, and statusbar item labels must be provided by adapter metadata (`label`, role `name`, or statusbar `baseLabel`)
+- state entry keys returned by the adapter must be non-empty
+
+Technical defaults retained:
+
+- panel chrome copy such as `Section Settings`, `Layout Settings`, and empty-state notes is owned by this UI surface
+- an empty field/statusbar/default value means "no configured override"; it is not used as a missing-hook fallback

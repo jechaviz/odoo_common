@@ -1,7 +1,6 @@
 {
   "modules": [
     "form_chatter_toggle_surface/runtime/chatter_toggle_surface.js",
-    "form_chatter_toggle_surface/runtime/ui/chatter.js",
-    "form_chatter_toggle_surface/runtime/bootstrap.js"
+    "form_chatter_toggle_surface/runtime/ui/chatter.js"
   ]
 }

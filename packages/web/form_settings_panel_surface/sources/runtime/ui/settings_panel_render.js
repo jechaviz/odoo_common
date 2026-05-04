@@ -8,7 +8,7 @@
       return;
     }
 
-    surface.hostCall("ensureFieldDefinitionsLoadedForForm", [formNode], null);
+    surface.hostCall("ensureFieldDefinitionsLoadedForForm", [formNode]);
 
     var focusState = surface.runtime.resolveSettingsPanelFocusState(focusSectionKey, focusLayoutKey);
     var titleNode = panel.querySelector(".o_lib_section_settings_title");

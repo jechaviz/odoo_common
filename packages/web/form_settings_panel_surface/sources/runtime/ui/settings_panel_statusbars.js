@@ -2,10 +2,8 @@
   "use strict";
 
   function buildStatusbarSettingsRow(scopeKey, statusbarMeta) {
-    var statusbarKey = surface.cleanText((statusbarMeta && statusbarMeta.key) || "");
-    if (!statusbarKey) {
-      return null;
-    }
+    var statusbarKey = surface.requireText(statusbarMeta && statusbarMeta.key, "statusbarMeta.key");
+    var statusbarLabelText = surface.requireText(statusbarMeta.label, "statusbarMeta.label for " + statusbarKey);
 
     var statusbarRow = document.createElement("div");
     statusbarRow.className = "o_lib_settings_section_row";
@@ -14,22 +12,24 @@
     var statusbarHeader = document.createElement("div");
     statusbarHeader.className = "o_lib_settings_section_header";
     var statusbarLabel = document.createElement("div");
-    statusbarLabel.textContent = surface.cleanText((statusbarMeta && statusbarMeta.label) || statusbarKey);
+    statusbarLabel.textContent = statusbarLabelText;
     statusbarHeader.appendChild(statusbarLabel);
     statusbarRow.appendChild(statusbarHeader);
 
     var localeNote = document.createElement("div");
     localeNote.className = "o_lib_settings_roles_note";
-    localeNote.textContent = "Locale: " + surface.cleanText(surface.hostCall("currentLocaleCode", [], ""));
+    localeNote.textContent = "Locale: " + surface.requireText(surface.hostCall("currentLocaleCode", []), "currentLocaleCode()");
     statusbarRow.appendChild(localeNote);
 
     var statusbarItemsWrap = document.createElement("div");
     statusbarItemsWrap.className = "o_lib_settings_fields_wrap";
 
-    surface.readArray(statusbarMeta.items).forEach(function (itemMeta) {
+    surface.requireArray(statusbarMeta.items, "statusbarMeta.items for " + statusbarKey).forEach(function (itemMeta) {
       if (!(itemMeta && itemMeta.node instanceof HTMLElement)) {
         return;
       }
+      var itemKey = surface.requireText(itemMeta.key, "statusbar item key for " + statusbarKey);
+      var baseLabel = surface.requireText(itemMeta.baseLabel, "statusbar item baseLabel for " + itemKey);
 
       var itemRow = document.createElement("div");
       itemRow.className = "o_lib_settings_field_row";
@@ -37,30 +37,32 @@
       var rowHeader = document.createElement("div");
       rowHeader.className = "o_lib_settings_field_header";
       var itemLabel = document.createElement("label");
-      itemLabel.textContent = surface.cleanText(itemMeta.baseLabel || itemMeta.key);
+      itemLabel.textContent = baseLabel;
       rowHeader.appendChild(itemLabel);
       itemRow.appendChild(rowHeader);
 
       var input = document.createElement("input");
       input.type = "text";
       input.className = "o_lib_settings_default_input";
-      input.placeholder = surface.cleanText(itemMeta.baseLabel || itemMeta.key);
-      input.value = surface.hostCall("statusbarLabelValue", [scopeKey, statusbarKey, itemMeta.key], "") || "";
+      input.placeholder = baseLabel;
+      input.value = surface.cleanText(surface.hostCall("statusbarLabelValue", [scopeKey, statusbarKey, itemKey]));
       input.addEventListener("change", function () {
         if (!surface.isAdminUser()) {
           return;
         }
-        var entryKey = surface.cleanText(surface.hostCall("statusbarLabelEntryKey", [scopeKey, statusbarKey, itemMeta.key], ""));
+        var entryKey = surface.requireText(
+          surface.hostCall("statusbarLabelEntryKey", [scopeKey, statusbarKey, itemKey]),
+          "statusbarLabelEntryKey(" + scopeKey + ", " + statusbarKey + ", " + itemKey + ")"
+        );
         var nextValue = surface.cleanText(input.value || "");
-        var fallbackValue = surface.cleanText(itemMeta.baseLabel || "");
         var bucket = surface.ensureLayoutStateBucket("statusbarLabels");
-        if (!nextValue || nextValue === fallbackValue) {
+        if (!nextValue || nextValue === baseLabel) {
           delete bucket[entryKey];
         } else {
           bucket[entryKey] = nextValue;
         }
         surface.queuePersist();
-        surface.hostCall("applyStatusbarMetaLabels", [statusbarMeta, scopeKey], null);
+        surface.hostCall("applyStatusbarMetaLabels", [statusbarMeta, scopeKey]);
       });
 
       itemRow.appendChild(input);
@@ -80,10 +82,11 @@
       return statusbarRows;
     }
 
-    var statusbarMetas = surface.readArray(
+    var statusbarMetas = surface.requireArray(
       Array.isArray(formNode.__libStatusbarMeta)
         ? formNode.__libStatusbarMeta
-        : surface.hostCall("collectStatusbarMetas", [formNode, scopeKey], [])
+        : surface.hostCall("collectStatusbarMetas", [formNode, scopeKey]),
+      "statusbar metadata"
     );
     if (!statusbarMetas.length) {
       return statusbarRows;
@@ -95,10 +98,7 @@
     bodyNode.appendChild(statusbarTitle);
 
     statusbarMetas.forEach(function (statusbarMeta) {
-      var statusbarKey = surface.cleanText((statusbarMeta && statusbarMeta.key) || "");
-      if (!statusbarKey) {
-        return;
-      }
+      var statusbarKey = surface.requireText(statusbarMeta && statusbarMeta.key, "statusbarMeta.key");
       if (focusState && focusState.activeStatusbarKey && statusbarKey !== focusState.activeStatusbarKey) {
         return;
       }

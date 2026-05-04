@@ -800,6 +800,24 @@
     ]
   },
   {
+    "key": "text-templates",
+    "title": "Strict Text Template Helpers",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/text_templates",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/text_templates.py"
+      }
+    ],
+    "features": [
+      "strict template loading",
+      "deterministic token rendering",
+      "missing token validation"
+    ]
+  },
+  {
     "key": "feature-catalog",
     "title": "Declarative Feature Catalog",
     "runtime": "python",

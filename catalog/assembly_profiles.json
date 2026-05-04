@@ -345,6 +345,18 @@
     ]
   },
   {
+    "key": "text_template_rendering",
+    "title": "Text Template Rendering",
+    "components": [
+      "text-templates"
+    ],
+    "use_cases": [
+      "strict snippet loading",
+      "deterministic token replacement",
+      "server-action and XML text snippets"
+    ]
+  },
+  {
     "key": "feature_catalog",
     "title": "Feature Catalog",
     "components": [

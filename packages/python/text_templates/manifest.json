@@ -1,0 +1,18 @@
+{
+  "key": "text-templates",
+  "title": "Strict Text Template Helpers",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "text_templates.py"
+  ],
+  "capabilities": [
+    "strict-template-loading",
+    "deterministic-token-rendering",
+    "missing-token-validation"
+  ]
+}

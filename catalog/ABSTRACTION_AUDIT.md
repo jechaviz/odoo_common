@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 14 total, 14 canonical.
+- Python packages: 15 total, 15 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
@@ -20,6 +20,7 @@ Scope:
 - `rp-rental-mock`: form defaults, preview, header identity, action bridge, commercial policy, totals, partner language defaults, terms and conditions.
 - `odoo_rpp` + `rp-rental-mock`: backend web asset publication via explicit attachment-backed `ir.asset` specs.
 - `odoo_rpp` + `rp-rental-mock`: server automation upserts for `ir.actions.server` and `base.automation` from explicit specs.
+- `odoo_rpp` + `rp-rental-mock`: strict code-based cron upserts with explicit user/model contracts.
 - `odoo_rpp` + `rp-rental-mock`: strict registry lookup helpers for models, fields, XML IDs, and `fields_get`.
 - `rp-rental-mock`: strict XML ID upserts for generated records through `ir.model.data`.
 - `odoo_rpp` + `rp-rental-mock`: exact action/menu upserts for window actions, URL actions, and menus.
@@ -38,6 +39,7 @@ Scope:
 - Updated: source-derived guidance now states archive-only traceability and does not present those packages as fallback support or recommended assembly targets.
 - Added: `backend-web-assets` canonicalizes attachment-backed `ir.asset` publication, fingerprinting, token replacement, and explicit managed cleanup without direct bootstrap injection or version-field fallbacks.
 - Added: `server-automation-upserts` canonicalizes server-action/base-automation bundle sync around modern explicit `usage` and `trigger_field_ids` contracts.
+- Added: `cron-upserts` canonicalizes code-based `ir.cron` publication without user-resolution fallback, version field detection, missing-model returns, or legacy function crons.
 - Added: `odoo-registry-lookup` centralizes strict metadata resolution without XML ID aliases, first-candidate fallbacks, or shared caches.
 - Added: `xmlid-upserts` canonicalizes `ir.model.data` publication without XML ID aliases, dry-run branching, target resolution, or silent model rebinding.
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
@@ -66,9 +68,10 @@ Scope:
 3. Move any remaining project consumers away from source-derived packages once each project adapter has parity evidence; do not add common fallbacks to keep those consumers alive.
 4. Adapt `odoo_rpp` and `rp-rental-mock` publication scripts to call `backend-web-assets` once each project has a thin spec adapter and live Odoo evidence.
 5. Adapt automation installers to call `server-automation-upserts` through project-specific advice/pointcut adapters.
-6. Replace local XML ID/model/field helper copies with `odoo-registry-lookup` where callers can tolerate strict missing-metadata errors.
-7. Replace XML ID publication helpers with `xmlid-upserts`; keep target-record creation and dry-run behavior project-local.
-8. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
-9. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
-10. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
-11. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.
+6. Replace cron installers with `cron-upserts`; keep user lookup policy and dry-run behavior project-local.
+7. Replace local XML ID/model/field helper copies with `odoo-registry-lookup` where callers can tolerate strict missing-metadata errors.
+8. Replace XML ID publication helpers with `xmlid-upserts`; keep target-record creation and dry-run behavior project-local.
+9. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
+10. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
+11. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
+12. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.

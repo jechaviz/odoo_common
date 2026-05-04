@@ -467,6 +467,33 @@
     ]
   },
   {
+    "key": "cron-upserts",
+    "title": "Odoo Cron Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/cron_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/cron_upserts.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_003.pyfrag"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_015.pyfrag"
+      }
+    ],
+    "features": [
+      "code cron upsert",
+      "strict model resolution",
+      "explicit cron user",
+      "modern ir.cron state contract"
+    ]
+  },
+  {
     "key": "odoo-registry-lookup",
     "title": "Odoo Registry Lookup",
     "runtime": "python",

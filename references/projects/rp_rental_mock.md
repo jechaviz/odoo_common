@@ -28,6 +28,7 @@ Nivel actual:
 - base canonica para `packages/python/partner_language_defaults`
 - base canonica para `packages/python/backend_web_assets`
 - base canonica para `packages/python/automation_upserts`
+- base canonica para `packages/python/cron_upserts`
 - base canonica para `packages/python/registry_lookup`
 - base canonica para `packages/python/xmlid_upserts`
 - base canonica para `packages/python/action_menu_upserts`

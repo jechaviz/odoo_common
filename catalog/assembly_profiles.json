@@ -171,6 +171,18 @@
     ]
   },
   {
+    "key": "cron_publication",
+    "title": "Cron Publication",
+    "components": [
+      "cron-upserts"
+    ],
+    "use_cases": [
+      "scheduled server action runners",
+      "code-based scheduled jobs",
+      "explicit user scheduled execution"
+    ]
+  },
+  {
     "key": "odoo_registry_lookup",
     "title": "Odoo Registry Lookup",
     "components": [

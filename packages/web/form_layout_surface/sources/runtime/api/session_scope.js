@@ -94,128 +94,46 @@
 
   v2.currentUserId = currentUserId;
 
-  function inferViewIdFromPathname() {
-    var pathname = String(window.location.pathname || "");
-    if (!pathname) {
+  function readNodeDataValue(node, attributeName, datasetName) {
+    if (!(node instanceof HTMLElement)) {
       return "";
     }
-    var parts = pathname
-      .split("/")
-      .map(function (part) {
-        return cleanText(part || "");
-      })
-      .filter(function (part) {
-        return Boolean(part) && !/^\d+$/.test(part);
-      });
-    if (!parts.length) {
-      return "";
-    }
-    return "path_" + parts.slice(0, 4).join("_");
+    return cleanText(node.getAttribute(attributeName) || node.dataset[datasetName] || "");
   }
 
-  v2.inferViewIdFromPathname = inferViewIdFromPathname;
+  v2.readNodeDataValue = readNodeDataValue;
+
+  function computeModelName(formNode) {
+    return (
+      readNodeDataValue(formNode, "data-res-model", "resModel") ||
+      readNodeDataValue(formNode, "data-model", "model")
+    );
+  }
+
+  v2.computeModelName = computeModelName;
+
+  function computeViewId(formNode) {
+    return readNodeDataValue(formNode, "data-view-id", "viewId");
+  }
+
+  v2.computeViewId = computeViewId;
 
   function computeScopeKey(formNode) {
     if (!(formNode instanceof HTMLElement)) {
       return "unknown_model|unknown_view";
     }
 
-    var model =
-      formNode.getAttribute("data-res-model") ||
-      formNode.getAttribute("data-model") ||
-      formNode.dataset.resModel ||
-      formNode.dataset.model ||
-      "";
-
-    model = cleanText(model || "");
-    if (!model || model === "unknown_model") {
-      model = computeModelName(formNode) || "unknown_model";
+    var explicitScopeKey = readNodeDataValue(formNode, "data-lib-scope-key", "libScopeKey");
+    if (explicitScopeKey) {
+      return explicitScopeKey;
     }
 
-    var viewId =
-      formNode.getAttribute("data-view-id") ||
-      formNode.dataset.viewId ||
-      "";
-
-    if (!viewId) {
-      try {
-        var params = new URLSearchParams(window.location.search || "");
-        viewId = params.get("view_id") || params.get("action") || "";
-      } catch (_err) {
-        viewId = "";
-      }
-    }
-
-    if (!viewId) {
-      var match = String(window.location.pathname || "").match(/action-(\d+)/);
-      if (match) {
-        viewId = "action_" + match[1];
-      }
-    }
-
-    if (!viewId) {
-      viewId = inferViewIdFromPathname() || "unknown_view";
-    }
+    var model = computeModelName(formNode) || "unknown_model";
+    var viewId = computeViewId(formNode) || "unknown_view";
 
     return String(model || "unknown_model") + "|" + String(viewId || "unknown_view");
   }
 
   v2.computeScopeKey = computeScopeKey;
-
-  function computeModelName(formNode) {
-    if (!(formNode instanceof HTMLElement)) {
-      return "";
-    }
-    var readModelFromNode = function (node) {
-      if (!(node instanceof HTMLElement)) {
-        return "";
-      }
-      var candidate =
-        node.getAttribute("data-res-model") ||
-        node.getAttribute("data-model") ||
-        node.dataset.resModel ||
-        node.dataset.model ||
-        "";
-      candidate = cleanText(candidate || "");
-      if (!candidate || candidate === "unknown_model") {
-        return "";
-      }
-      return candidate;
-    };
-
-    var model = readModelFromNode(formNode);
-    if (model) {
-      return model;
-    }
-
-    var ancestorNode = formNode.closest("[data-res-model], [data-model]");
-    model = readModelFromNode(ancestorNode);
-    if (model) {
-      return model;
-    }
-
-    var descendantNode = formNode.querySelector("[data-res-model], [data-model]");
-    model = readModelFromNode(descendantNode);
-    if (model) {
-      return model;
-    }
-
-    try {
-      var hash = String(window.location.hash || "");
-      if (hash) {
-        var hashParams = new URLSearchParams(hash.replace(/^#/, ""));
-        var hashModel = cleanText(hashParams.get("model") || hashParams.get("res_model") || "");
-        if (hashModel && hashModel !== "unknown_model") {
-          return hashModel;
-        }
-      }
-    } catch (_hashErr) {
-      // Ignore malformed hashes.
-    }
-
-    return "";
-  }
-
-  v2.computeModelName = computeModelName;
 
 })(window.__o_lib_form_section_v2 = window.__o_lib_form_section_v2 || {});

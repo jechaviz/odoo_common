@@ -27,6 +27,9 @@
     "runtime/bootstrap.js"
   ],
   "capabilities": [
+    "explicit-form-scope-keying",
+    "explicit-section-markers",
+    "explicit-layout-markers",
     "layout-item-collection",
     "layout-item-visibility",
     "section-order-persistence",

@@ -23,7 +23,7 @@
 
   _state.availableRoleOptions = [];
 
-  _state.nativeSettingsIconClass = "";
+  _state.settingsIconClass = SETTINGS_ICON_CLASS;
 
   _state.systemAdminGroupId = 0;
 

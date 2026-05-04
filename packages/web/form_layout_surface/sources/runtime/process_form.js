@@ -9,14 +9,14 @@
     var scopeKey = v2.computeScopeKey(formNode);
     var groups = v2.getSectionGroups(formNode);
 
-    groups.forEach(function (group, index) {
+    groups.forEach(function (group) {
       if (!(group instanceof HTMLElement)) {
         return;
       }
-      var explicitKey = v2.normalizeKey(v2.findSectionKeyFromClass(group));
-      var header = v2.findSectionHeader(group);
-      var labelSeed = v2.normalizeKey((header && header.textContent) || group.dataset.libSectionKey || "");
-      var sectionKey = explicitKey || (labelSeed ? "auto_" + labelSeed : "auto_section_" + index);
+      var sectionKey = v2.readSectionKey(group);
+      if (!sectionKey) {
+        return;
+      }
       group.dataset.libSectionKey = sectionKey;
       group.dataset.libScopeKey = scopeKey;
       group.classList.add(v2.COLLAPSIBLE_GROUP_CLASS);

@@ -3,6 +3,8 @@
   v2.constants = v2.constants || {};
   var _state = v2.state = v2.state || {};
 
+  v2.FORM_ROOT_SELECTOR = "[data-lib-scope-key], [data-res-model][data-view-id], [data-model][data-view-id]";
+
   v2.COLLAPSIBLE_GROUP_CLASS = "o_lib_collapsible_group";
 
   v2.COLLAPSED_GROUP_CLASS = "o_lib_section_is_collapsed";
@@ -27,42 +29,11 @@
 
   v2.DROP_AFTER_CLASS = "o_lib_section_drop_after";
 
-  v2.SECTION_KEY_CLASS_PREFIX = "o_lib_collapsible_key_";
-
   v2.SECTION_HIDDEN_CLASS = "o_lib_section_hidden";
 
   v2.SECTION_CONTROLS_VISIBLE_CLASS = "o_lib_section_controls_visible";
 
   v2.FIELD_HIDDEN_CLASS = "o_lib_field_hidden";
-
-  v2.CHATTER_HOST_SELECTOR =
-    ".o-mail-ChatterContainer, .o-mail-Form-chatterContainer, .o_FormRenderer_chatterContainer, .o_ChatterContainer, .o-mail-Form-chatter, .oe_chatter, .o-mail-Chatter";
-
-  v2.CHATTER_SELECTORS = [
-    ".o-mail-ChatterContainer",
-    ".o-mail-Form-chatterContainer",
-    ".o_FormRenderer_chatterContainer",
-    ".o_ChatterContainer",
-    ".o-mail-Form-chatter",
-    ".oe_chatter",
-    ".o-mail-Chatter",
-  ];
-
-  v2.CHATTER_HIDDEN_CLASS = "o_lib_chatter_hidden";
-
-  v2.FORM_CHATTER_COLLAPSED_CLASS = "o_lib_form_chatter_collapsed";
-
-  v2.BODY_CHATTER_COLLAPSED_CLASS = "o_lib_global_chatter_collapsed";
-
-  v2.CHATTER_PARENT_COLLAPSED_CLASS = "o_lib_chatter_parent_collapsed";
-
-  v2.CHATTER_TOGGLE_ID = "o_lib_global_chatter_toggle";
-
-  v2.CHATTER_TOGGLE_CLASS = "o_lib_chatter_toggle_global";
-
-  v2.CHATTER_TOGGLE_ACTIVE_CLASS = "o_lib_chatter_toggle_is_active";
-
-  v2.CHATTER_TOGGLE_COLLAPSED_CLASS = "o_lib_chatter_toggle_is_collapsed";
 
   v2.SECTION_SETTINGS_TRIGGER_CLASS = "o_lib_section_settings_trigger";
 
@@ -142,13 +113,11 @@
 
   v2.SUBTOTAL_TOGGLE_MENU_OPEN_CLASS = "o_lib_subtotal_toggle_menu_open";
 
-  v2.SETTINGS_ICON_FALLBACK_CLASS = "fa fa-sliders";
+  v2.SETTINGS_ICON_CLASS = "fa fa-sliders";
 
   v2.PENCIL_ICON_CLASS = "fa fa-pencil";
 
   v2.CHECK_ICON_CLASS = "fa fa-check";
-
-  v2.CHATTER_DEFAULT_COLLAPSED = true;
 
   v2.LOCAL_STORAGE_PREFIX = "odoo.lib.form_section_layout.v2.user_";
 
@@ -168,11 +137,7 @@
 
   v2.SUBTOTAL_TOGGLE_FIELDS = [];
 
-  v2.SUBTOTAL_REFRESH_FIELDS = [
-    "amount_untaxed",
-    "amount_tax",
-    "amount_total",
-  ];
+  v2.SUBTOTAL_REFRESH_FIELDS = [];
 
   v2.SUBTOTAL_TOGGLE_MENU_ITEMS = [];
 

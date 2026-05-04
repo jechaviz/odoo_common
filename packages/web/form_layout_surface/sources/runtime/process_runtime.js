@@ -59,7 +59,7 @@
   }
 
   function hasManagedFormHosts() {
-    return document.querySelector(".o_form_view") instanceof HTMLElement;
+    return document.querySelector(FORM_ROOT_SELECTOR) instanceof HTMLElement;
   }
 
   function bindGlobalDragHandlers() {
@@ -86,7 +86,7 @@
     }
     ensureRuntimeBindings();
     ensureStateLoaded().then(function () {
-      document.querySelectorAll(".o_form_view").forEach(function (formNode) {
+      document.querySelectorAll(FORM_ROOT_SELECTOR).forEach(function (formNode) {
         v2.processFormNode(formNode);
       });
     });
@@ -138,9 +138,6 @@
       attributes: true,
       attributeFilter: ["class"],
     });
-
-    window.addEventListener("hashchange", scheduleRefresh);
-    window.addEventListener("popstate", scheduleRefresh);
   }
 
   v2.ensureStateLoaded = ensureStateLoaded;

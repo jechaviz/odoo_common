@@ -117,7 +117,7 @@
         return v2.callKw("ir.config_parameter", "set_param", [_state.dbParamKey, JSON.stringify(snapshot)], {});
       })
       .catch(function () {
-        // Keep local state as fallback for the large layout payload.
+        // Local storage remains the durable write path when DB persistence fails.
       })
       .then(function () {
         if (typeof v2.persistAllReportSubtotalLayouts === "function") {
@@ -126,7 +126,7 @@
         return null;
       })
       .catch(function () {
-        // Keep local state as fallback.
+        // Local storage remains the durable write path when subtotal persistence fails.
       })
       .finally(function () {
         _state.formLayoutSavePromise = null;
@@ -155,7 +155,7 @@
     }
 
     var group = button.closest("." + COLLAPSIBLE_GROUP_CLASS);
-    var formNode = button.closest(".o_form_view");
+    var formNode = button.closest(FORM_ROOT_SELECTOR);
     if (!(group instanceof HTMLElement) || !(formNode instanceof HTMLElement)) {
       return;
     }
@@ -188,7 +188,7 @@
     event.stopPropagation();
 
     var group = button.closest("." + COLLAPSIBLE_GROUP_CLASS);
-    var formNode = button.closest(".o_form_view");
+    var formNode = button.closest(FORM_ROOT_SELECTOR);
     if (!(group instanceof HTMLElement) || !(formNode instanceof HTMLElement)) {
       return;
     }

@@ -69,17 +69,6 @@
       .replace(/^_+|_+$/g, "");
   }
 
-  function prettifyFieldName(fieldName) {
-    return String(fieldName || "")
-      .replace(/^x_/, "")
-      .replace(/_/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .replace(/(^\w)/, function (letter) {
-        return letter.toUpperCase();
-      });
-  }
-
   function findFieldInputOnWidget(widgetNode) {
     if (!(widgetNode instanceof HTMLElement)) {
       return null;
@@ -95,138 +84,80 @@
     return null;
   }
 
-  function matchesFieldLabel(fieldName, labelNode) {
-    if (!(labelNode instanceof HTMLElement)) {
-      return false;
-    }
-    var labelFor = String(labelNode.getAttribute("for") || "");
-    if (!fieldName || !labelFor) {
-      return false;
-    }
-    if (labelFor === fieldName) {
-      return true;
-    }
-    return labelFor.endsWith("_" + fieldName);
-  }
-
-  function resolveFieldTargets(groupNode, widgetNode, fieldName) {
-    var targets = [];
+  function resolveSummaryFieldWidgets(groupNode, spec) {
+    var widgets = [];
     var seen = new Set();
 
     function push(node) {
-      if (!(node instanceof HTMLElement)) {
+      if (!(node instanceof HTMLElement) || seen.has(node) || !groupNode.contains(node)) {
         return;
       }
-      if (!groupNode.contains(node) || seen.has(node)) {
+      if (node.closest("." + constants.COLLAPSIBLE_GROUP_CLASS) !== groupNode) {
         return;
       }
       seen.add(node);
-      targets.push(node);
+      widgets.push(node);
     }
 
-    var fieldContainer = widgetNode.closest(".o_cell, .o_wrap_field, .o_td_field, .o_wrap_input, .o_field_widget");
-    if (fieldContainer instanceof HTMLElement) {
-      push(fieldContainer);
-      var previous = fieldContainer.previousElementSibling;
-      if (previous instanceof HTMLElement && (previous.querySelector("label") || previous.classList.contains("o_wrap_label"))) {
-        push(previous);
+    if (spec && typeof spec.resolveWidgets === "function") {
+      var resolved = null;
+      try {
+        resolved = spec.resolveWidgets(groupNode, spec);
+      } catch (_err) {
+        return [];
       }
-    } else {
-      push(widgetNode);
+      if (resolved instanceof HTMLElement) {
+        push(resolved);
+      } else if (resolved && typeof resolved.length === "number") {
+        Array.prototype.forEach.call(resolved, push);
+      }
+      return widgets;
     }
 
-    groupNode.querySelectorAll("label").forEach(function (labelNode) {
-      if (!matchesFieldLabel(fieldName, labelNode)) {
-        return;
-      }
-      var labelContainer = labelNode.closest(".o_cell, .o_wrap_label, .o_td_label");
-      push(labelContainer || labelNode);
-    });
-
-    return targets;
+    var selector = cleanText(spec && spec.selector);
+    if (!selector) {
+      return widgets;
+    }
+    try {
+      groupNode.querySelectorAll(selector).forEach(push);
+    } catch (_err) {
+      return [];
+    }
+    return widgets;
   }
 
-  function detectFieldLabel(groupNode, widgetNode, fieldName) {
-    var fieldContainer = widgetNode.closest(".o_cell, .o_wrap_field, .o_td_field, .o_wrap_input");
-    if (fieldContainer instanceof HTMLElement) {
-      var previous = fieldContainer.previousElementSibling;
-      if (previous instanceof HTMLElement) {
-        var previousLabel = previous.querySelector("label");
-        if (previousLabel instanceof HTMLElement) {
-          var previousText = cleanText(previousLabel.textContent || "");
-          if (previousText) {
-            return previousText;
-          }
-        }
-      }
-    }
-
-    var labels = groupNode.querySelectorAll("label");
-    for (var index = 0; index < labels.length; index += 1) {
-      var labelNode = labels[index];
-      if (!matchesFieldLabel(fieldName, labelNode)) {
-        continue;
-      }
-      var labelText = cleanText(labelNode.textContent || "");
-      if (labelText) {
-        return labelText;
-      }
-    }
-
-    return prettifyFieldName(fieldName);
-  }
-
-  function collectSectionFieldMeta(groupNode) {
+  function collectSectionFieldMeta(groupNode, options) {
     if (!(groupNode instanceof HTMLElement)) {
       return [];
     }
 
-    var byFieldKey = new Map();
-    var widgets = groupNode.querySelectorAll(".o_field_widget[name], .o_field_widget[data-name]");
-    widgets.forEach(function (widgetNode) {
-      if (!(widgetNode instanceof HTMLElement)) {
+    var summaryFields = options && Array.isArray(options.summaryFields) ? options.summaryFields : [];
+    var seen = new Set();
+    var entries = [];
+    summaryFields.forEach(function (spec) {
+      if (!spec || typeof spec !== "object") {
         return;
       }
-      if (widgetNode.closest(".o_field_x2many")) {
+      var fieldKey = normalizeKey(spec.key);
+      var fieldLabel = cleanText(spec.label || "");
+      if (!fieldKey || !fieldLabel || seen.has(fieldKey)) {
         return;
       }
-      var ownSection = widgetNode.closest("." + constants.COLLAPSIBLE_GROUP_CLASS);
-      if (ownSection !== groupNode) {
+      var widgets = resolveSummaryFieldWidgets(groupNode, spec);
+      var canReadValue = typeof spec.readValue === "function";
+      if (!widgets.length && !canReadValue) {
         return;
       }
-      var fieldName = cleanText(widgetNode.getAttribute("name") || widgetNode.dataset.name || "");
-      if (!fieldName) {
-        return;
-      }
-      var fieldKey = normalizeKey(fieldName) || fieldName;
-      if (!byFieldKey.has(fieldKey)) {
-        byFieldKey.set(fieldKey, {
-          key: fieldKey,
-          name: fieldName,
-          label: detectFieldLabel(groupNode, widgetNode, fieldName),
-          widgets: [],
-          targets: [],
-        });
-      }
-      byFieldKey.get(fieldKey).widgets.push(widgetNode);
-    });
-
-    byFieldKey.forEach(function (entry) {
-      var targets = [];
-      var seen = new Set();
-      entry.widgets.forEach(function (widgetNode) {
-        resolveFieldTargets(groupNode, widgetNode, entry.name).forEach(function (targetNode) {
-          if (seen.has(targetNode)) {
-            return;
-          }
-          seen.add(targetNode);
-          targets.push(targetNode);
-        });
+      seen.add(fieldKey);
+      entries.push({
+        key: fieldKey,
+        label: fieldLabel,
+        readValue: canReadValue ? spec.readValue : null,
+        widgets: widgets,
       });
-      entry.targets = targets;
     });
 
-    return Array.from(byFieldKey.values());
+    return entries;
   }
 
   function resolveNativeSettingsIconClass(config) {
@@ -280,6 +211,20 @@
     return merged;
   }
 
+  function resolveSectionHeaderOptions(groupNode, options) {
+    if (options && typeof options === "object") {
+      return options;
+    }
+    if (
+      groupNode instanceof HTMLElement &&
+      groupNode.__odooSectionHeadersSurfaceOptions &&
+      typeof groupNode.__odooSectionHeadersSurfaceOptions === "object"
+    ) {
+      return groupNode.__odooSectionHeadersSurfaceOptions;
+    }
+    return state.sectionHeadersSurfaceConfig || {};
+  }
+
   function resolveToggleDetail(buttonNode) {
     if (!(buttonNode instanceof HTMLElement)) {
       return null;
@@ -288,7 +233,7 @@
     if (!(groupNode instanceof HTMLElement)) {
       return null;
     }
-    var headerNode = groupNode.querySelector("." + constants.HEADER_CLASS + ", .o_horizontal_separator");
+    var headerNode = groupNode.querySelector("[data-lib-section-header], ." + constants.HEADER_CLASS);
     var sectionKey = cleanText(buttonNode.dataset.libSectionKey || groupNode.dataset.libSectionKey || "");
     var formNode = buttonNode.closest(".o_form_view");
     var scopeKey = cleanText(buttonNode.dataset.libScopeKey || groupNode.dataset.libScopeKey || "");
@@ -407,11 +352,22 @@
   }
 
   function readCollapsedSummaryValue(groupNode, fieldMeta) {
-    if (!(fieldMeta && Array.isArray(fieldMeta.widgets))) {
+    if (!fieldMeta) {
       return "";
     }
-    for (var index = 0; index < fieldMeta.widgets.length; index += 1) {
-      var widgetNode = fieldMeta.widgets[index];
+    if (typeof fieldMeta.readValue === "function") {
+      try {
+        var explicitValue = cleanText(fieldMeta.readValue(groupNode, fieldMeta));
+        if (explicitValue) {
+          return explicitValue;
+        }
+      } catch (_err) {
+        return "";
+      }
+    }
+    var widgets = Array.isArray(fieldMeta.widgets) ? fieldMeta.widgets : [];
+    for (var index = 0; index < widgets.length; index += 1) {
+      var widgetNode = widgets[index];
       if (!(widgetNode instanceof HTMLElement) || !nodeIsVisibleForCollapsedSummary(widgetNode, groupNode)) {
         continue;
       }
@@ -457,7 +413,7 @@
     return "";
   }
 
-  function updateCollapsedSectionSummary(groupNode, headerNode, collapsed) {
+  function updateCollapsedSectionSummary(groupNode, headerNode, collapsed, options) {
     if (!(groupNode instanceof HTMLElement) || !(headerNode instanceof HTMLElement)) {
       return;
     }
@@ -471,8 +427,12 @@
       return;
     }
 
-    var summaryItems = collectSectionFieldMeta(groupNode)
+    var summaryOptions = resolveSectionHeaderOptions(groupNode, options);
+    var summaryItems = collectSectionFieldMeta(groupNode, summaryOptions)
       .filter(function (fieldMeta) {
+        if (typeof fieldMeta.readValue === "function") {
+          return true;
+        }
         return (
           Array.isArray(fieldMeta.widgets) &&
           fieldMeta.widgets.some(function (widgetNode) {
@@ -482,7 +442,7 @@
       })
       .map(function (fieldMeta) {
         return {
-          label: cleanText(fieldMeta.label || fieldMeta.name || ""),
+          label: cleanText(fieldMeta.label || ""),
           value: readCollapsedSummaryValue(groupNode, fieldMeta),
         };
       })
@@ -522,13 +482,13 @@
     summaryNode.hidden = false;
   }
 
-  function setGroupCollapsed(groupNode, headerNode, collapsed) {
+  function setGroupCollapsed(groupNode, headerNode, collapsed, options) {
     if (!(groupNode instanceof HTMLElement) || !(headerNode instanceof HTMLElement)) {
       return;
     }
 
     var shouldCollapse = Boolean(collapsed);
-    updateCollapsedSectionSummary(groupNode, headerNode, shouldCollapse);
+    updateCollapsedSectionSummary(groupNode, headerNode, shouldCollapse, options);
     groupNode.classList.toggle(constants.COLLAPSED_GROUP_CLASS, shouldCollapse);
 
     var toggleButton = headerNode.querySelector("." + constants.TOGGLE_BUTTON_CLASS);
@@ -586,6 +546,7 @@
     }
 
     var resolvedOptions = mergeOptions(options);
+    groupNode.__odooSectionHeadersSurfaceOptions = resolvedOptions;
     var bindHoverState = resolveBindSectionHoverState(resolvedOptions);
     var settingsDetail = {
       groupNode: groupNode,
@@ -600,10 +561,7 @@
       bindHoverState(groupNode);
     }
 
-    var labelText =
-      String(headerNode.dataset.libSectionLabel || headerNode.textContent || "")
-        .replace(/\s+/g, " ")
-        .trim() || "Section";
+    var labelText = cleanText(resolvedOptions.label || headerNode.dataset.libSectionLabel || "") || "Section";
     headerNode.dataset.libSectionLabel = labelText;
 
     var toolbar = headerNode.querySelector("." + constants.TOOLBAR_CLASS);
@@ -706,7 +664,7 @@
 
     var collapsed = groupNode.classList.contains(constants.COLLAPSED_GROUP_CLASS);
     toggleButton.setAttribute("aria-expanded", collapsed ? "false" : "true");
-    updateCollapsedSectionSummary(groupNode, headerNode, collapsed);
+    updateCollapsedSectionSummary(groupNode, headerNode, collapsed, resolvedOptions);
   }
 
   Object.assign(api, {

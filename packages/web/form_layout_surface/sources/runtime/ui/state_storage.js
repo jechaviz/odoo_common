@@ -18,7 +18,7 @@
   v2.makeDbParamKey = makeDbParamKey;
 
   function makeGlobalDbParamKey() {
-    return String(DB_GLOBAL_PARAM_KEY || "odoo.lib.form_section_layout.v2.global");
+    return String(DB_GLOBAL_PARAM_KEY);
   }
 
   v2.makeGlobalDbParamKey = makeGlobalDbParamKey;
@@ -66,7 +66,6 @@
       settingsRoles: {},
       statusbarLabels: {},
       subtotalLayouts: {},
-      chatterCollapsed: null,
     };
   }
 
@@ -84,8 +83,6 @@
       settingsRoles: Object.assign({}, source && source.settingsRoles ? source.settingsRoles : {}),
       statusbarLabels: Object.assign({}, source && source.statusbarLabels ? source.statusbarLabels : {}),
       subtotalLayouts: Object.assign({}, source && source.subtotalLayouts ? source.subtotalLayouts : {}),
-      chatterCollapsed:
-        source && typeof source.chatterCollapsed === "boolean" ? source.chatterCollapsed : CHATTER_DEFAULT_COLLAPSED,
     };
   }
 
@@ -292,12 +289,6 @@
       });
     }
 
-    if (typeof source.chatterCollapsed === "boolean") {
-      parsed.chatterCollapsed = source.chatterCollapsed;
-    } else if (source.chatter && typeof source.chatter === "object" && typeof source.chatter.collapsed === "boolean") {
-      parsed.chatterCollapsed = source.chatter.collapsed;
-    }
-
     return parsed;
   }
 
@@ -325,16 +316,6 @@
     Object.assign(merged.settingsRoles, localState && localState.settingsRoles ? localState.settingsRoles : {});
     Object.assign(merged.statusbarLabels, localState && localState.statusbarLabels ? localState.statusbarLabels : {});
     Object.assign(merged.subtotalLayouts, localState && localState.subtotalLayouts ? localState.subtotalLayouts : {});
-
-    if (dbState && typeof dbState.chatterCollapsed === "boolean") {
-      merged.chatterCollapsed = dbState.chatterCollapsed;
-    }
-    if (localState && typeof localState.chatterCollapsed === "boolean") {
-      merged.chatterCollapsed = localState.chatterCollapsed;
-    }
-    if (typeof merged.chatterCollapsed !== "boolean") {
-      merged.chatterCollapsed = CHATTER_DEFAULT_COLLAPSED;
-    }
 
     return merged;
   }

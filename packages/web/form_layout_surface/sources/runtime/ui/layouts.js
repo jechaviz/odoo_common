@@ -9,15 +9,46 @@
     if (!(node instanceof HTMLElement)) {
       return "";
     }
-    var raw = cleanText(node.textContent || "");
-    if (raw) {
-      return raw;
-    }
-    var ariaLabel = cleanText(node.getAttribute("aria-label") || node.getAttribute("title") || "");
-    return ariaLabel;
+    return cleanText(node.getAttribute("data-lib-layout-item-label") || node.dataset.libLayoutItemLabel || "");
   }
 
   v2.extractLayoutItemLabel = extractLayoutItemLabel;
+
+  function readLayoutItemKey(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+    return cleanText(node.getAttribute("data-lib-layout-item-key") || node.dataset.libLayoutItemKey || "");
+  }
+
+  v2.readLayoutItemKey = readLayoutItemKey;
+
+  function readLayoutContainerKey(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+    return cleanText(node.getAttribute("data-lib-layout-key") || node.dataset.libLayoutKey || "");
+  }
+
+  v2.readLayoutContainerKey = readLayoutContainerKey;
+
+  function readLayoutContainerType(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+    return cleanText(node.getAttribute("data-lib-layout-type") || node.dataset.libLayoutType || "").toLowerCase();
+  }
+
+  v2.readLayoutContainerType = readLayoutContainerType;
+
+  function readLayoutContainerLabel(node) {
+    if (!(node instanceof HTMLElement)) {
+      return "";
+    }
+    return cleanText(node.getAttribute("data-lib-layout-label") || node.dataset.libLayoutLabel || "");
+  }
+
+  v2.readLayoutContainerLabel = readLayoutContainerLabel;
 
   function shouldIgnoreLayoutItemNode(node) {
     if (!(node instanceof HTMLElement)) {
@@ -40,107 +71,101 @@
 
   v2.shouldIgnoreLayoutItemNode = shouldIgnoreLayoutItemNode;
 
-  function collectLayoutItemsFromTabs(containerNode) {
+  function resolveLayoutItemActivator(itemNode) {
+    if (!(itemNode instanceof HTMLElement)) {
+      return null;
+    }
+    if (itemNode.hasAttribute("data-lib-layout-item-activator")) {
+      return itemNode;
+    }
+    var explicitActivator = itemNode.querySelector("[data-lib-layout-item-activator]");
+    if (explicitActivator instanceof HTMLElement) {
+      return explicitActivator;
+    }
+    if (itemNode.matches("a, button")) {
+      return itemNode;
+    }
+    var nativeActivator = itemNode.querySelector("a, button");
+    return nativeActivator instanceof HTMLElement ? nativeActivator : itemNode;
+  }
+
+  v2.resolveLayoutItemActivator = resolveLayoutItemActivator;
+
+  function collectExplicitLayoutItems(containerNode) {
     var items = [];
     var seen = new Set();
-    var links = containerNode.querySelectorAll("a, button");
-    links.forEach(function (linkNode) {
-      if (!(linkNode instanceof HTMLElement)) {
+    containerNode.querySelectorAll("[data-lib-layout-item-key]").forEach(function (itemNode) {
+      if (!(itemNode instanceof HTMLElement)) {
         return;
       }
-      if (shouldIgnoreLayoutItemNode(linkNode)) {
+      var ownerNode = itemNode.closest("[data-lib-layout-key]");
+      if (ownerNode !== containerNode) {
         return;
       }
-      var rootItem = linkNode.closest("li, .nav-item, .o_notebook_header");
-      var itemNode = rootItem instanceof HTMLElement ? rootItem : linkNode;
       if (shouldIgnoreLayoutItemNode(itemNode)) {
         return;
       }
-      if (seen.has(itemNode)) {
+      var itemKey = readLayoutItemKey(itemNode);
+      if (!itemKey || seen.has(itemKey)) {
         return;
       }
-      seen.add(itemNode);
-      var label = extractLayoutItemLabel(linkNode) || extractLayoutItemLabel(itemNode);
-      if (!label) {
-        return;
-      }
+      seen.add(itemKey);
+      var activatorNode = resolveLayoutItemActivator(itemNode);
+      var label = extractLayoutItemLabel(itemNode) || itemKey;
       items.push({
         node: itemNode,
-        activator: linkNode,
+        activator: activatorNode,
+        key: itemKey,
         label: label,
       });
     });
     return items;
+  }
+
+  v2.collectExplicitLayoutItems = collectExplicitLayoutItems;
+
+  function collectLayoutItemsFromTabs(containerNode) {
+    return collectExplicitLayoutItems(containerNode);
   }
 
   v2.collectLayoutItemsFromTabs = collectLayoutItemsFromTabs;
 
   function collectLayoutItemsFromButtons(containerNode) {
-    var items = [];
-    var seen = new Set();
-    containerNode.querySelectorAll("a, button").forEach(function (itemNode) {
-      if (!(itemNode instanceof HTMLElement) || seen.has(itemNode)) {
-        return;
-      }
-      if (shouldIgnoreLayoutItemNode(itemNode)) {
-        return;
-      }
-      var label = extractLayoutItemLabel(itemNode);
-      if (!label) {
-        return;
-      }
-      seen.add(itemNode);
-      items.push({
-        node: itemNode,
-        activator: itemNode,
-        label: label,
-      });
-    });
-    return items;
+    return collectExplicitLayoutItems(containerNode);
   }
 
   v2.collectLayoutItemsFromButtons = collectLayoutItemsFromButtons;
 
-  function makeLayoutMeta(containerNode, layoutType, scopeKey, ordinal) {
+  function makeLayoutMeta(containerNode, layoutType, scopeKey) {
     if (!(containerNode instanceof HTMLElement)) {
       return null;
     }
-    var items = layoutType === "tabs" ? collectLayoutItemsFromTabs(containerNode) : collectLayoutItemsFromButtons(containerNode);
+    var resolvedType = cleanText(layoutType || readLayoutContainerType(containerNode)).toLowerCase();
+    if (resolvedType !== "tabs" && resolvedType !== "actions") {
+      return null;
+    }
+    var layoutKey = readLayoutContainerKey(containerNode);
+    if (!layoutKey) {
+      return null;
+    }
+    var items = resolvedType === "tabs" ? collectLayoutItemsFromTabs(containerNode) : collectLayoutItemsFromButtons(containerNode);
     if (!items.length) {
       return null;
     }
-    var containerLabel = cleanText(containerNode.getAttribute("data-name") || containerNode.getAttribute("name") || "");
-    if (!containerLabel) {
-      containerLabel = items
-        .slice(0, 3)
-        .map(function (item) {
-          return item.label;
-        })
-        .join(" / ");
-    }
-    var layoutKeySeed = normalizeKey(layoutType + "_" + containerLabel + "_" + ordinal);
-    var layoutKey = layoutKeySeed || layoutType + "_" + ordinal;
+    var containerLabel = readLayoutContainerLabel(containerNode) || layoutKey;
     containerNode.dataset.libLayoutKey = layoutKey;
-    containerNode.dataset.libLayoutType = layoutType;
+    containerNode.dataset.libLayoutType = resolvedType;
     containerNode.classList.add(LAYOUT_CONTAINER_CLASS);
 
-    var itemKeys = new Set();
-    items.forEach(function (item, index) {
-      var rawKey = normalizeKey(item.label) || "item_" + index;
-      var finalKey = rawKey;
-      while (itemKeys.has(finalKey)) {
-        finalKey = rawKey + "_" + index;
-      }
-      itemKeys.add(finalKey);
-      item.key = finalKey;
+    items.forEach(function (item) {
       item.scopeKey = scopeKey;
       item.layoutKey = layoutKey;
     });
 
     return {
       key: layoutKey,
-      type: layoutType,
-      label: layoutType === "tabs" ? "Tabs: " + containerLabel : "Actions: " + containerLabel,
+      type: resolvedType,
+      label: containerLabel,
       node: containerNode,
       items: items,
     };
@@ -154,54 +179,22 @@
     }
     var metas = [];
     var seen = new Set();
-    var ordinal = 0;
 
     function push(containerNode, layoutType) {
       if (!(containerNode instanceof HTMLElement) || seen.has(containerNode)) {
         return;
       }
       seen.add(containerNode);
-      var meta = makeLayoutMeta(containerNode, layoutType, scopeKey, ordinal);
-      ordinal += 1;
+      var meta = makeLayoutMeta(containerNode, layoutType, scopeKey);
       if (!meta || !meta.items.length) {
-        return;
-      }
-      if (layoutType !== "tabs" && meta.items.length < 2) {
         return;
       }
       metas.push(meta);
     }
 
-    formNode.querySelectorAll(".o_notebook").forEach(function (notebookNode) {
-      if (!(notebookNode instanceof HTMLElement)) {
-        return;
-      }
-      var preferredNode = null;
-      notebookNode.querySelectorAll(".o_notebook_headers, .nav-tabs").forEach(function (node) {
-        if (!(node instanceof HTMLElement) || node.closest(".o_notebook") !== notebookNode) {
-          return;
-        }
-        if (!(preferredNode instanceof HTMLElement) || node.classList.contains("nav-tabs")) {
-          preferredNode = node;
-        }
-      });
-      push(preferredNode, "tabs");
+    formNode.querySelectorAll("[data-lib-layout-key][data-lib-layout-type]").forEach(function (node) {
+      push(node, readLayoutContainerType(node));
     });
-
-    formNode.querySelectorAll(".o_notebook_headers").forEach(function (node) {
-      if (!(node instanceof HTMLElement) || node.closest(".o_notebook")) {
-        return;
-      }
-      push(node, "tabs");
-    });
-
-    formNode
-      .querySelectorAll(
-        ".o_field_x2many .o_field_x2many_list_row_add, .o_field_x2many .o_control_panel .o_cp_buttons, .o_form_sheet .btn-group"
-      )
-      .forEach(function (node) {
-        push(node, "actions");
-      });
 
     return metas;
   }
@@ -267,7 +260,7 @@
     }
     event.preventDefault();
     event.stopPropagation();
-    var formNode = button.closest(".o_form_view");
+    var formNode = button.closest(FORM_ROOT_SELECTOR);
     if (!(formNode instanceof HTMLElement)) {
       return;
     }

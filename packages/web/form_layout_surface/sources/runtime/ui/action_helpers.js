@@ -13,7 +13,7 @@
     if (!(button instanceof HTMLElement)) {
       return null;
     }
-    if (!(button.closest(".o_form_view") instanceof HTMLElement)) {
+    if (!(button.closest(FORM_ROOT_SELECTOR) instanceof HTMLElement)) {
       return null;
     }
     if (button.className && String(button.className).indexOf("o_lib_") >= 0) {
@@ -53,26 +53,11 @@
     var byNode = new Set();
     var groups = [];
 
-    formNode.querySelectorAll("." + COLLAPSIBLE_GROUP_CLASS).forEach(function (node) {
+    formNode.querySelectorAll("[data-lib-section-key]").forEach(function (node) {
       if (!(node instanceof HTMLElement) || byNode.has(node)) {
         return;
       }
-      byNode.add(node);
-      groups.push(node);
-    });
-
-    formNode.querySelectorAll(".o_group").forEach(function (node) {
-      if (!(node instanceof HTMLElement) || byNode.has(node)) {
-        return;
-      }
-      if (node.closest("." + COLLAPSIBLE_GROUP_CLASS)) {
-        return;
-      }
-      var header = findSectionHeader(node);
-      if (!(header instanceof HTMLElement)) {
-        return;
-      }
-      if (header.closest(".o_group") !== node) {
+      if (!readSectionKey(node)) {
         return;
       }
       node.classList.add(COLLAPSIBLE_GROUP_CLASS);
@@ -85,6 +70,15 @@
 
   v2.getSectionGroups = getSectionGroups;
 
+  function readSectionKey(groupNode) {
+    if (!(groupNode instanceof HTMLElement)) {
+      return "";
+    }
+    return cleanText(groupNode.getAttribute("data-lib-section-key") || groupNode.dataset.libSectionKey || "");
+  }
+
+  v2.readSectionKey = readSectionKey;
+
   function findSectionHeader(groupNode) {
     if (!(groupNode instanceof HTMLElement)) {
       return null;
@@ -92,12 +86,15 @@
 
     for (var i = 0; i < groupNode.children.length; i += 1) {
       var child = groupNode.children[i];
-      if (child instanceof HTMLElement && child.classList.contains("o_horizontal_separator")) {
+      if (
+        child instanceof HTMLElement &&
+        (child.hasAttribute("data-lib-section-header") || child.classList.contains(HEADER_CLASS))
+      ) {
         return child;
       }
     }
 
-    var nested = groupNode.querySelector(".o_horizontal_separator");
+    var nested = groupNode.querySelector("[data-lib-section-header], ." + HEADER_CLASS);
     if (nested instanceof HTMLElement) {
       return nested;
     }
@@ -107,53 +104,21 @@
 
   v2.findSectionHeader = findSectionHeader;
 
-  function findSectionKeyFromClass(groupNode) {
-    if (!(groupNode instanceof HTMLElement)) {
-      return "";
-    }
-    for (var i = 0; i < groupNode.classList.length; i += 1) {
-      var token = groupNode.classList.item(i) || "";
-      if (token.indexOf(SECTION_KEY_CLASS_PREFIX) === 0) {
-        return token.slice(SECTION_KEY_CLASS_PREFIX.length);
-      }
-    }
-    return "";
-  }
-
-  v2.findSectionKeyFromClass = findSectionKeyFromClass;
-
-  function prettifyFieldName(fieldName) {
-    return String(fieldName || "")
-      .replace(/^x_/, "")
-      .replace(/_/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .replace(/(^\w)/, function (letter) {
-        return letter.toUpperCase();
-      });
-  }
-
-  v2.prettifyFieldName = prettifyFieldName;
-
   function cleanText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
 
   v2.cleanText = cleanText;
 
-  function resolveNativeSettingsIconClass() {
-    if (_state.nativeSettingsIconClass) {
-      return _state.nativeSettingsIconClass;
+  function resolveSettingsIconClass() {
+    var iconClass = cleanText(_state.settingsIconClass || SETTINGS_ICON_CLASS);
+    if (!iconClass) {
+      throw new Error("settingsIconClass must be configured by the form layout surface");
     }
-    var iconNode = document.querySelector(
-      ".o_optional_columns_dropdown_toggle i, .o_optional_columns_dropdown .dropdown-toggle i, .o_optional_columns_dropdown i"
-    );
-    var className = cleanText((iconNode && iconNode.getAttribute && iconNode.getAttribute("class")) || "");
-    _state.nativeSettingsIconClass = className || SETTINGS_ICON_FALLBACK_CLASS;
-    return _state.nativeSettingsIconClass;
+    return iconClass;
   }
 
-  v2.resolveNativeSettingsIconClass = resolveNativeSettingsIconClass;
+  v2.resolveSettingsIconClass = resolveSettingsIconClass;
 
   function applyButtonIcon(button, iconClass, ariaLabel) {
     if (!(button instanceof HTMLElement)) {
@@ -168,14 +133,17 @@
       button.innerHTML = "";
       button.appendChild(iconNode);
     }
-    iconNode.className = cleanText(iconClass || "") || SETTINGS_ICON_FALLBACK_CLASS;
+    iconNode.className = cleanText(iconClass || "");
+    if (!iconNode.className) {
+      throw new Error("button icon class must be explicit");
+    }
     iconNode.setAttribute("aria-hidden", "true");
   }
 
   v2.applyButtonIcon = applyButtonIcon;
 
   function applySettingsTriggerIcon(button, ariaLabel) {
-    applyButtonIcon(button, resolveNativeSettingsIconClass(), ariaLabel);
+    applyButtonIcon(button, resolveSettingsIconClass(), ariaLabel);
   }
 
   v2.applySettingsTriggerIcon = applySettingsTriggerIcon;

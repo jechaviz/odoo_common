@@ -64,6 +64,13 @@
       return;
     }
 
+    var sectionKey = typeof v2.readSectionKey === "function"
+      ? v2.readSectionKey(group)
+      : String(group.dataset.libSectionKey || "").trim();
+    if (!sectionKey) {
+      return;
+    }
+
     _state.dragSourceGroup = group;
     _state.dragTargetGroup = null;
     _state.dragDropBefore = true;
@@ -72,7 +79,7 @@
 
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", String(group.dataset.libSectionKey || "section"));
+      event.dataTransfer.setData("text/plain", sectionKey);
     }
   }
 
@@ -125,7 +132,7 @@
       return;
     }
 
-    var formNode = _state.dragSourceGroup.closest(".o_form_view");
+    var formNode = _state.dragSourceGroup.closest(FORM_ROOT_SELECTOR);
     if (!(formNode instanceof HTMLElement)) {
       resetDragState();
       return;

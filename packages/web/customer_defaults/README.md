@@ -6,10 +6,12 @@ Extraccion source-derived del runtime original de Rental para sincronizar descue
 
 - `source-derived`
 - mantiene wiring y supuestos del flujo original de Rental
+- archivo de trazabilidad; no es una capa de soporte legacy
 
 ## Uso recomendado
 
-- conservarlo solo para trazabilidad o adapters legacy
+- conservarlo solo para auditoria de origen
+- no ensamblar, publicar ni extender para compatibilidad legacy
 - usar `commercial-policy-surface` para integraciones nuevas o extracciones canonicas
 
 ## Reemplazos canonicos

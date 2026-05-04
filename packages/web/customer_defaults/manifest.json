@@ -4,14 +4,13 @@
   "status": "source-derived",
   "language": "web",
   "origin_project": "rp-rental-mock",
+  "archive_only": true,
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
     "customer_discount.js"
   ],
-  "publish_order": [
-    "customer_discount.js"
-  ],
+  "publish_order": [],
   "capabilities": [
     "customer-discount-sync",
     "discount-assignment-hydration",

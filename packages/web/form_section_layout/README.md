@@ -21,6 +21,12 @@ Para persistencia compartida de layouts y labels desde servidor, ensamblar junto
 
 - `source-derived`
 - la base de layout es reusable, pero el editor de subtotales aun conserva presets y campos de negocio que deben salir a adapters antes de volver a `canonical`
+- archivo de trazabilidad; no es una capa de soporte legacy
+
+## Uso recomendado
+
+- no ensamblar, publicar ni extender para compatibilidad legacy
+- usar los reemplazos canonicos listados abajo
 
 ## Reemplazos canonicos
 

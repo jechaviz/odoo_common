@@ -4,6 +4,7 @@
   "status": "source-derived",
   "language": "web",
   "origin_project": "odoo_rpp",
+  "archive_only": true,
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
@@ -15,15 +16,7 @@
     "runtime",
     "styles"
   ],
-  "publish_order": [
-    "constants.js",
-    "state.js",
-    "drag_drop.js",
-    "runtime",
-    "form_section_layout.runtime.js",
-    "styles",
-    "form_section_layout.css"
-  ],
+  "publish_order": [],
   "capabilities": [
     "section-collapse",
     "section-visibility",

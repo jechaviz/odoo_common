@@ -4,16 +4,14 @@
   "status": "source-derived",
   "language": "web",
   "origin_project": "rp-rental-mock",
+  "archive_only": true,
   "sync_root": "sources",
   "sync_mode": "tree",
   "exports": [
     "form_context.js",
     "form_preview.js"
   ],
-  "publish_order": [
-    "form_context.js",
-    "form_preview.js"
-  ],
+  "publish_order": [],
   "capabilities": [
     "default-get",
     "branch-defaults",

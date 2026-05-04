@@ -6,10 +6,12 @@ Extraccion source-derived del runtime original de Rental para defaults de formul
 
 - `source-derived`
 - conserva rutas, labels y campos del flujo original de Rental
+- archivo de trazabilidad; no es una capa de soporte legacy
 
 ## Uso recomendado
 
-- conservarlo solo para trazabilidad o adapters legacy
+- conservarlo solo para auditoria de origen
+- no ensamblar, publicar ni extender para compatibilidad legacy
 - usar paquetes canonicos para integraciones nuevas
 
 ## Reemplazos canonicos

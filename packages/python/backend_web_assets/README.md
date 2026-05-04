@@ -14,6 +14,7 @@ El modulo expone:
 - `DEFAULT_BACKEND_WEB_ASSET_PUBLISHER_SPEC`
 - `build_backend_web_asset_attachment_name(spec, checksum, publisher_spec=...)`
 - `build_backend_web_asset_content_path(attachment_id, checksum, publisher_spec=...)`
+- `build_backend_web_asset_specs_from_common_bindings(bindings, start_sequence=..., target_prefix_to_strip=...)`
 - `guess_backend_web_asset_mimetype(relative_path)`
 - `dedupe_backend_web_asset_specs(specs)`
 - `compute_backend_web_asset_fingerprint(asset_root, specs, content_transform=None)`
@@ -41,6 +42,8 @@ No depende de mixins externos, introspeccion de campos ni wrappers de compatibil
 
 `BackendWebAssetPublisherSpec` declara los modelos y valores modernos usados para `ir.attachment` e `ir.asset`. Si un tenant usa otro contrato, el adapter de proyecto debe pasar un spec propio.
 
+`build_backend_web_asset_specs_from_common_bindings(...)` convierte bindings producidos por `common-component-sync` en specs publicables, preservando orden de dependencias y `publish_order`. Si el consumidor lee assets desde un root mas profundo, debe declarar `target_prefix_to_strip` explicitamente; no hay inferencia de rutas historicas.
+
 ## Responsabilidad
 
 - leer assets desde un root explicito
@@ -49,6 +52,7 @@ No depende de mixins externos, introspeccion de campos ni wrappers de compatibil
 - publicar cada attachment como `ir.asset`
 - limpiar assets/attachments stale solo cuando el caller declara prefijos gestionados
 - aplicar transformaciones de contenido declaradas por el caller
+- derivar specs de backend web assets desde bindings comunes ya validados
 
 ## No Incluye
 
@@ -57,3 +61,4 @@ No depende de mixins externos, introspeccion de campos ni wrappers de compatibil
 - fallback a campos antiguos de `ir.attachment`
 - manifest builders acoplados a proyectos
 - resolucion de action ids o tokens de negocio
+- recorte implicito de prefijos como `src`

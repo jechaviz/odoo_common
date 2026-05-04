@@ -190,6 +190,80 @@ def dedupe_backend_web_asset_specs(
     return tuple(deduped)
 
 
+def build_backend_web_asset_specs_from_common_bindings(
+    bindings: Sequence[Any],
+    *,
+    start_sequence: int = 10000,
+    sequence_step: int = 1,
+    bundle: str = "web.assets_backend",
+    directive: str = "append",
+    target: str = "",
+    target_prefix_to_strip: str | Path | None = None,
+    name_prefix: str = "",
+) -> tuple[BackendWebAssetSpec, ...]:
+    """Build backend asset specs from dependency-ordered common sync bindings."""
+    if sequence_step < 1:
+        raise ValueError("Backend web asset sequence_step must be >= 1")
+
+    grouped_bindings: dict[str, list[Any]] = {}
+    component_order: list[str] = []
+    for binding in bindings:
+        language = str(_common_binding_value(binding, "language") or "").strip().lower()
+        if language != "web":
+            continue
+
+        source_relative = _normalize_relative_path(_common_binding_value(binding, "source_relative"))
+        if source_relative.suffix.lower() not in {".js", ".css"}:
+            continue
+
+        publish_order_index = _common_binding_value(binding, "publish_order_index")
+        if publish_order_index is None:
+            raise ValueError(
+                "Common web asset bindings must include publish_order_index for "
+                f"{source_relative.as_posix()}"
+            )
+
+        component_key = _normalize_text(
+            _common_binding_value(binding, "component_key"),
+            field_name="component_key",
+        )
+        if component_key not in grouped_bindings:
+            grouped_bindings[component_key] = []
+            component_order.append(component_key)
+        grouped_bindings[component_key].append(binding)
+
+    sequence = int(start_sequence)
+    specs: list[BackendWebAssetSpec] = []
+    for component_key in component_order:
+        component_bindings = sorted(
+            grouped_bindings[component_key],
+            key=lambda binding: (
+                int(_common_binding_value(binding, "publish_order_index")),
+                _normalize_relative_path(_common_binding_value(binding, "source_relative")).as_posix(),
+            ),
+        )
+        for binding in component_bindings:
+            source_relative = _normalize_relative_path(_common_binding_value(binding, "source_relative"))
+            target_relative = _strip_backend_web_asset_target_prefix(
+                _common_binding_value(binding, "target_relative"),
+                target_prefix_to_strip,
+            )
+            title = str(_common_binding_value(binding, "title") or component_key).strip() or component_key
+            specs.append(
+                BackendWebAssetSpec(
+                    name=f"{name_prefix}{_humanize_backend_web_asset_name(title, source_relative)}",
+                    relative_path=target_relative,
+                    mimetype=guess_backend_web_asset_mimetype(source_relative),
+                    sequence=sequence,
+                    bundle=bundle,
+                    directive=directive,
+                    target=target,
+                )
+            )
+            sequence += sequence_step
+    return tuple(specs)
+
+
 def replace_backend_web_asset_tokens(
     content: bytes,
     replacements: Mapping[str | bytes, Any],
@@ -472,6 +546,43 @@ def _read_backend_web_asset_content(
     if not isinstance(content, bytes):
         raise TypeError(f"Backend web asset content_transform must return bytes for {spec.relative_path.as_posix()}")
     return content
+
+
+def _common_binding_value(binding: Any, key: str) -> Any:
+    if isinstance(binding, Mapping):
+        return binding.get(key)
+    return getattr(binding, key, None)
+
+
+def _strip_backend_web_asset_target_prefix(
+    target_relative: Any,
+    target_prefix_to_strip: str | Path | None,
+) -> Path:
+    path = _normalize_relative_path(target_relative)
+    if target_prefix_to_strip is None or str(target_prefix_to_strip or "").strip() == "":
+        return path
+
+    prefix = _normalize_relative_path(target_prefix_to_strip)
+    prefix_parts = prefix.parts
+    if path.parts[: len(prefix_parts)] != prefix_parts:
+        raise ValueError(
+            "Backend web asset target_relative does not start with declared "
+            f"target_prefix_to_strip {prefix.as_posix()!r}: {path.as_posix()!r}"
+        )
+    remaining_parts = path.parts[len(prefix_parts) :]
+    if not remaining_parts:
+        raise ValueError(
+            "Backend web asset target_prefix_to_strip removed the entire path: "
+            f"{path.as_posix()!r}"
+        )
+    return Path(PurePosixPath(*remaining_parts).as_posix())
+
+
+def _humanize_backend_web_asset_name(component_title: str, source_relative: Path) -> str:
+    suffix = "CSS" if source_relative.suffix.lower() == ".css" else "JS"
+    stem = source_relative.stem.replace("_", " ").replace("-", " ").strip()
+    title = stem.title() if stem else source_relative.name
+    return f"{component_title} {title} ({suffix})"
 
 
 def _record_id(value: Any) -> int:

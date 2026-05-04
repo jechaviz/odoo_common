@@ -62,6 +62,7 @@ Scope:
 - Added: `common-component-sync` canonicalizes consumer sync manifests, catalog resolution, dependency-ordered file bindings, web publish-order checks, target-collision detection, and safe generated-copy pruning without component aliases, source-derived targets, path hacks, or manual copy policy.
 - Added: `view-fragment-assembly` canonicalizes strict XML view fragment registries, arch assembly, explicit substitutions, and view blueprint serialization without business fragments, folder fallbacks, approximate matching, or view upsert side effects.
 - Added: `navigation-blueprints` canonicalizes keyed window-action/menu blueprint construction and duplicate-key checks without business menu trees, ID resolution, upserts, aliases, or fallback name matching.
+- Added: `backend-web-assets` now derives `BackendWebAssetSpec` rows from common sync bindings, preserving dependency and publish order while requiring explicit target-prefix stripping instead of route/path inference.
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views and QWeb views without legacy view cleanup or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.

@@ -13,6 +13,7 @@
   "capabilities": [
     "backend-web-asset-specs",
     "ir-asset-publication",
-    "attachment-backed-web-assets"
+    "attachment-backed-web-assets",
+    "common-sync-binding-publication-specs"
   ]
 }

@@ -27,6 +27,7 @@ Nivel actual:
 - base canonica para `packages/python/common_component_sync`
 - base canonica para `packages/python/view_fragment_assembly`
 - base canonica para `packages/python/navigation_blueprints`
+- mejora canonica en `packages/python/backend_web_assets`: derivar specs publicables desde bindings comunes sin bootstrap directo
 
 Definicion de consumo:
 

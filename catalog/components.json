@@ -569,6 +569,7 @@
       "attachment-backed asset publication",
       "ir.asset upsert",
       "asset fingerprinting",
+      "common sync binding spec derivation",
       "explicit managed cleanup"
     ]
   },

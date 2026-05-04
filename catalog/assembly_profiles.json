@@ -228,6 +228,7 @@
     ],
     "use_cases": [
       "publishing canonical JS/CSS runtime slices",
+      "deriving ir.asset specs from common sync bindings",
       "attachment-backed ir.asset rows",
       "checksum-driven backend asset cache busting"
     ]

@@ -18,7 +18,7 @@ Origen principal:
 
 Nivel actual:
 
-- base source-derived para `packages/web/form_section_layout`
+- trazabilidad/archivo source-derived para `packages/web/form_section_layout`; no es ruta recomendada de ensamblaje
 - base canonica para `packages/web/form_layout_surface`
 - base canonica para `packages/web/form_section_headers_surface`
 - base canonica para `packages/web/form_section_visibility_surface`
@@ -31,3 +31,7 @@ Nivel actual:
 - base canonica para `packages/python/many2x_parent_form_autosave`
 - base canonica para `packages/python/partner_defaults`
 - base canonica para `packages/python/taxation`
+
+Regla de consumo:
+
+- nuevas integraciones deben usar las superficies canonicas listadas arriba y no el monolito source-derived archivado

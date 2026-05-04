@@ -18,7 +18,7 @@ Origen principal:
 
 Nivel actual:
 
-- fuente derivada para `form_defaults`, `form_totals` y `customer_defaults`
+- trazabilidad/archivo source-derived para `form-defaults`, `form-totals` y `customer-defaults-web`; no son rutas recomendadas de ensamblaje
 - base canonica para `packages/web/form_defaults_surface`
 - base canonica para `packages/web/form_preview_surface`
 - base canonica para `packages/web/form_header_identity_surface`
@@ -27,3 +27,7 @@ Nivel actual:
 - base canonica para `packages/web/form_totals_surface`
 - base canonica para `packages/python/partner_language_defaults`
 - base canonica para `packages/schema/terms_conditions`
+
+Regla de consumo:
+
+- nuevas integraciones deben usar las superficies canonicas listadas arriba y no los paquetes source-derived archivados

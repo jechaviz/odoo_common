@@ -1,6 +1,6 @@
 # Odoo Common Surface Kit
 
-Kit comun para ensamblar superficies nativas de Odoo a partir de piezas reutilizables extraidas de:
+Kit comun para ensamblar superficies nativas de Odoo desde contratos canonicos reutilizables. Los paths fuente quedan como trazabilidad de extraccion, no como rutas de soporte ni como receta recomendada de ensamblaje:
 
 - `C:\git\customers\yo\fiax`
 - `C:\git\customers\yo\odoo_rpp`
@@ -31,13 +31,14 @@ Separar la capa reutilizable de la capa de negocio para poder armar otros proyec
 - `packages/schema/`
   - patrones de campos, herencia y configuracion que no son runtime
 - `references/projects/`
-  - resumen de origen y rol de cada proyecto fuente
+  - trazabilidad de origen y rol historico de cada proyecto fuente; no define rutas de ensamblaje
 
 ## Regla de gobierno
 
 - `canonical`: paquete listo para reutilizar como base comun
-- `source-derived`: pieza reusable, pero todavia derivada de un proyecto fuente
+- `source-derived`: artefacto de trazabilidad/archivo derivado de un proyecto fuente; no es ruta recomendada ni soporte de compatibilidad
 - `planned`: componente detectado, pero aun no extraido a una API comun estable
+- las integraciones nuevas deben ensamblarse desde paquetes `canonical` y perfiles del catalogo; cuando una capacidad aparezca en un `source-derived`, usar sus `replacement_components`
 - los paquetes canonicos no deben sostener compatibilidad por `workspaceHint`, action ids alternos, selectors fallback, ni feature guards opcionales una vez fijado el contrato shared
 - `surface-workspace-shell` debe resolver navegacion y activacion por action/model/state canonicos, `workspaceKey`/`breadcrumb key`, y hosts explicitos del DOM
 - `surface-workspace-shell` no debe inferir ownership de sidebar por labels, `active/show/aria-*` del navbar ni route hints shared; la identidad de seccion debe llegar por `data-surface-sidebar-section-key`, `data-section`, breadcrumb section key o resolver explicito
@@ -46,7 +47,7 @@ Separar la capa reutilizable de la capa de negocio para poder armar otros proyec
 
 ## Siguiente criterio de trabajo
 
-1. mover a `canonical` lo que ya tenga contrato estable
+1. promover a `canonical` solo contratos estables con API comun verificable
 2. adelgazar adapters de proyecto
-3. prohibir aliases legacy y fallbacks innecesarios
+3. prohibir aliases historicos y rescates fallback innecesarios
 4. mantener manifiestos y perfiles como fuente de verdad

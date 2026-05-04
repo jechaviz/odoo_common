@@ -603,6 +603,24 @@
     ]
   },
   {
+    "key": "sequence-upserts",
+    "title": "Odoo Sequence Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/sequence_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/lot_sequence_admin.py"
+      }
+    ],
+    "features": [
+      "ir.sequence upsert",
+      "strict sequence spec",
+      "company-scoped sequence publication"
+    ]
+  },
+  {
     "key": "action-menu-upserts",
     "title": "Action And Menu Upserts",
     "runtime": "python",

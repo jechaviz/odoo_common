@@ -232,6 +232,18 @@
     ]
   },
   {
+    "key": "sequence_publication",
+    "title": "Sequence Publication",
+    "components": [
+      "sequence-upserts"
+    ],
+    "use_cases": [
+      "number sequences",
+      "serial sequence records",
+      "company-scoped numbering"
+    ]
+  },
+  {
     "key": "action_menu_publication",
     "title": "Action And Menu Publication",
     "components": [

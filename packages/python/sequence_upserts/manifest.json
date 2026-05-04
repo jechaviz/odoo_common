@@ -1,0 +1,17 @@
+{
+  "key": "sequence-upserts",
+  "title": "Odoo Sequence Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "sequence_upserts.py"
+  ],
+  "capabilities": [
+    "ir-sequence-upsert",
+    "strict-sequence-spec"
+  ]
+}

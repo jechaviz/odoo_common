@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 18 total, 18 canonical.
+- Python packages: 19 total, 19 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
@@ -25,6 +25,7 @@ Scope:
 - `rp-rental-mock`: strict XML ID upserts for generated records through `ir.model.data`.
 - `rp-rental-mock`: strict data exchange metadata upserts for export templates and import mappings.
 - `odoo_rpp` + `rp-rental-mock`: strict product catalog upserts for categories, pricelists, and fixed-price template rules.
+- `odoo_rpp`: strict `ir.sequence` upserts for sequence publication.
 - `odoo_rpp` + `rp-rental-mock`: exact action/menu upserts for window actions, URL actions, and menus.
 - `odoo_rpp` + `rp-rental-mock`: strict model-view and QWeb-view upserts.
 - `rp-rental-mock`: strict report publication for paperformats, report layouts, and QWeb report actions.
@@ -47,6 +48,7 @@ Scope:
 - Added: `xmlid-upserts` canonicalizes `ir.model.data` publication without XML ID aliases, dry-run branching, target resolution, or silent model rebinding.
 - Added: `data-exchange-upserts` canonicalizes `ir.exports` and `base_import.mapping` publication without aliasing, field inference, dry-run branching, or stale mapping cleanup.
 - Added: `product-catalog-upserts` canonicalizes product category, pricelist, and fixed-price pricelist item publication without rental-period normalization, legacy rule migration, field detection, or old-list deactivation.
+- Added: `sequence-upserts` canonicalizes `ir.sequence` publication without business-model binding, next-number scans, project slugification, or `number_next_actual` compatibility.
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views and QWeb views without legacy view cleanup or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.
@@ -79,8 +81,9 @@ Scope:
 8. Replace XML ID publication helpers with `xmlid-upserts`; keep target-record creation and dry-run behavior project-local.
 9. Replace export/import metadata helpers with `data-exchange-upserts`; keep stale mapping cleanup project-local.
 10. Replace product category/pricelist helpers with `product-catalog-upserts`; keep legacy pricing cleanup and rental-specific rate derivation project-local.
-11. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
-12. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
-13. Replace report installers with `report-upserts`; keep mail-template compatibility and report cleanup project-local.
-14. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
-15. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.
+11. Replace sequence helpers with `sequence-upserts`; keep sequence assignment and next-number derivation project-local.
+12. Replace action/menu installers with `action-menu-upserts` once each project removes legacy menu cleanup from the common path.
+13. Replace view installers with `view-upserts` for canonical model/QWeb writes; leave legacy cleanup in project adapters only.
+14. Replace report installers with `report-upserts`; keep mail-template compatibility and report cleanup project-local.
+15. Replace custom field installers with `custom-field-upserts`; keep destructive obsolete-field cleanup project-local.
+16. Replace security installers with `security-upserts`; keep user assignment and group migration rules project-local.

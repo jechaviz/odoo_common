@@ -777,6 +777,24 @@
     ]
   },
   {
+    "key": "text-asset-builders",
+    "title": "Manifest Text Asset Builders",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/text_asset_builders",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/text_asset_builders.py"
+      }
+    ],
+    "features": [
+      "manifest module order",
+      "ordered text assembly",
+      "text asset build manifest"
+    ]
+  },
+  {
     "key": "product-catalog-upserts",
     "title": "Odoo Product Catalog Upserts",
     "runtime": "python",

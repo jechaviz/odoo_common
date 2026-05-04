@@ -332,6 +332,18 @@
     ]
   },
   {
+    "key": "text_asset_build",
+    "title": "Text Asset Build",
+    "components": [
+      "text-asset-builders"
+    ],
+    "use_cases": [
+      "manifest-ordered JS/CSS assembly",
+      "deterministic text bundle metadata",
+      "build artifact hash manifests"
+    ]
+  },
+  {
     "key": "product_catalog_publication",
     "title": "Product Catalog Publication",
     "components": [

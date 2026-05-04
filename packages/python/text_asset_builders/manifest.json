@@ -1,0 +1,18 @@
+{
+  "key": "text-asset-builders",
+  "title": "Manifest Text Asset Builders",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "text_asset_builders.py"
+  ],
+  "capabilities": [
+    "manifest-module-order",
+    "ordered-text-assembly",
+    "text-asset-build-manifest"
+  ]
+}

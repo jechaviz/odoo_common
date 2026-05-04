@@ -16,21 +16,37 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 
 @dataclass(frozen=True)
 class PartnerDefaultsAutofillSpec:
-    """Project wiring for syncing invoice/delivery/contact defaults from a customer."""
+    """Project wiring for syncing invoice/delivery/contact defaults from a customer.
+
+    Defaults describe the current Odoo/RP preset. Callers should override these
+    names for other models or custom fields instead of depending on x_* literals
+    outside this declarative contract.
+    """
 
     partner_model_name: str = "res.partner"
     sale_model_name: str = "sale.order"
     invoice_model_name: str = "account.move"
+    partner_commercial_field_name: str = "commercial_partner_id"
+    partner_child_field_name: str = "child_ids"
+    partner_parent_field_name: str = "parent_id"
+    partner_type_field_name: str = "type"
+    partner_name_field_name: str = "name"
     sale_customer_field_name: str = "partner_id"
     sale_invoice_field_name: str = "partner_invoice_id"
     sale_delivery_field_name: str = "partner_shipping_id"
     sale_contact_field_name: str = "x_customer_contact_id"
     sale_rep_field_name: str = "x_customer_rep"
+    sale_order_lookup_field_name: str = "name"
+    sale_line_order_field_name: str = "order_id"
     invoice_customer_field_name: str = "partner_id"
     invoice_invoice_field_name: str = "x_invoice_address_id"
     invoice_delivery_field_name: str = "partner_shipping_id"
     invoice_contact_field_name: str = "x_customer_contact_id"
     invoice_rep_field_name: str = "x_customer_rep"
+    invoice_move_type_field_name: str = "move_type"
+    invoice_sync_move_types: tuple[str, ...] = ("out_invoice", "out_refund", "out_receipt")
+    invoice_line_field_name: str = "invoice_line_ids"
+    invoice_line_sale_line_field_name: str = "sale_line_ids"
     partner_default_invoice_field_name: str = "x_default_invoice_address_id"
     partner_default_delivery_field_name: str = "x_default_delivery_address_id"
     partner_default_contact_field_name: str = "x_default_customer_contact_id"
@@ -43,16 +59,27 @@ class PartnerDefaultsAutofillSpec:
             "__PARTNER_MODEL_NAME__": self.partner_model_name,
             "__SALE_MODEL_NAME__": self.sale_model_name,
             "__INVOICE_MODEL_NAME__": self.invoice_model_name,
+            "__PARTNER_COMMERCIAL_FIELD_NAME__": self.partner_commercial_field_name,
+            "__PARTNER_CHILD_FIELD_NAME__": self.partner_child_field_name,
+            "__PARTNER_PARENT_FIELD_NAME__": self.partner_parent_field_name,
+            "__PARTNER_TYPE_FIELD_NAME__": self.partner_type_field_name,
+            "__PARTNER_NAME_FIELD_NAME__": self.partner_name_field_name,
             "__SALE_CUSTOMER_FIELD_NAME__": self.sale_customer_field_name,
             "__SALE_INVOICE_FIELD_NAME__": self.sale_invoice_field_name,
             "__SALE_DELIVERY_FIELD_NAME__": self.sale_delivery_field_name,
             "__SALE_CONTACT_FIELD_NAME__": self.sale_contact_field_name,
             "__SALE_REP_FIELD_NAME__": self.sale_rep_field_name,
+            "__SALE_ORDER_LOOKUP_FIELD_NAME__": self.sale_order_lookup_field_name,
+            "__SALE_LINE_ORDER_FIELD_NAME__": self.sale_line_order_field_name,
             "__INVOICE_CUSTOMER_FIELD_NAME__": self.invoice_customer_field_name,
             "__INVOICE_INVOICE_FIELD_NAME__": self.invoice_invoice_field_name,
             "__INVOICE_DELIVERY_FIELD_NAME__": self.invoice_delivery_field_name,
             "__INVOICE_CONTACT_FIELD_NAME__": self.invoice_contact_field_name,
             "__INVOICE_REP_FIELD_NAME__": self.invoice_rep_field_name,
+            "__INVOICE_MOVE_TYPE_FIELD_NAME__": self.invoice_move_type_field_name,
+            "__INVOICE_SYNC_MOVE_TYPES_LITERAL__": repr(tuple(self.invoice_sync_move_types)),
+            "__INVOICE_LINE_FIELD_NAME__": self.invoice_line_field_name,
+            "__INVOICE_LINE_SALE_LINE_FIELD_NAME__": self.invoice_line_sale_line_field_name,
             "__PARTNER_DEFAULT_INVOICE_FIELD_NAME__": self.partner_default_invoice_field_name,
             "__PARTNER_DEFAULT_DELIVERY_FIELD_NAME__": self.partner_default_delivery_field_name,
             "__PARTNER_DEFAULT_CONTACT_FIELD_NAME__": self.partner_default_contact_field_name,

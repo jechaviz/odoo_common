@@ -49,14 +49,14 @@ else:
         partner_rec = _first(partner_value)
         if not partner_rec:
             return False
-        commercial = _read_field(partner_rec, 'commercial_partner_id', False)
+        commercial = _read_field(partner_rec, '__PARTNER_COMMERCIAL_FIELD_NAME__', False)
         return _first(commercial) or partner_rec
 
     def _partner_children(partner_value):
         commercial = _commercial_partner(partner_value)
         if not commercial:
             return []
-        child_ids = _read_field(commercial, 'child_ids', False)
+        child_ids = _read_field(commercial, '__PARTNER_CHILD_FIELD_NAME__', False)
         if not child_ids:
             return []
         try:
@@ -69,7 +69,7 @@ else:
 
     def _pick_child_by_type(partner_value, partner_type):
         for child in _partner_children(partner_value):
-            if str(_read_field(child, 'type', '') or '').strip().lower() != str(partner_type or '').strip().lower():
+            if str(_read_field(child, '__PARTNER_TYPE_FIELD_NAME__', '') or '').strip().lower() != str(partner_type or '').strip().lower():
                 continue
             child_id = _m2o_id(child)
             if child_id:
@@ -79,23 +79,23 @@ else:
     def _pick_customer_contact(partner_value):
         partner_rec = _first(partner_value)
         if partner_rec:
-            parent_rec = _first(_read_field(partner_rec, 'parent_id', False))
+            parent_rec = _first(_read_field(partner_rec, '__PARTNER_PARENT_FIELD_NAME__', False))
             if parent_rec:
-                partner_type = str(_read_field(partner_rec, 'type', '') or '').strip().lower()
+                partner_type = str(_read_field(partner_rec, '__PARTNER_TYPE_FIELD_NAME__', '') or '').strip().lower()
                 if partner_type not in ('invoice', 'delivery'):
                     partner_id = _m2o_id(partner_rec)
                     if partner_id:
                         return partner_id
 
         for child in _partner_children(partner_value):
-            partner_type = str(_read_field(child, 'type', '') or '').strip().lower()
+            partner_type = str(_read_field(child, '__PARTNER_TYPE_FIELD_NAME__', '') or '').strip().lower()
             if partner_type == 'contact':
                 child_id = _m2o_id(child)
                 if child_id:
                     return child_id
 
         for child in _partner_children(partner_value):
-            partner_type = str(_read_field(child, 'type', '') or '').strip().lower()
+            partner_type = str(_read_field(child, '__PARTNER_TYPE_FIELD_NAME__', '') or '').strip().lower()
             if partner_type in ('invoice', 'delivery'):
                 continue
             child_id = _m2o_id(child)
@@ -161,7 +161,7 @@ else:
                 return ''
         except Exception:
             return ''
-        return str(_read_field(contact_rec, 'name', '') or '').strip()
+        return str(_read_field(contact_rec, '__PARTNER_NAME_FIELD_NAME__', '') or '').strip()
 
     def _same_commercial_tree(candidate_id, partner_value):
         if not candidate_id or not partner_value:
@@ -184,15 +184,15 @@ else:
         )
 
     def _linked_sale_order(move_rec):
-        invoice_lines = _read_field(move_rec, 'invoice_line_ids', False)
+        invoice_lines = _read_field(move_rec, '__INVOICE_LINE_FIELD_NAME__', False)
         sale_lines = False
         try:
-            sale_lines = invoice_lines.mapped('sale_line_ids')
+            sale_lines = invoice_lines.mapped('__INVOICE_LINE_SALE_LINE_FIELD_NAME__')
         except Exception:
             sale_lines = False
         order_lines = False
         try:
-            order_lines = sale_lines and sale_lines.mapped('order_id') or False
+            order_lines = sale_lines and sale_lines.mapped('__SALE_LINE_ORDER_FIELD_NAME__') or False
         except Exception:
             order_lines = False
         linked = _first(order_lines)
@@ -202,7 +202,7 @@ else:
         invoice_origin = str(_read_field(move_rec, '__LINKED_SALE_ORDER_FIELD_NAME__', '') or '').strip()
         if invoice_origin:
             try:
-                linked = env['__SALE_MODEL_NAME__'].search([('name', '=', invoice_origin)], limit=1)
+                linked = env['__SALE_MODEL_NAME__'].search([('__SALE_ORDER_LOOKUP_FIELD_NAME__', '=', invoice_origin)], limit=1)
             except Exception:
                 linked = False
             linked = _first(linked)
@@ -243,8 +243,8 @@ else:
         return bool(updates)
 
     def _sync_account_move(move_rec):
-        move_type = str(_read_field(move_rec, 'move_type', '') or '').strip().lower()
-        if move_type not in ('out_invoice', 'out_refund', 'out_receipt'):
+        move_type = str(_read_field(move_rec, '__INVOICE_MOVE_TYPE_FIELD_NAME__', '') or '').strip().lower()
+        if move_type not in __INVOICE_SYNC_MOVE_TYPES_LITERAL__:
             return False
 
         source_order = _linked_sale_order(move_rec)

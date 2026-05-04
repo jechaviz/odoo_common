@@ -413,6 +413,28 @@
     ]
   },
   {
+    "key": "tax-upserts",
+    "title": "Odoo Tax Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/tax_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/core/taxation.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/rental_tax_sync.py"
+      }
+    ],
+    "features": [
+      "tax group upsert",
+      "tax upsert",
+      "strict accounting tax specs"
+    ]
+  },
+  {
     "key": "backend-web-assets",
     "title": "Backend Web Asset Publisher",
     "runtime": "python",

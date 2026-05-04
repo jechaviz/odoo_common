@@ -1,0 +1,18 @@
+{
+  "key": "tax-upserts",
+  "title": "Odoo Tax Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "tax_upserts.py"
+  ],
+  "capabilities": [
+    "tax-group-upsert",
+    "tax-upsert",
+    "strict-accounting-tax-specs"
+  ]
+}

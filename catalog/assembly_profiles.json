@@ -119,6 +119,18 @@
     ]
   },
   {
+    "key": "tax_publication",
+    "title": "Tax Publication",
+    "components": [
+      "tax-upserts"
+    ],
+    "use_cases": [
+      "tax groups",
+      "sales and purchase taxes",
+      "explicit company and country tax records"
+    ]
+  },
+  {
     "key": "transactional_form_preview",
     "title": "Transactional Form Preview",
     "components": [

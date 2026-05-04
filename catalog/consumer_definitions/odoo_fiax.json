@@ -130,6 +130,12 @@
       "target_relative": "src/odoo_common/backend_web_assets",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "record-upserts",
+      "target_relative": "src/odoo_common/record_upserts",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

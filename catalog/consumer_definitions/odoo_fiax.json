@@ -118,6 +118,12 @@
       "target_relative": "src/odoo_common/view_fragment_assembly",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "navigation-blueprints",
+      "target_relative": "src/odoo_common/navigation_blueprints",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

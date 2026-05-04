@@ -9,13 +9,13 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 27 total, 27 canonical.
+- Python packages: 28 total, 28 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
 ## Canonical Surfaces Already Extracted
 
-- `odoo_fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract, common component sync, view fragment assembly, navigation blueprints.
+- `odoo_fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract, common component sync, view fragment assembly, navigation blueprints, generic record upserts.
 - `odoo_rpp`: form layout core, section headers, section visibility, settings panel, chatter toggle, subtotals, layout state, many2x parent autosave, defaults persistence, partner defaults, taxation helpers.
 - `rp-rental-mock`: form defaults, preview, header identity, action bridge, commercial policy, totals, partner language defaults, terms and conditions.
 - `odoo_rpp` + `rp-rental-mock`: strict tax group and tax upserts with explicit company/country/group contracts.
@@ -56,6 +56,7 @@ Scope:
 - Added: `odoo-registry-lookup` now resolves exact window actions, code server actions, and base views while failing on missing or ambiguous rows.
 - Added: `xmlid-upserts` canonicalizes `ir.model.data` publication without XML ID aliases, dry-run branching, target resolution, or silent model rebinding.
 - Added: `data-exchange-upserts` canonicalizes `ir.exports` and `base_import.mapping` publication without aliasing, field inference, dry-run branching, or stale mapping cleanup.
+- Added: `record-upserts` canonicalizes generic record creation/update by exact domain without dry-run branching, field filtering, XML ID resolution, or stale cleanup.
 - Added: `product-catalog-upserts` canonicalizes product category, pricelist, and fixed-price pricelist item publication without rental-period normalization, legacy rule migration, field detection, or old-list deactivation.
 - Added: `sequence-upserts` canonicalizes `ir.sequence` publication without business-model binding, next-number scans, project slugification, or `number_next_actual` compatibility.
 - Added: `survey-upserts` canonicalizes survey page/question/answer publication without settings introspection, dry-run branching, generated-key parsing, or stale page/question deletion.

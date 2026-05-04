@@ -713,6 +713,24 @@
     ]
   },
   {
+    "key": "record-upserts",
+    "title": "Generic Odoo Record Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/record_upserts",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/catalog_sync.py"
+      }
+    ],
+    "features": [
+      "generic record upsert",
+      "exact domain identity",
+      "ambiguous domain rejection"
+    ]
+  },
+  {
     "key": "product-catalog-upserts",
     "title": "Odoo Product Catalog Upserts",
     "runtime": "python",

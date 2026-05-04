@@ -296,6 +296,18 @@
     ]
   },
   {
+    "key": "record_publication",
+    "title": "Generic Record Publication",
+    "components": [
+      "record-upserts"
+    ],
+    "use_cases": [
+      "seed records with explicit identity domains",
+      "tenant adapters with strict model/value payloads",
+      "generic records not covered by a dedicated package"
+    ]
+  },
+  {
     "key": "product_catalog_publication",
     "title": "Product Catalog Publication",
     "components": [

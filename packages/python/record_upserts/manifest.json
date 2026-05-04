@@ -1,0 +1,18 @@
+{
+  "key": "record-upserts",
+  "title": "Generic Odoo Record Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_fiax",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "record_upserts.py"
+  ],
+  "capabilities": [
+    "exact-domain-record-upsert",
+    "generic-model-record-upsert",
+    "ambiguous-domain-rejection"
+  ]
+}

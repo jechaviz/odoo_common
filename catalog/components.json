@@ -521,6 +521,32 @@
     ]
   },
   {
+    "key": "view-upserts",
+    "title": "Odoo View Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/view_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/infrastructure.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/report_template_sync.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/backend_web_asset_sync.py"
+      }
+    ],
+    "features": [
+      "model view upsert",
+      "qweb view upsert",
+      "strict arch/arch_db contracts"
+    ]
+  },
+  {
     "key": "many2x-parent-form-autosave",
     "title": "Many2X Parent Form Autosave",
     "runtime": "web",

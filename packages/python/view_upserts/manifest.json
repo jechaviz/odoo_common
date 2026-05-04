@@ -1,0 +1,18 @@
+{
+  "key": "view-upserts",
+  "title": "Odoo View Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "view_upserts.py"
+  ],
+  "capabilities": [
+    "model-view-upsert",
+    "qweb-view-upsert",
+    "strict-view-specs"
+  ]
+}

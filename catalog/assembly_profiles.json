@@ -197,6 +197,18 @@
     ]
   },
   {
+    "key": "view_publication",
+    "title": "View Publication",
+    "components": [
+      "view-upserts"
+    ],
+    "use_cases": [
+      "model view publication",
+      "inherited view extensions",
+      "QWeb extension views"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

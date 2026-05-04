@@ -649,12 +649,18 @@
       {
         "project": "rp-rental-mock",
         "path": "odoo_migration/_chunks/run_migration/part_002.pyfrag"
+      },
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/backend_web_asset_sync.py"
       }
     ],
     "features": [
       "ir.model resolution",
       "ir.model.fields resolution",
       "ir.model.data XML ID resolution",
+      "exact action resolution",
+      "exact base view resolution",
       "fields_get metadata validation"
     ]
   },

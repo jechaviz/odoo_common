@@ -13,6 +13,10 @@ El modulo expone:
 - `resolve_xml_id_metadata(conn, xml_id, model_name=None)`
 - `resolve_xml_id(conn, xml_id, model_name=None)`
 - `resolve_model_id(conn, model_name)`
+- `resolve_exact_window_action_id(conn, res_model=..., name=...)`
+- `resolve_exact_server_action_id(conn, name=..., model_name=None)`
+- `resolve_exact_base_view_id(conn, model_name=..., view_name=..., view_type=...)`
+- `resolve_exact_base_form_view_id(conn, model_name=..., view_name=...)`
 - `resolve_model_field_ids(conn, model_name, field_names, require_all=True)`
 - `resolve_model_field_names(conn, model_name, field_names, require_all=True)`
 - `fields_get(conn, model_name, attributes=("type",))`
@@ -30,6 +34,7 @@ El helper espera un objeto `conn` con estas operaciones:
 - validar XML IDs en formato `module.name`
 - resolver filas de `ir.model.data`
 - resolver IDs de `ir.model`
+- resolver acciones y vistas base exactas, fallando si faltan o son ambiguas
 - resolver IDs/nombres de `ir.model.fields`
 - leer `fields_get` con atributos declarados
 - extraer valores tecnicos de selections

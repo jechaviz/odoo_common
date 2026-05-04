@@ -132,6 +132,105 @@ def resolve_model_id(conn: RegistryLookupConnection, model_name: str) -> int:
     return _required_record_id(rows[0].get("id"), context=f"ir.model {clean_model_name}")
 
 
+def resolve_exact_window_action_id(
+    conn: RegistryLookupConnection,
+    *,
+    res_model: str,
+    name: str,
+) -> int:
+    """Resolve one `ir.actions.act_window` by exact model/name and fail on ambiguity."""
+    clean_res_model = _clean_required_text(res_model, field_name="window action res_model")
+    clean_name = _clean_required_text(name, field_name="window action name")
+    rows = conn.search_read(
+        "ir.actions.act_window",
+        [
+            ("res_model", "=", clean_res_model),
+            ("name", "=", clean_name),
+        ],
+        ["id", "name"],
+        order="id",
+        limit=2,
+    )
+    return _exact_single_record_id(
+        rows,
+        context=f"ir.actions.act_window {clean_name!r} for {clean_res_model}",
+    )
+
+
+def resolve_exact_server_action_id(
+    conn: RegistryLookupConnection,
+    *,
+    name: str,
+    model_name: str | None = None,
+) -> int:
+    """Resolve one code server action by exact name and optional model."""
+    clean_name = _clean_required_text(name, field_name="server action name")
+    domain: list[tuple[str, str, Any]] = [
+        ("name", "=", clean_name),
+        ("state", "=", "code"),
+        ("type", "=", "ir.actions.server"),
+    ]
+    clean_model_name = str(model_name or "").strip()
+    if clean_model_name:
+        domain.append(("model_id", "=", resolve_model_id(conn, clean_model_name)))
+    rows = conn.search_read(
+        "ir.actions.server",
+        domain,
+        ["id", "name"],
+        order="id",
+        limit=2,
+    )
+    model_suffix = f" for {clean_model_name}" if clean_model_name else ""
+    return _exact_single_record_id(
+        rows,
+        context=f"ir.actions.server {clean_name!r}{model_suffix}",
+    )
+
+
+def resolve_exact_base_view_id(
+    conn: RegistryLookupConnection,
+    *,
+    model_name: str,
+    view_name: str,
+    view_type: str,
+) -> int:
+    """Resolve one non-inherited base `ir.ui.view` by exact model/name/type."""
+    clean_model_name = _clean_required_text(model_name, field_name="base view model_name")
+    clean_view_name = _clean_required_text(view_name, field_name="base view name")
+    clean_view_type = _clean_required_text(view_type, field_name="base view type")
+    rows = conn.search_read(
+        "ir.ui.view",
+        [
+            ("model", "=", clean_model_name),
+            ("type", "=", clean_view_type),
+            ("inherit_id", "=", False),
+            ("name", "=", clean_view_name),
+        ],
+        ["id", "name"],
+        order="priority,id",
+        limit=2,
+    )
+    return _exact_single_record_id(
+        rows,
+        context=f"base ir.ui.view {clean_view_name!r} ({clean_view_type}) for {clean_model_name}",
+    )
+
+
+def resolve_exact_base_form_view_id(
+    conn: RegistryLookupConnection,
+    *,
+    model_name: str,
+    view_name: str,
+) -> int:
+    """Resolve one non-inherited base form view by exact model/name."""
+    return resolve_exact_base_view_id(
+        conn,
+        model_name=model_name,
+        view_name=view_name,
+        view_type="form",
+    )
+
+
 def resolve_model_field_ids(
     conn: RegistryLookupConnection,
     model_name: str,
@@ -242,3 +341,11 @@ def _required_record_id(value: Any, *, context: str) -> int:
     if record_id <= 0:
         raise RuntimeError(f"Odoo registry lookup did not receive a valid ID for {context}")
     return record_id
+
+
+def _exact_single_record_id(rows: Sequence[Mapping[str, Any]], *, context: str) -> int:
+    if not rows:
+        raise LookupError(f"Odoo registry record not found: {context}")
+    if len(rows) > 1:
+        raise LookupError(f"Odoo registry record is ambiguous: {context}")
+    return _required_record_id(rows[0].get("id"), context=context)

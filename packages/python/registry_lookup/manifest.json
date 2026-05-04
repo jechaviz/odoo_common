@@ -14,6 +14,8 @@
     "model-id-resolution",
     "model-field-resolution",
     "xml-id-resolution",
+    "exact-action-resolution",
+    "exact-base-view-resolution",
     "fields-get-inspection"
   ]
 }

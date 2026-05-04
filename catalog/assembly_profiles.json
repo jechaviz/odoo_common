@@ -267,6 +267,7 @@
       "technical model resolution",
       "field id resolution",
       "strict XML ID lookups",
+      "exact action and base view IDs",
       "fields_get metadata inspection"
     ]
   },

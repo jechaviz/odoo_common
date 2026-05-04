@@ -79,6 +79,17 @@ Scope:
 - Added: `custom-field-upserts` canonicalizes manual model/field creation, strict existing-field contract validation, and selection row reconciliation without legacy value migrations.
 - Added: `security-upserts` canonicalizes security publication without user assignment, version field detection, missing-metadata ignores, or legacy group absorption.
 
+## Continued Boundary Check
+
+- Promoted: `odoo_rpp` text template helpers became `text-templates` after adding strict relative path validation and required-token checks.
+- Promoted: `odoo_rpp` phase runtime helpers became `phase-runtime` after removing dependency on project exception classes and keeping runner execution outside `common`.
+- Rejected: `odoo_rpp/core/tabular_rows.py` because its main value is tolerant alias/header lookup and empty-token cleanup for import DTOs.
+- Rejected: `odoo_rpp/core/schema_cache.py` because shared field-existence caches and model probing belong to live project adapters; `odoo-registry-lookup` remains the strict common path.
+- Rejected: `odoo_rpp/core/asset_*` and `asset_lot_line_selector.py` because they encode asset/rental matching, prefix heuristics, fallback product mapping, and field-detection behavior.
+- Rejected: `odoo_rpp/loaders/*`, `rp-rental-mock` chunk facades, and FIAX/Rental chunk loaders because they are ingestion/fixture or generated-module support, not common Odoo runtime contracts.
+- Rejected: `settings_admin.py`, `custom_field_runtime.py`, and `custom_field_cleanup.py` because they contain cross-version method probing, partial error continuation, or legacy deletion behavior.
+- Rejected: remaining server-action templates for portal preview, asset selector, and sale-order charge rules because their safe-eval bodies contain business policy, defensive try/except fallbacks, and field/model probing. If needed later, rewrite them from strict specs using `text-templates` plus `automation_upserts`.
+
 ## Remaining Source-Derived Archive Traces
 
 - `form-section-layout`: archive trace for the original section-layout extraction only. New consumers should assemble `form-layout-surface`, section sibling surfaces, `form-subtotals-surface`, and `form-layout-state`.

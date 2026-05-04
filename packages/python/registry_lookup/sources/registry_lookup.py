@@ -293,6 +293,32 @@ def fields_get(
     return normalized
 
 
+def first_existing_field_name(
+    fields_metadata: Mapping[str, Mapping[str, Any]],
+    candidates: Sequence[str],
+    *,
+    required: bool = True,
+) -> str:
+    """Return the first candidate present in a `fields_get` payload."""
+    if not isinstance(fields_metadata, Mapping):
+        raise TypeError("fields_metadata must be a mapping")
+    if isinstance(candidates, (str, bytes)) or not isinstance(candidates, Sequence):
+        raise TypeError("field name candidates must be a sequence")
+    clean_candidates = tuple(
+        _clean_required_text(candidate, field_name="field_name candidate")
+        for candidate in candidates
+        if str(candidate or "").strip()
+    )
+    if not clean_candidates:
+        raise ValueError("field name candidates must not be empty")
+    for candidate in clean_candidates:
+        if candidate in fields_metadata:
+            return candidate
+    if required:
+        raise LookupError(f"No field candidate exists in fields_get payload: {', '.join(clean_candidates)}")
+    return ""
+
+
 def selection_values(field_meta: Mapping[str, Any]) -> list[str]:
     """Extract technical values from one `fields_get` selection payload."""
     selection = field_meta.get("selection")

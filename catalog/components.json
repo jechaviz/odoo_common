@@ -653,6 +653,10 @@
       {
         "project": "odoo_fiax",
         "path": "src/odoo_fiax_migration/backend_web_asset_sync.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/field_metadata_accessors.py"
       }
     ],
     "features": [
@@ -661,7 +665,8 @@
       "ir.model.data XML ID resolution",
       "exact action resolution",
       "exact base view resolution",
-      "fields_get metadata validation"
+      "fields_get metadata validation",
+      "fields_get candidate accessors"
     ]
   },
   {

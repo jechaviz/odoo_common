@@ -20,6 +20,7 @@ El modulo expone:
 - `resolve_model_field_ids(conn, model_name, field_names, require_all=True)`
 - `resolve_model_field_names(conn, model_name, field_names, require_all=True)`
 - `fields_get(conn, model_name, attributes=("type",))`
+- `first_existing_field_name(fields_metadata, candidates, required=True)`
 - `selection_values(field_meta)`
 
 ## Connection Contract
@@ -37,6 +38,7 @@ El helper espera un objeto `conn` con estas operaciones:
 - resolver acciones y vistas base exactas, fallando si faltan o son ambiguas
 - resolver IDs/nombres de `ir.model.fields`
 - leer `fields_get` con atributos declarados
+- elegir el primer campo existente desde candidatos declarados
 - extraer valores tecnicos de selections
 
 ## No Incluye

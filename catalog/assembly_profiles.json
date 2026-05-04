@@ -268,7 +268,8 @@
       "field id resolution",
       "strict XML ID lookups",
       "exact action and base view IDs",
-      "fields_get metadata inspection"
+      "fields_get metadata inspection",
+      "fields_get candidate field selection"
     ]
   },
   {

@@ -54,6 +54,7 @@ Scope:
 - Added: `cron-upserts` canonicalizes code-based `ir.cron` publication without user-resolution fallback, version field detection, missing-model returns, or legacy function crons.
 - Added: `odoo-registry-lookup` centralizes strict metadata resolution without XML ID aliases, first-candidate fallbacks, or shared caches.
 - Added: `odoo-registry-lookup` now resolves exact window actions, code server actions, and base views while failing on missing or ambiguous rows.
+- Added: `odoo-registry-lookup` now selects the first existing field from explicit `fields_get` candidates while requiring opt-in for optional empty results.
 - Added: `xmlid-upserts` canonicalizes `ir.model.data` publication without XML ID aliases, dry-run branching, target resolution, or silent model rebinding.
 - Added: `data-exchange-upserts` canonicalizes `ir.exports` and `base_import.mapping` publication without aliasing, field inference, dry-run branching, or stale mapping cleanup.
 - Added: `record-upserts` canonicalizes generic record creation/update by exact domain without dry-run branching, field filtering, XML ID resolution, or stale cleanup.

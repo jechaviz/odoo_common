@@ -2,11 +2,9 @@
 
 Paquete canonico de schema para almacenar, resolver y publicar payloads de terminos y condiciones. No incluye renderer ni wiring ORM; solo define el contrato portable.
 
-## Fuente de referencia
+## Origen De Extraccion
 
-- `C:\git\customers\yo\rp-rental-mock\odoo_migration\docs\tnc.md`
-- `C:\git\customers\yo\rp-rental-mock\odoo_migration\report_templates.py`
-- `C:\git\customers\yo\rp-rental-mock\odoo_migration\templates\view_fragments\rental_order_form_terms_conditions_source.xml.tmpl`
+Este contrato se extrajo de un flujo real de terminos legales con Markdown fuente, renderer externo y fragmentos Odoo de edicion/publicacion. Esas referencias sirven como evidencia de uso, pero no forman parte del contrato canonico.
 
 ## Lo Que Este Paquete Si Define
 
@@ -20,15 +18,20 @@ Paquete canonico de schema para almacenar, resolver y publicar payloads de termi
 - modelos Odoo concretos
 - campos `x_*`
 - renderer HTML o Markdown
-- reglas de negocio acopladas a rental, CFDI o cualquier vertical
+- reglas de negocio acopladas a una vertical, pais, regimen fiscal o tipo documental
 
-## Archivos Canonicos
+## Contrato Canonico
 
 - `source_terms_conditions.schema.json`
 - `resolved_terms_conditions.schema.json`
 - `resolution_contract.md`
+
+## Fixtures De Ejemplo
+
 - `examples/source_terms_conditions_payload.json`
 - `examples/resolved_terms_conditions_payload.json`
+
+Los archivos en `examples/` son payloads ilustrativos para adapters. Sus keys, titulos, tags, scopes, modelos y URLs no son nombres canonicos ni deben copiarse como contrato compartido.
 
 ## Modelo Mental
 
@@ -38,7 +41,7 @@ Paquete canonico de schema para almacenar, resolver y publicar payloads de termi
 
 ## Render Contract
 
-La referencia de `rp-rental-mock` usa Markdown fuente (`tnc.md`) y un renderer externo que produce HTML para reportes y portal. Ese renderer queda fuera de este paquete; el contrato canonico solo exige que el payload resuelto conserve:
+Una implementacion de referencia usa Markdown fuente y un renderer externo que produce HTML para reportes y portal. Ese renderer queda fuera de este paquete; el contrato canonico solo exige que el payload resuelto conserve:
 
 - el texto fuente (`body_markdown` o equivalente futuro)
 - la revision aplicada

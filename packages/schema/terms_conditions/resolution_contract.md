@@ -7,13 +7,15 @@ Este paquete recomienda separar dos conceptos:
 
 ## Scope Precedence
 
-El orden exacto lo decide cada adapter, pero el contrato canonico recomienda documentar una precedencia explicita. Un orden comun es:
+El orden exacto lo decide cada adapter, pero el contrato canonico recomienda documentar una precedencia explicita. Un orden comun de ejemplo es:
 
 1. global
 2. template o profile
-3. serie, branch o document class
-4. customer o commercial profile
+3. unidad organizacional o clase documental
+4. contraparte o perfil comercial
 5. document override
+
+Estos nombres de scope son ilustrativos. El contrato no exige modelos Odoo, nombres de tabla, keys de negocio ni una jerarquia fiscal especifica.
 
 ## Resolution Path
 
@@ -44,3 +46,4 @@ Los adapters del proyecto deben definir:
 - como se calcula precedencia
 - como se renderiza `body_markdown`
 - como se persiste el payload resuelto en el documento final
+- como se traducen `record_model`, `record_id`, `record_key` y `matched_on` a su dominio local sin volverlos contrato shared

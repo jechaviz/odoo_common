@@ -1,3 +1,4 @@
+<!-- Example fixture only. Group names, labels and fields are adapter-owned, not canonical. -->
 <group name="example_capture_shell"
        data-surface-form-shell="capture"
        data-surface-form-shell-layout="two-column"

@@ -1,3 +1,4 @@
+<!-- Example fixture only. Card keys, labels and copy are adapter-owned, not canonical. -->
 <div data-surface-record-context-panel="1"
      data-surface-record-context-layout="detail-list">
     <div data-surface-record-context-card="billing">

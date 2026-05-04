@@ -17,7 +17,7 @@ Los cards dentro del stack deben declarar:
 
 - `data-surface-record-context-card`
 
-El key del card es libre y pertenece al adapter del proyecto. Ejemplos reales:
+El key del card es libre y pertenece al adapter del proyecto. Ejemplos de fixture, no enum canonico:
 
 - `billing`
 - `shipping`
@@ -40,4 +40,4 @@ El runtime shared hidrata slots por attrs canonicos. Los proyectos pueden usar s
 
 ## Regla
 
-Los attrs canonicos describen estructura y puntos de hidratacion. El runtime shared no debe depender de labels, copy o keys de card especificos de negocio.
+Los attrs canonicos describen estructura y puntos de hidratacion. El runtime shared no debe depender de labels, copy, orden o keys de card especificos de negocio.

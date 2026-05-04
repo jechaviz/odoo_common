@@ -1,12 +1,12 @@
 {
-  "key": "rental_master_terms",
-  "title": "Mobile Equipment Rental Terms And Conditions",
+  "key": "example_standard_terms",
+  "title": "Example Standard Terms And Conditions",
   "locale_code": "en_US",
-  "body_markdown": "1. DEFINITIONS\n1.1 \"Equipment\" means the equipment listed in the rental contract.\n\n2. TERM\n2.1 The rental term begins on the delivery date.",
-  "rendered_html": "<div class=\"tnc-content\"><h5>1. DEFINITIONS</h5><p><strong>1.1</strong> \"Equipment\" means the equipment listed in the rental contract.</p></div>",
+  "body_markdown": "1. DEFINITIONS\n1.1 \"Service\" means the service described in the document.\n\n2. TERM\n2.1 The term begins on the effective date.",
+  "rendered_html": "<div class=\"tnc-content\"><h5>1. DEFINITIONS</h5><p><strong>1.1</strong> \"Service\" means the service described in the document.</p></div>",
   "revision_label": "Rev. Feb. 24, 2026",
   "effective_from": "2026-02-24",
-  "source_url": "https://legal.example.com/contracts/rental/terms/v2026-02-24",
+  "source_url": "https://legal.example.com/contracts/standard/terms/v2026-02-24",
   "render_profile": "legal-markdown-v1",
   "source_checksum_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   "origin_scope": "template",
@@ -23,13 +23,14 @@
       "scope": "template",
       "record_model": "legal.terms.profile",
       "record_id": 18,
-      "record_key": "rental_master_terms",
+      "record_key": "example_standard_terms",
       "matched_on": "document_template_id",
       "applied": true
     }
   ],
   "metadata": {
-    "document_model": "sale.order",
+    "example_notice": "Illustrative fixture; adapter owns concrete document models, ids and scope mapping.",
+    "document_model": "example.document",
     "document_id": 4821
   }
 }

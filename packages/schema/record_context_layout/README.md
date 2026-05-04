@@ -4,11 +4,9 @@ Paquete canonico de schema para paneles declarativos de contexto relacional/come
 
 No define modelos Odoo, labels de negocio, ni wiring ORM. Solo formaliza el markup/attrs del panel, los cards y los slot markers que el runtime shared ya sabe sincronizar.
 
-## Fuente de referencia
+## Origen De Extraccion
 
-- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\templates\view_fragments\invoice_form_capture_shell.xml.tmpl`
-- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\web_assets\odoo_surface_layers\record_context.js`
-- `C:\git\customers\yo\fiax\src\odoo_fiax_migration\web_assets\odoo_surface_layers\surface_layers.css`
+Este contrato se extrajo de paneles Odoo reales hidratados por `record-context-surface`. Esas referencias validan el runtime y el markup, pero sus labels, campos y keys de negocio no son canonicos.
 
 ## Lo Que Este Paquete Si Define
 
@@ -21,15 +19,20 @@ No define modelos Odoo, labels de negocio, ni wiring ORM. Solo formaliza el mark
 
 - campos o modelos concretos
 - readers ORM o cache
-- labels de negocio (`RFC`, `Tarifa`, `Envio`, ...)
+- labels de negocio, identificadores fiscales, tarifas, envios o copy por vertical
 - estilos concretos por vertical
 
-## Archivos Canonicos
+## Contrato Canonico
 
 - `record_context_layout.schema.json`
 - `record_context_slot_markers.schema.json`
 - `record_context_layout_contract.md`
+
+## Fixtures De Ejemplo
+
 - `examples/invoice_record_context_layout.xml`
+
+El fixture `invoice_record_context_layout.xml` conserva nombres concretos para mostrar una integracion posible. Card keys, labels y copy pertenecen al adapter y no deben tratarse como enum compartido.
 
 ## Modelo Mental
 

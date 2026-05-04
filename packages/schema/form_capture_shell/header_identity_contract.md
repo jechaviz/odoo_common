@@ -39,4 +39,4 @@ Valores canonicos actuales:
 
 ## Regla
 
-Estos attrs describen jerarquia visual y composicion, no negocio. Labels, campos concretos y dominios pertenecen al adapter del proyecto.
+Estos attrs describen jerarquia visual y composicion, no negocio. Labels, campos concretos, dominios y mapeos de tonos pertenecen al adapter del proyecto.

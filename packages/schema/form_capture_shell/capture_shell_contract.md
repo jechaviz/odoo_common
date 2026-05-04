@@ -23,7 +23,7 @@ Cada columna del shell debe declarar:
 - `data-surface-form-column`
 - `data-surface-form-column-role`
 
-Valores canonicos observados hoy:
+Valores canonicos observados hoy para slots y roles de layout:
 
 - slots:
   - `primary`
@@ -44,4 +44,4 @@ Eso permite que la capa shared de CSS trate esos encabezados de manera uniforme,
 
 ## Regla
 
-El shell no debe cargar copy, defaults, queries ORM ni wiring de negocio. Solo define estructura y attrs para que las otras superficies shared se monten encima.
+El shell no debe cargar copy, defaults, queries ORM ni wiring de negocio. Los nombres de grupos, labels y campos vistos en fixtures son propiedad del adapter. Este contrato solo define estructura y attrs para que las otras superficies shared se monten encima.

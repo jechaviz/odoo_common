@@ -1,0 +1,17 @@
+{
+  "key": "mail-template-upserts",
+  "title": "Odoo Mail Template Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "mail_template_upserts.py"
+  ],
+  "capabilities": [
+    "mail-template-upsert",
+    "modern-report-template-binding"
+  ]
+}

@@ -733,6 +733,24 @@
     ]
   },
   {
+    "key": "mail-template-upserts",
+    "title": "Odoo Mail Template Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/mail_template_upserts",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/report_template_sync.py"
+      }
+    ],
+    "features": [
+      "mail template upsert",
+      "modern report_template_ids binding",
+      "subject and body publication"
+    ]
+  },
+  {
     "key": "custom-field-upserts",
     "title": "Custom Field Upserts",
     "runtime": "python",

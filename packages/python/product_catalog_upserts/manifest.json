@@ -1,0 +1,18 @@
+{
+  "key": "product-catalog-upserts",
+  "title": "Odoo Product Catalog Upserts",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_rpp",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "product_catalog_upserts.py"
+  ],
+  "capabilities": [
+    "product-category-upsert",
+    "pricelist-upsert",
+    "pricelist-item-upsert"
+  ]
+}

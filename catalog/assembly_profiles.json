@@ -220,6 +220,18 @@
     ]
   },
   {
+    "key": "product_catalog_publication",
+    "title": "Product Catalog Publication",
+    "components": [
+      "product-catalog-upserts"
+    ],
+    "use_cases": [
+      "product categories",
+      "company-scoped pricelists",
+      "fixed-price template rules"
+    ]
+  },
+  {
     "key": "action_menu_publication",
     "title": "Action And Menu Publication",
     "components": [

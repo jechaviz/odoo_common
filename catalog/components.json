@@ -573,6 +573,36 @@
     ]
   },
   {
+    "key": "product-catalog-upserts",
+    "title": "Odoo Product Catalog Upserts",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/product_catalog_upserts",
+    "origins": [
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/odoo_views/product_category_admin.py"
+      },
+      {
+        "project": "odoo_rpp",
+        "path": "lib/python/odoo_reusable/core/rental_pricing.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_003.pyfrag"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/_chunks/run_migration/part_011.pyfrag"
+      }
+    ],
+    "features": [
+      "product category upsert",
+      "product pricelist upsert",
+      "fixed-price pricelist item upsert"
+    ]
+  },
+  {
     "key": "action-menu-upserts",
     "title": "Action And Menu Upserts",
     "runtime": "python",

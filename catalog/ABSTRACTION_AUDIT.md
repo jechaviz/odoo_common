@@ -4,18 +4,18 @@ Date: 2026-05-04
 
 Scope:
 - `C:\git\odoo\common`
-- source workspaces: `C:\git\customers\yo\fiax`, `C:\git\customers\yo\odoo_rpp`, `C:\git\customers\yo\rp-rental-mock`
+- source workspaces: `C:\git\customers\yo\odoo_fiax`, `C:\git\customers\yo\odoo_rpp`, `C:\git\customers\yo\rp-rental-mock`
 
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 24 total, 24 canonical.
+- Python packages: 25 total, 25 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
 ## Canonical Surfaces Already Extracted
 
-- `fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract.
+- `odoo_fiax`: workspace shell, line picker, record context, commercial capture context, form capture shell contract, record context layout contract, common component sync.
 - `odoo_rpp`: form layout core, section headers, section visibility, settings panel, chatter toggle, subtotals, layout state, many2x parent autosave, defaults persistence, partner defaults, taxation helpers.
 - `rp-rental-mock`: form defaults, preview, header identity, action bridge, commercial policy, totals, partner language defaults, terms and conditions.
 - `odoo_rpp` + `rp-rental-mock`: strict tax group and tax upserts with explicit company/country/group contracts.
@@ -43,6 +43,7 @@ Scope:
 - Fixed: `buildFormSubtotalsSurfaceAdapter(spec)` now validates both form-root resolution and scope-key resolution.
 - Fixed: `form-subtotals-surface` no longer hard-codes the asset field display normalization from the source runtime. Project-specific passive formatting now enters through `fieldDisplayNormalizers`.
 - Fixed: source project docs now point to the active `fiax` workspace while keeping `odoo_fiax` as the historical origin identifier.
+- Corrected: `odoo_fiax` source workspace is `C:\git\customers\yo\odoo_fiax`; the plain `fiax` workspace is not the Odoo migration source.
 - Fixed: the four source-derived web packages now declare `replacement_components` in their package manifests.
 - Fixed: catalog validation is now repeatable through `catalog/validate_catalog.ps1`.
 - Updated: source-derived guidance now states archive-only traceability and does not present those packages as fallback support or recommended assembly targets.
@@ -58,6 +59,7 @@ Scope:
 - Added: `sequence-upserts` canonicalizes `ir.sequence` publication without business-model binding, next-number scans, project slugification, or `number_next_actual` compatibility.
 - Added: `survey-upserts` canonicalizes survey page/question/answer publication without settings introspection, dry-run branching, generated-key parsing, or stale page/question deletion.
 - Added: `odoo-runtime-primitives` canonicalizes domain literal construction, Python function source extraction, and many2one RPC value normalization without connection management, XML ID lookup, field detection, or legacy action-server compatibility.
+- Added: `common-component-sync` canonicalizes consumer sync manifests, catalog resolution, dependency-ordered file bindings, web publish-order checks, target-collision detection, and safe generated-copy pruning without component aliases, source-derived targets, path hacks, or manual copy policy.
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views and QWeb views without legacy view cleanup or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.

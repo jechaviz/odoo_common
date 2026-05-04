@@ -120,6 +120,60 @@ foreach ($Profile in $Profiles) {
   }
 }
 
+$ConsumerDefinitionsDir = Join-Path $CatalogDir "consumer_definitions"
+$ConsumerDefinitionKeys = @{}
+if (Test-Path $ConsumerDefinitionsDir) {
+  $ConsumerDefinitionFiles = Get-ChildItem $ConsumerDefinitionsDir -Filter *.json
+  foreach ($ConsumerDefinitionFile in $ConsumerDefinitionFiles) {
+    $Definition = Read-JsonFile $ConsumerDefinitionFile.FullName
+    $DefinitionKey = [string] $Definition.key
+    if (-not $DefinitionKey.Trim()) {
+      $Errors.Add("consumer definition without key: $($ConsumerDefinitionFile.FullName)")
+      continue
+    }
+    if ($ConsumerDefinitionKeys.ContainsKey($DefinitionKey)) {
+      $Errors.Add("duplicate consumer definition key: $DefinitionKey")
+      continue
+    }
+    $ConsumerDefinitionKeys[$DefinitionKey] = $true
+
+    $SyncToolComponent = [string] $Definition.sync_tool_component
+    if ($SyncToolComponent.Trim()) {
+      if (-not $ComponentByKey.ContainsKey($SyncToolComponent)) {
+        $Errors.Add("consumer definition $DefinitionKey references unknown sync_tool_component: $SyncToolComponent")
+      } elseif ($ComponentByKey[$SyncToolComponent].status -ne "canonical") {
+        $Errors.Add("consumer definition $DefinitionKey sync_tool_component is not canonical: $SyncToolComponent")
+      }
+    }
+
+    $EntryComponentKeys = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($Entry in (As-Array $Definition.entries)) {
+      $ComponentKey = [string] $Entry.component_key
+      if (-not $ComponentKey.Trim()) {
+        $Errors.Add("consumer definition $DefinitionKey has entry without component_key")
+        continue
+      }
+      if (-not $EntryComponentKeys.Add($ComponentKey)) {
+        $Errors.Add("consumer definition $DefinitionKey has duplicate entry: $ComponentKey")
+      }
+      if (-not $ComponentByKey.ContainsKey($ComponentKey)) {
+        $Errors.Add("consumer definition $DefinitionKey references unknown component: $ComponentKey")
+        continue
+      }
+      if ($ComponentByKey[$ComponentKey].status -ne "canonical") {
+        $Errors.Add("consumer definition $DefinitionKey references non-canonical component: $ComponentKey")
+      }
+      $TargetRelative = ([string] $Entry.target_relative).Replace("\", "/").Trim()
+      if (-not $TargetRelative) {
+        $Errors.Add("consumer definition $DefinitionKey entry $ComponentKey has empty target_relative")
+      }
+      if ($TargetRelative.StartsWith("/") -or $TargetRelative.Contains(":") -or $TargetRelative.Split("/") -contains "..") {
+        $Errors.Add("consumer definition $DefinitionKey entry $ComponentKey has unsafe target_relative: $TargetRelative")
+      }
+    }
+  }
+}
+
 if ($Errors.Count) {
   $Errors | ForEach-Object { Write-Output "ERROR: $_" }
   exit 1

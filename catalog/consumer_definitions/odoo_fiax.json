@@ -1,0 +1,124 @@
+{
+  "key": "odoo_fiax",
+  "title": "Odoo Fiax Consumer Definition",
+  "status": "defined",
+  "workspace": "C:\\git\\customers\\yo\\odoo_fiax",
+  "sync_tool_component": "common-component-sync",
+  "common_root_env": "ODOO_COMMON_ROOT",
+  "generated_targets": [
+    "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+    "src/odoo_fiax_migration/web_assets/odoo_form_layout_surface",
+    "src/odoo_common"
+  ],
+  "entries": [
+    {
+      "component_key": "surface-workspace-shell",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "form-header-identity-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "form-action-bridge-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "line-picker-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "record-context-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "form-preview-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "form-layout-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_form_layout_surface",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "form-subtotals-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "form-totals-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "commercial-policy-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "commercial-capture-context-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "default-persistence",
+      "target_relative": "src/odoo_common/default_persistence",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "form-layout-state",
+      "target_relative": "src/odoo_common/form_layout_state",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "partner-defaults",
+      "target_relative": "src/odoo_common/partner_defaults",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "taxation-helpers",
+      "target_relative": "src/odoo_common/taxation",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "many2x-parent-form-autosave-python",
+      "target_relative": "src/odoo_common/many2x_parent_form_autosave",
+      "mode": "tree",
+      "prune": true
+    }
+  ],
+  "adapter_policy": {
+    "business_assets": "src/odoo_fiax_migration/web_assets/*_native",
+    "bridge_assets": "src/odoo_fiax_migration/web_assets/fiax_native",
+    "common_assets": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+    "python_namespace": "odoo_common",
+    "source_derived_allowed": false,
+    "manual_copy_allowed": false
+  },
+  "minimum_evidence": [
+    "unit tests for common sync bindings",
+    "workspace contract tests",
+    "live workspace validation before consumer commits"
+  ]
+}

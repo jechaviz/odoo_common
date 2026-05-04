@@ -143,6 +143,18 @@
     ]
   },
   {
+    "key": "common_component_sync",
+    "title": "Common Component Sync",
+    "components": [
+      "common-component-sync"
+    ],
+    "use_cases": [
+      "consumer package sync manifests",
+      "generated common package snapshots",
+      "dependency-ordered web asset publication"
+    ]
+  },
+  {
     "key": "binary_attachment_publication",
     "title": "Binary Attachment Publication",
     "components": [

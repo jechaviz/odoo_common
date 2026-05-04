@@ -2,7 +2,7 @@
 
 Workspace actual:
 
-- `C:\git\customers\yo\fiax`
+- `C:\git\customers\yo\odoo_fiax`
 
 Rol principal en `common`:
 
@@ -24,3 +24,11 @@ Nivel actual:
 - base canonica para `packages/web/commercial_capture_context_surface`
 - base canonica para `packages/schema/form_capture_shell`
 - base canonica para `packages/schema/record_context_layout`
+- base canonica para `packages/python/common_component_sync`
+
+Definicion de consumo:
+
+- `catalog/consumer_definitions/odoo_fiax.json`
+- usa `common-component-sync` para traer snapshots generados desde `common`
+- mantiene business/bridge assets en `src/odoo_fiax_migration/web_assets/*_native`
+- prohibe sync de paquetes `source-derived` y copias manuales fuera del manifest

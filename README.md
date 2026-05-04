@@ -2,7 +2,7 @@
 
 Kit comun para ensamblar superficies nativas de Odoo desde contratos canonicos reutilizables. Los paths fuente quedan como trazabilidad de extraccion, no como rutas de soporte ni como receta recomendada de ensamblaje:
 
-- `C:\git\customers\yo\fiax`
+- `C:\git\customers\yo\odoo_fiax`
 - `C:\git\customers\yo\odoo_rpp`
 - `C:\git\customers\yo\rp-rental-mock`
 
@@ -24,6 +24,7 @@ Separar la capa reutilizable de la capa de negocio para poder armar otros proyec
 - `catalog/`
   - indice global de componentes
   - perfiles de ensamblaje
+  - definiciones de consumidores en `catalog/consumer_definitions/`
 - `packages/web/`
   - runtimes JS/CSS reutilizables para cliente web de Odoo
 - `packages/python/`

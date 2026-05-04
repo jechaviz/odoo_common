@@ -439,6 +439,29 @@
     ]
   },
   {
+    "key": "common-component-sync",
+    "title": "Common Component Sync",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/common_component_sync",
+    "origins": [
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/common_sync.py"
+      },
+      {
+        "project": "odoo_fiax",
+        "path": "src/odoo_fiax_migration/common_sync_manifest.json"
+      }
+    ],
+    "features": [
+      "consumer sync manifest",
+      "common catalog resolution",
+      "dependency-ordered sync bindings",
+      "safe generated copy pruning"
+    ]
+  },
+  {
     "key": "tax-upserts",
     "title": "Odoo Tax Upserts",
     "runtime": "python",

@@ -1,0 +1,19 @@
+{
+  "key": "common-component-sync",
+  "title": "Common Component Sync",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_fiax",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "common_component_sync.py"
+  ],
+  "capabilities": [
+    "consumer-sync-manifest",
+    "component-catalog-resolution",
+    "dependency-ordered-file-bindings",
+    "safe-generated-copy-pruning"
+  ]
+}

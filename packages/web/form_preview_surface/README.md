@@ -1,6 +1,6 @@
 # Form Preview Surface
 
-Shared DOM-side preview helpers extracted from the source-derived Rental form preview runtime.
+Shared DOM-side preview helpers for managed Odoo form preview runtimes.
 
 This package owns:
 - managed form root and field resolution
@@ -8,8 +8,8 @@ This package owns:
 - preview value hydration and node visibility sync
 
 This package must stay generic:
-- no rental routes
-- no customer-contact copy
+- no project route naming
+- no business-specific copy or field semantics
 - no project-specific selectors beyond caller-provided nodes and field names
 
 Public API on `window.OdooSurfaceLayers`:
@@ -38,18 +38,22 @@ Use `buildFormPreviewSurfaceAdapter(spec)` when a project or another shared pack
 window.OdooSurfaceLayers.buildFormPreviewSurfaceAdapter({
   selector: ".o_form_view",
   previewFields: {
-    displayReference: {
-      fieldName: "x_document_display_ref",
-      targetSelector: ".o_rp_document_display_ref",
+    primaryPreview: {
+      fieldName: "adapter_primary_field",
+      targetSelector: "[data-surface-preview='primary']",
     },
-    branchLabel: {
-      fieldName: "x_origin_branch_id",
-      targetSelector: "[data-surface-preview='branch']",
+    secondaryPreview: {
+      fieldName: "adapter_secondary_field",
+      targetSelector: "[data-surface-preview='secondary']",
       hideWhenEmpty: true,
     },
   },
 });
 ```
+
+The sample field names and selectors are placeholders. Concrete model fields,
+business labels, and target selectors must be declared by the consumer adapter or
+view spec.
 
 Each preview binding may declare:
 - `fieldName`
@@ -71,3 +75,6 @@ Consumers should provide only:
 - field names or preview targets to read/hydrate
 - optional formatting/writing behavior through `spec`
 - optional focus/empty-write behavior through `options`
+
+The only built-in selector fallback is the generic Odoo form root `.o_form_view`;
+all project DOM targets must enter through `spec` or runtime `options`.

@@ -1,6 +1,6 @@
 # Form Defaults Surface
 
-Shared `default_get` loader extracted from the source-derived Rental form defaults runtime.
+Shared `default_get` loader for managed Odoo form defaults runtimes.
 
 This package owns:
 - cached `default_get` resolution for managed forms
@@ -8,8 +8,8 @@ This package owns:
 - shared ORM helper wiring for form-default loaders
 
 This package must stay generic:
-- no route naming
-- no branch/series/document copy
+- no project route naming
+- no business-specific copy or field semantics
 - no project-specific model defaults
 
 Public API on `window.OdooSurfaceLayers`:
@@ -21,6 +21,11 @@ Consumers should provide only config:
 - optional `kwargs` or `buildKwargs()`
 - optional `isEnabled()`
 - optional `enrichDefaults(defaults, helpers)`
+
+Adapter contract:
+- concrete models and field names must come from the consumer spec
+- enrichment domains, related models, labels, and preview metadata are adapter-owned
+- this surface should only cache and resolve the declared `default_get` request
 
 Resolver helpers exposed to `enrichDefaults`:
 - `ormService`

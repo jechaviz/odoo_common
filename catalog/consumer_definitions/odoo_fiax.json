@@ -136,6 +136,12 @@
       "target_relative": "src/odoo_common/record_upserts",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "odoo-registry-lookup",
+      "target_relative": "src/odoo_common/registry_lookup",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

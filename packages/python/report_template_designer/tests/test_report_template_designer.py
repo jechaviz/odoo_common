@@ -49,7 +49,8 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
                         ],
                     }
                 ],
-            }
+            },
+            sample_values={"total": "14300.00"},
         )
 
         self.assertNotIn("<style", preview)
@@ -57,7 +58,45 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("position:absolute", preview)
         self.assertIn("left:10px;top:5px;width:80px;height:20px", preview)
         self.assertIn("background:#eff6ff", preview)
-        self.assertIn("$F{total}", preview)
+        self.assertIn("14300.00", preview)
+
+    def test_sample_xml_values_hydrate_preview_fields_and_cfdi_qr(self):
+        blueprint = designer.parse_jrxml_document(
+            """
+            <jasperReport name="sample" pageWidth="200" pageHeight="120" columnWidth="200">
+                <field name="UUID" class="java.lang.String"><fieldDescription>TimbreFiscalDigital/@UUID</fieldDescription></field>
+                <field name="rfcEmisor" class="java.lang.String"><fieldDescription>Emisor/@Rfc</fieldDescription></field>
+                <field name="rfcReceptor" class="java.lang.String"><fieldDescription>Receptor/@Rfc</fieldDescription></field>
+                <field name="totalCFDi" class="java.math.BigDecimal"><fieldDescription>@Total</fieldDescription></field>
+                <field name="selloCFD" class="java.lang.String"><fieldDescription>@Sello</fieldDescription></field>
+                <field name="moneda" class="java.lang.String"><fieldDescription>/*/@Moneda</fieldDescription></field>
+                <field name="usoCfdi" class="java.lang.String"><fieldDescription>*[contains(name(),'Receptor')]/@UsoCFDI</fieldDescription></field>
+                <detail><band height="80">
+                    <textField><reportElement x="0" y="0" width="100" height="20"/><textFieldExpression>$F{UUID}</textFieldExpression></textField>
+                    <image><reportElement x="0" y="25" width="50" height="50"/><imageExpression>"?re="+$F{rfcEmisor}+"&amp;rr="+$F{rfcReceptor}+"&amp;tt="+$F{totalCFDi}+"&amp;id="+$F{UUID}</imageExpression></image>
+                </band></detail>
+            </jasperReport>
+            """,
+            source_name="sample.jrxml",
+        )
+        sample_values = designer.build_sample_field_values(
+            blueprint,
+            """
+            <Comprobante Total="14300.00" Moneda="MXN" Sello="abcdefrH8/bw==">
+                <Emisor Rfc="XOCD720319T86"/>
+                <Receptor Rfc="CARR861127SB0" UsoCFDI="G03"/>
+                <Complemento><TimbreFiscalDigital UUID="5803EB8D-81CD-4557-8719-26632D2FA434"/></Complemento>
+            </Comprobante>
+            """,
+        )
+        preview = designer.build_preview_html(blueprint, sample_values=sample_values)
+
+        self.assertEqual(sample_values["UUID"], "5803EB8D-81CD-4557-8719-26632D2FA434")
+        self.assertEqual(sample_values["moneda"], "MXN")
+        self.assertEqual(sample_values["usoCfdi"], "G03")
+        self.assertIn("5803EB8D-81CD-4557-8719-26632D2FA434", preview)
+        self.assertIn("/report/barcode/?barcode_type=QR", preview)
+        self.assertIn("verificacfdi.facturaelectronica.sat.gob.mx", preview)
 
 
 if __name__ == "__main__":

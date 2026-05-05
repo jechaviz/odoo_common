@@ -9,17 +9,27 @@ QWeb, Python, or another trusted renderer.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal, ROUND_HALF_UP
 import html
 import json
 import re
 from pathlib import Path
 import xml.etree.ElementTree as ET
 from typing import Any, Mapping, Sequence
+from urllib.parse import urlencode
 
 
 JRXML_NAMESPACE = "http://jasperreports.sourceforge.net/jasperreports"
 JR = f"{{{JRXML_NAMESPACE}}}"
 REPORT_DESIGNER_SCHEMA_VERSION = "odoo_common.report_template_designer.v1"
+SAT_CFDI_VERIFICATION_URL = "https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx"
+CFDI_FIELD_FALLBACK_PATHS: dict[str, tuple[str, ...]] = {
+    "uuid": ("TimbreFiscalDigital/@UUID",),
+    "rfcemisor": ("Emisor/@Rfc", "Emisor/@rfc"),
+    "rfcreceptor": ("Receptor/@Rfc", "Receptor/@rfc"),
+    "sellocfd": ("TimbreFiscalDigital/@SelloCFD", "TimbreFiscalDigital/@selloCFD", "@Sello", "@sello"),
+    "totalcfdi": ("@Total", "@total"),
+}
 
 
 def _local_name(tag: str) -> str:
@@ -68,6 +78,129 @@ def _expression_refs(expression: str) -> dict[str, list[str]]:
         "parameters": sorted(set(re.findall(r"\$P\{([^}]+)\}", value))),
         "variables": sorted(set(re.findall(r"\$V\{([^}]+)\}", value))),
     }
+
+
+def _xml_name_matches(actual: str, expected: str) -> bool:
+    actual_local = _local_name(actual).split(":", 1)[-1].strip()
+    expected_local = _local_name(expected).split(":", 1)[-1].strip()
+    return actual_local == expected_local or actual_local.lower() == expected_local.lower()
+
+
+def _xml_node_matches_segment(node: ET.Element, segment: str) -> bool:
+    clean_segment = str(segment or "").strip()
+    if clean_segment == "*":
+        return True
+    contains_match = re.search(
+        r"contains\s*\(\s*name\(\)\s*,\s*['\"]([^'\"]+)['\"]\s*\)",
+        clean_segment,
+        flags=re.IGNORECASE,
+    )
+    if contains_match:
+        return contains_match.group(1).lower() in _local_name(node.tag).split(":", 1)[-1].lower()
+    return _xml_name_matches(node.tag, clean_segment)
+
+
+def _xml_attr_value(node: ET.Element, attr_name: str) -> str:
+    clean_name = str(attr_name or "").lstrip("@").strip()
+    for key, value in node.attrib.items():
+        if _xml_name_matches(key, clean_name):
+            return str(value or "").strip()
+    return ""
+
+
+def _xml_descendants_by_name(root: ET.Element, name: str) -> list[ET.Element]:
+    return [node for node in root.iter() if _xml_node_matches_segment(node, name)]
+
+
+def _xml_child_nodes_by_name(nodes: Sequence[ET.Element], name: str) -> list[ET.Element]:
+    return [child for node in nodes for child in list(node) if _xml_node_matches_segment(child, name)]
+
+
+def _resolve_xml_path_value(root: ET.Element, path: str) -> str:
+    clean_path = str(path or "").strip()
+    if not clean_path:
+        return ""
+    if clean_path.startswith("//@"):
+        attr_name = clean_path[3:]
+        for node in root.iter():
+            value = _xml_attr_value(node, attr_name)
+            if value:
+                return value
+        return ""
+    segments = [segment for segment in clean_path.strip("/").split("/") if segment]
+    if not segments:
+        return ""
+
+    first_segment = segments[0]
+    if first_segment.startswith("@"):
+        return _xml_attr_value(root, first_segment)
+    if first_segment == "*" and clean_path.startswith("/*/"):
+        nodes = [root]
+    elif _xml_node_matches_segment(root, first_segment):
+        nodes = [root]
+    elif first_segment == "*" or "contains(" in first_segment:
+        nodes = _xml_child_nodes_by_name([root], first_segment)
+    else:
+        nodes = _xml_descendants_by_name(root, first_segment)
+    segments = segments[1:]
+
+    for segment in segments:
+        if not nodes:
+            return ""
+        if segment.startswith("@"):
+            for node in nodes:
+                value = _xml_attr_value(node, segment)
+                if value:
+                    return value
+            return ""
+        nodes = _xml_child_nodes_by_name(nodes, segment)
+
+    for node in nodes:
+        text_value = _clean_text(node.text)
+        if text_value:
+            return text_value
+    return ""
+
+
+def _resolve_field_description_value(root: ET.Element, description: str, *, fallback_name: str = "") -> str:
+    candidates = [candidate.strip() for candidate in str(description or "").split("|") if candidate.strip()]
+    if fallback_name:
+        candidates.extend(CFDI_FIELD_FALLBACK_PATHS.get(fallback_name.lower(), ()))
+        candidates.append(f"@{fallback_name}")
+        candidates.append(fallback_name)
+    for candidate in candidates:
+        value = _resolve_xml_path_value(root, candidate)
+        if value:
+            return value
+    return ""
+
+
+def build_sample_field_values(
+    blueprint: Mapping[str, Any],
+    sample_xml_source: str | bytes | Path,
+) -> dict[str, str]:
+    """Resolve JRXML field names against one sample XML document.
+
+    Field descriptions may contain one or more XML paths separated by `|`, such
+    as `TimbreFiscalDigital/@UUID|TimbreFiscalDigital/@uUID`.
+    """
+    if isinstance(sample_xml_source, Path):
+        source_text = sample_xml_source.read_text(encoding="utf-8")
+    else:
+        source_text = sample_xml_source.decode("utf-8") if isinstance(sample_xml_source, bytes) else str(sample_xml_source or "")
+    root = ET.fromstring(source_text)
+    values: dict[str, str] = {}
+    for field_spec in blueprint.get("fields") or []:
+        if not isinstance(field_spec, Mapping):
+            continue
+        field_name = str(field_spec.get("name") or "").strip()
+        if not field_name:
+            continue
+        field_description = str(field_spec.get("description") or "").strip()
+        value = _resolve_field_description_value(root, field_description, fallback_name=field_name)
+        if value:
+            values[field_name] = value
+    return values
 
 
 def _element_geometry(element: ET.Element) -> dict[str, int]:
@@ -533,7 +666,104 @@ def _join_inline_style(*parts: str) -> str:
     return "".join(part.rstrip(";") + ";" for part in parts if str(part or "").strip())
 
 
-def _preview_element_html(element: Mapping[str, Any], *, offset_y: int = 0) -> str:
+def _sample_value(sample_values: Mapping[str, Any] | None, field_name: str) -> str:
+    if not sample_values:
+        return ""
+    clean_name = str(field_name or "").strip()
+    if not clean_name:
+        return ""
+    if clean_name in sample_values:
+        return str(sample_values[clean_name] or "").strip()
+    clean_lower = clean_name.lower()
+    for key, value in sample_values.items():
+        if str(key or "").strip().lower() == clean_lower:
+            return str(value or "").strip()
+    return ""
+
+
+def _decode_java_string_literal(value: str) -> str:
+    raw_value = str(value or "")
+    if len(raw_value) >= 2 and raw_value[0] == '"' and raw_value[-1] == '"':
+        raw_value = raw_value[1:-1]
+    return (
+        raw_value
+        .replace(r"\"", '"')
+        .replace(r"\n", "\n")
+        .replace(r"\r", "\n")
+        .replace(r"\t", " ")
+        .replace("\\\\", "\\")
+    )
+
+
+def _strip_preview_markup(value: str) -> str:
+    text = str(value or "")
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    return html.unescape(text).replace("~", " ").strip()
+
+
+def _preview_expression_text(expression: str, sample_values: Mapping[str, Any] | None = None) -> str:
+    source = str(expression or "").strip()
+    if not source:
+        return ""
+    exact_field = re.fullmatch(r"\$F\{([^}]+)\}", source)
+    if exact_field:
+        return _sample_value(sample_values, exact_field.group(1)) or source
+
+    parts: list[str] = []
+    for match in re.finditer(r'"(?:\\.|[^"\\])*"|\$F\{([^}]+)\}', source):
+        token = match.group(0)
+        field_name = match.group(1)
+        if field_name:
+            parts.append(_sample_value(sample_values, field_name) or f"{{{field_name}}}")
+        else:
+            parts.append(_decode_java_string_literal(token))
+    text = _strip_preview_markup("".join(parts))
+    return text or source
+
+
+def _format_cfdi_total(value: Any) -> str:
+    decimal_value = Decimal(str(value or "0")).quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP)
+    if decimal_value < 0:
+        return "0.000000"
+    text = format(decimal_value, "f")
+    integer_part, decimal_part = text.split(".", 1)
+    return f"{integer_part.lstrip('0') or '0'}.{decimal_part}"
+
+
+def _cfdi_qr_barcode_src_from_sample_values(sample_values: Mapping[str, Any] | None) -> str:
+    uuid = _sample_value(sample_values, "UUID")
+    emitter_rfc = _sample_value(sample_values, "rfcEmisor")
+    receiver_rfc = _sample_value(sample_values, "rfcReceptor")
+    total = _sample_value(sample_values, "totalCFDi")
+    seal = _sample_value(sample_values, "selloCFD") or _sample_value(sample_values, "sello")
+    if not (uuid and emitter_rfc and receiver_rfc and total):
+        return ""
+    payload = {
+        "id": uuid,
+        "re": emitter_rfc,
+        "rr": receiver_rfc,
+        "tt": _format_cfdi_total(total),
+    }
+    if seal:
+        payload["fe"] = seal[-8:]
+    verification_url = SAT_CFDI_VERIFICATION_URL + "?" + urlencode(payload)
+    return "/report/barcode/?" + urlencode(
+        {
+            "barcode_type": "QR",
+            "value": verification_url,
+            "width": 180,
+            "height": 180,
+        }
+    )
+
+
+def _preview_element_html(
+    element: Mapping[str, Any],
+    *,
+    offset_y: int = 0,
+    sample_values: Mapping[str, Any] | None = None,
+) -> str:
     kind = str(element.get("type") or "")
     geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
     base_style = _join_inline_style(
@@ -548,19 +778,27 @@ def _preview_element_html(element: Mapping[str, Any], *, offset_y: int = 0) -> s
     elif kind == "textField":
         expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
         base_style = _join_inline_style(base_style, "background:#eff6ff")
+        preview_text = _preview_expression_text(str(expression or ""), sample_values)
         content = (
             '<span class="oc_report_designer_preview__expr" '
             'style="color:#1d4ed8;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;">'
-            f"{html.escape(str(expression or 'campo'))}</span>"
+            f"{html.escape(preview_text or 'campo')}</span>"
         )
     elif kind == "image":
         expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
         base_style = _join_inline_style(base_style, "padding:0;background:#e5e7eb")
-        content = (
-            '<span class="oc_report_designer_preview__image" '
-            'style="align-items:center;box-sizing:border-box;display:flex;height:100%;justify-content:center;padding:2px;text-align:center;text-transform:uppercase;">'
-            f"imagen {html.escape(str(expression or ''))}</span>"
-        )
+        qr_src = _cfdi_qr_barcode_src_from_sample_values(sample_values) if "qrcode" in str(expression or "").lower() or "?re=" in str(expression or "") else ""
+        if qr_src:
+            content = (
+                f'<img class="oc_report_designer_preview__qr" src="{html.escape(qr_src, quote=True)}" '
+                'style="display:block;height:100%;object-fit:contain;width:100%;" alt="Codigo QR CFDI"/>'
+            )
+        else:
+            content = (
+                '<span class="oc_report_designer_preview__image" '
+                'style="align-items:center;box-sizing:border-box;display:flex;height:100%;justify-content:center;padding:2px;text-align:center;text-transform:uppercase;">'
+                f"imagen {html.escape(_preview_expression_text(str(expression or ''), sample_values))}</span>"
+            )
     elif kind == "line":
         content = ""
         classes += " oc_report_designer_preview__line"
@@ -571,7 +809,7 @@ def _preview_element_html(element: Mapping[str, Any], *, offset_y: int = 0) -> s
         base_style = _join_inline_style(base_style, "background:rgba(248,250,252,.45)")
     elif kind == "frame":
         child_html = "".join(
-            _preview_element_html(child, offset_y=0)
+            _preview_element_html(child, offset_y=0, sample_values=sample_values)
             for child in element.get("children") or []
             if isinstance(child, Mapping)
         )
@@ -589,7 +827,12 @@ def _preview_element_html(element: Mapping[str, Any], *, offset_y: int = 0) -> s
     return f"<div class=\"{classes}\" style=\"{base_style}\">{content}</div>"
 
 
-def build_preview_html(blueprint: Mapping[str, Any], *, max_bands: int = 12) -> str:
+def build_preview_html(
+    blueprint: Mapping[str, Any],
+    *,
+    max_bands: int = 12,
+    sample_values: Mapping[str, Any] | None = None,
+) -> str:
     """Build a safe HTML preview that resembles the fixed-band JRXML canvas."""
     page = blueprint.get("page") if isinstance(blueprint.get("page"), Mapping) else {}
     width = int(page.get("width") or 612)
@@ -608,7 +851,7 @@ def build_preview_html(blueprint: Mapping[str, Any], *, max_bands: int = 12) -> 
         )
         for element in band.get("elements") or []:
             if isinstance(element, Mapping):
-                element_html.append(_preview_element_html(element, offset_y=current_y))
+                element_html.append(_preview_element_html(element, offset_y=current_y, sample_values=sample_values))
         current_y += height
     height = max(current_y, int(page.get("height") or 792))
     return (
@@ -636,6 +879,9 @@ def build_design_record_values(
     path = Path(jrxml_path)
     blueprint = parse_jrxml_file(path)
     sample_schemas = [flatten_xml_sample_file(Path(sample_path)) for sample_path in sample_xml_paths]
+    sample_field_values: dict[str, str] = {}
+    for sample_path in sample_xml_paths:
+        sample_field_values.update(build_sample_field_values(blueprint, Path(sample_path)))
     stats = blueprint.get("stats") or {}
     display_name = name or str((blueprint.get("source") or {}).get("report_name") or path.stem)
     return {
@@ -654,8 +900,8 @@ def build_design_record_values(
         "x_expression_count": int(stats.get("expression_count") or 0),
         "x_layout_json": dumps_canonical_json(blueprint),
         "x_expression_json": dumps_canonical_json(blueprint.get("expression_index") or {}),
-        "x_data_schema_json": dumps_canonical_json({"samples": sample_schemas}),
-        "x_preview_html": build_preview_html(blueprint),
+        "x_data_schema_json": dumps_canonical_json({"samples": sample_schemas, "field_values": sample_field_values}),
+        "x_preview_html": build_preview_html(blueprint, sample_values=sample_field_values),
         "x_source_jrxml": path.read_text(encoding="utf-8"),
         "x_notes": "Imported from JRXML. Expressions are indexed for migration and preview but are not executed.",
     }

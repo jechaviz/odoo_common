@@ -8,6 +8,7 @@ QWeb, Python, or another trusted renderer.
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 import html
@@ -29,6 +30,34 @@ CFDI_FIELD_FALLBACK_PATHS: dict[str, tuple[str, ...]] = {
     "rfcreceptor": ("Receptor/@Rfc", "Receptor/@rfc"),
     "sellocfd": ("TimbreFiscalDigital/@SelloCFD", "TimbreFiscalDigital/@selloCFD", "@Sello", "@sello"),
     "totalcfdi": ("@Total", "@total"),
+}
+CFDI_DOC_LABELS: dict[str, dict[str, str]] = {
+    "PYMNT": {"es": "RECIBO DE PAGO", "en": "PAYMENT RECEIPT"},
+    "ZMN3": {"es": "NOTA DE CARGO", "en": "PRESS OFFICE"},
+    "ZML2": {"es": "NOTA DE CARGO", "en": "PRESS OFFICE"},
+    "ZMF2": {"es": "FACTURA", "en": "INVOICE"},
+    "ZMN1": {"es": "FACTURA", "en": "INVOICE"},
+    "ZMF5": {"es": "FACTURA", "en": "INVOICE"},
+    "ZMF8": {"es": "FACTURA", "en": "INVOICE"},
+    "ZMG2": {"es": "NOTA DE CREDITO", "en": "CREDIT NOTE"},
+    "ZMN2": {"es": "NOTA DE CREDITO", "en": "CREDIT NOTE"},
+    "ZMR8": {"es": "NOTA DE CREDITO", "en": "CREDIT NOTE"},
+    "ZMR2": {"es": "NOTA DE CREDITO", "en": "CREDIT NOTE"},
+}
+CFDI_TYPE_LABELS: dict[str, dict[str, str]] = {
+    "I": {"es": "FACTURA", "en": "INVOICE"},
+    "E": {"es": "NOTA DE CREDITO", "en": "CREDIT NOTE"},
+    "T": {"es": "COMPROBANTE DE TRASLADO", "en": "TRANSFER RECEIPT"},
+    "P": {"es": "RECIBO DE PAGO", "en": "PAYMENT RECEIPT"},
+    "N": {"es": "RECIBO DE NOMINA", "en": "PAYROLL RECEIPT"},
+}
+IMAGE_MIME_TYPES = {
+    ".gif": "image/gif",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".webp": "image/webp",
 }
 
 
@@ -162,6 +191,38 @@ def _resolve_xml_path_value(root: ET.Element, path: str) -> str:
     return ""
 
 
+def _xml_path_exists(root: ET.Element, path: str) -> bool:
+    clean_path = str(path or "").strip()
+    if not clean_path:
+        return False
+    if _resolve_xml_path_value(root, clean_path):
+        return True
+    if clean_path.startswith("//@"):
+        attr_name = clean_path[3:]
+        return any(_xml_attr_value(node, attr_name) for node in root.iter())
+    segments = [segment for segment in clean_path.strip("/").split("/") if segment]
+    if not segments:
+        return False
+    first_segment = segments[0]
+    if first_segment.startswith("@"):
+        return bool(_xml_attr_value(root, first_segment))
+    if first_segment == "*" and clean_path.startswith("/*/"):
+        nodes = [root]
+    elif _xml_node_matches_segment(root, first_segment):
+        nodes = [root]
+    elif first_segment == "*" or "contains(" in first_segment:
+        nodes = _xml_child_nodes_by_name([root], first_segment)
+    else:
+        nodes = _xml_descendants_by_name(root, first_segment)
+    for segment in segments[1:]:
+        if not nodes:
+            return False
+        if segment.startswith("@"):
+            return any(_xml_attr_value(node, segment) for node in nodes)
+        nodes = _xml_child_nodes_by_name(nodes, segment)
+    return bool(nodes)
+
+
 def _resolve_field_description_value(root: ET.Element, description: str, *, fallback_name: str = "") -> str:
     candidates = [candidate.strip() for candidate in str(description or "").split("|") if candidate.strip()]
     if fallback_name:
@@ -173,6 +234,15 @@ def _resolve_field_description_value(root: ET.Element, description: str, *, fall
         if value:
             return value
     return ""
+
+
+def _field_description_exists(root: ET.Element, description: str, *, fallback_name: str = "") -> bool:
+    candidates = [candidate.strip() for candidate in str(description or "").split("|") if candidate.strip()]
+    if fallback_name:
+        candidates.extend(CFDI_FIELD_FALLBACK_PATHS.get(fallback_name.lower(), ()))
+        candidates.append(f"@{fallback_name}")
+        candidates.append(fallback_name)
+    return any(_xml_path_exists(root, candidate) for candidate in candidates)
 
 
 def build_sample_field_values(
@@ -200,6 +270,8 @@ def build_sample_field_values(
         value = _resolve_field_description_value(root, field_description, fallback_name=field_name)
         if value:
             values[field_name] = value
+        elif _field_description_exists(root, field_description, fallback_name=field_name):
+            values[field_name] = "__present__"
     return values
 
 
@@ -285,6 +357,24 @@ def _box_style(element: ET.Element) -> dict[str, Any]:
     return style
 
 
+def _parse_style_definitions(root: ET.Element) -> dict[str, dict[str, Any]]:
+    styles: dict[str, dict[str, Any]] = {}
+    for style_node in _all_direct_named(root, "style"):
+        name = str(style_node.get("name") or "").strip()
+        if not name:
+            continue
+        payload: dict[str, Any] = {
+            key: value
+            for key, value in style_node.attrib.items()
+            if str(value or "").strip()
+        }
+        box = _box_style(style_node)
+        if box:
+            payload["box"] = box
+        styles[name] = payload
+    return styles
+
+
 def _component_payload(element: ET.Element) -> dict[str, Any]:
     payload: dict[str, Any] = {}
     for child in list(element):
@@ -358,11 +448,21 @@ def _parse_element(element: ET.Element) -> dict[str, Any]:
     elif element_type == "line":
         graphic = _first_child(element, "graphicElement")
         if graphic is not None:
-            parsed["graphic"] = dict(graphic.attrib)
+            graphic_payload = dict(graphic.attrib)
+            pen = _first_child(graphic, "pen")
+            if pen is not None:
+                graphic_payload["pen"] = dict(pen.attrib)
+            parsed["graphic"] = graphic_payload
     elif element_type == "rectangle":
+        if element.get("radius") is not None:
+            parsed["radius"] = element.get("radius")
         graphic = _first_child(element, "graphicElement")
         if graphic is not None:
-            parsed["graphic"] = dict(graphic.attrib)
+            graphic_payload = dict(graphic.attrib)
+            pen = _first_child(graphic, "pen")
+            if pen is not None:
+                graphic_payload["pen"] = dict(pen.attrib)
+            parsed["graphic"] = graphic_payload
     else:
         parsed["raw_children"] = [_local_name(child.tag) for child in list(element)]
     return parsed
@@ -530,6 +630,7 @@ def parse_jrxml_document(source: str | bytes | Path, *, source_name: str = "") -
                 "left": _int_attr(root, "leftMargin"),
             },
         },
+        "styles": _parse_style_definitions(root),
         "parameters": [_parse_field_like(node) for node in _all_direct_named(root, "parameter")],
         "fields": [_parse_field_like(node) for node in _all_direct_named(root, "field")],
         "variables": [_parse_variable(node) for node in _all_direct_named(root, "variable")],
@@ -654,9 +755,10 @@ def dumps_canonical_json(payload: Mapping[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
 
 
-def _style_from_geometry(geometry: Mapping[str, Any], *, offset_y: int = 0) -> str:
+def _style_from_geometry(geometry: Mapping[str, Any], *, offset_x: int = 0, offset_y: int = 0) -> str:
     x = int(geometry.get("x") or 0)
     y = int(geometry.get("y") or 0) + int(offset_y or 0)
+    x += int(offset_x or 0)
     width = max(int(geometry.get("width") or 0), 1)
     height = max(int(geometry.get("height") or 0), 1)
     return f"left:{x}px;top:{y}px;width:{width}px;height:{height}px;"
@@ -666,6 +768,117 @@ def _join_inline_style(*parts: str) -> str:
     return "".join(part.rstrip(";") + ";" for part in parts if str(part or "").strip())
 
 
+def _css_color(value: Any, default: str = "") -> str:
+    text = str(value or "").strip()
+    if re.fullmatch(r"#[0-9A-Fa-f]{6}", text):
+        return text
+    return default
+
+
+def _truthy_text(value: Any, *, default: bool = False) -> bool:
+    text = str(value or "").strip().lower()
+    if text in {"1", "true", "yes", "y", "si", "sí"}:
+        return True
+    if text in {"0", "false", "no", "n"}:
+        return False
+    return default
+
+
+def _sample_is_spanish(sample_values: Mapping[str, Any] | None) -> bool:
+    language = _sample_value(sample_values, "lenguaje").lower()
+    if language:
+        return language.startswith("es")
+    return _truthy_text(_sample_value(sample_values, "es"), default=True)
+
+
+def _font_css(text_style: Mapping[str, Any] | None) -> str:
+    font = text_style.get("font") if isinstance(text_style, Mapping) and isinstance(text_style.get("font"), Mapping) else {}
+    css = ["font-family:Arial,Helvetica,sans-serif", "line-height:1.05"]
+    size = str(font.get("size") or "").strip()
+    if size.isdigit():
+        css.append(f"font-size:{size}px")
+    else:
+        css.append("font-size:8px")
+    if _truthy_text(font.get("isBold")):
+        css.append("font-weight:700")
+    if _truthy_text(font.get("isItalic")):
+        css.append("font-style:italic")
+    if _truthy_text(font.get("isUnderline")):
+        css.append("text-decoration:underline")
+    return ";".join(css)
+
+
+def _text_alignment_css(text_style: Mapping[str, Any] | None) -> str:
+    if not isinstance(text_style, Mapping):
+        return ""
+    css: list[str] = []
+    horizontal = str(text_style.get("textAlignment") or "").strip().lower()
+    if horizontal in {"left", "center", "right", "justify"}:
+        css.append(f"text-align:{horizontal}")
+    vertical = str(text_style.get("verticalAlignment") or "").strip().lower()
+    if vertical == "middle":
+        css.extend(["display:flex", "align-items:center"])
+        if horizontal == "center":
+            css.append("justify-content:center")
+        elif horizontal == "right":
+            css.append("justify-content:flex-end")
+    elif vertical == "bottom":
+        css.extend(["display:flex", "align-items:flex-end"])
+    return ";".join(css)
+
+
+def _padding_css(box: Mapping[str, Any] | None = None, named_box: Mapping[str, Any] | None = None) -> str:
+    merged: dict[str, Any] = {}
+    if isinstance(named_box, Mapping):
+        merged.update(named_box)
+    if isinstance(box, Mapping):
+        merged.update(box)
+    css: list[str] = []
+    for key, css_key in (
+        ("padding", "padding"),
+        ("topPadding", "padding-top"),
+        ("rightPadding", "padding-right"),
+        ("bottomPadding", "padding-bottom"),
+        ("leftPadding", "padding-left"),
+    ):
+        value = str(merged.get(key) or "").strip()
+        if value.lstrip("-").isdigit():
+            css.append(f"{css_key}:{int(value)}px")
+    return ";".join(css)
+
+
+def _effective_named_box(element: Mapping[str, Any], styles: Mapping[str, Any] | None) -> Mapping[str, Any]:
+    report_element = element.get("report_element") if isinstance(element.get("report_element"), Mapping) else {}
+    style_name = str(report_element.get("style") or "").strip()
+    style = styles.get(style_name) if isinstance(styles, Mapping) else None
+    if isinstance(style, Mapping) and isinstance(style.get("box"), Mapping):
+        return style["box"]
+    return {}
+
+
+def _base_element_css(
+    element: Mapping[str, Any],
+    *,
+    offset_x: int = 0,
+    offset_y: int = 0,
+    default_border: str = "0",
+    default_background: str = "transparent",
+) -> str:
+    geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
+    report_element = element.get("report_element") if isinstance(element.get("report_element"), Mapping) else {}
+    forecolor = _css_color(report_element.get("forecolor"), "#000000")
+    mode = str(report_element.get("mode") or "").strip().lower()
+    backcolor = _css_color(report_element.get("backcolor"), default_background)
+    background = backcolor if mode == "opaque" else default_background
+    return _join_inline_style(
+        _style_from_geometry(geometry, offset_x=offset_x, offset_y=offset_y),
+        "position:absolute;box-sizing:border-box;overflow:hidden;white-space:pre-wrap",
+        f"border:{default_border}",
+        f"color:{forecolor}",
+        f"background:{background}",
+    )
+
+
 def _sample_value(sample_values: Mapping[str, Any] | None, field_name: str) -> str:
     if not sample_values:
         return ""
@@ -673,12 +886,24 @@ def _sample_value(sample_values: Mapping[str, Any] | None, field_name: str) -> s
     if not clean_name:
         return ""
     if clean_name in sample_values:
-        return str(sample_values[clean_name] or "").strip()
+        value = str(sample_values[clean_name] or "").strip()
+        return "" if value == "__present__" else value
     clean_lower = clean_name.lower()
     for key, value in sample_values.items():
         if str(key or "").strip().lower() == clean_lower:
-            return str(value or "").strip()
+            text = str(value or "").strip()
+            return "" if text == "__present__" else text
     return ""
+
+
+def _sample_present(sample_values: Mapping[str, Any] | None, field_name: str) -> bool:
+    if not sample_values:
+        return False
+    clean_name = str(field_name or "").strip()
+    if clean_name in sample_values:
+        return bool(str(sample_values[clean_name] or "").strip())
+    clean_lower = clean_name.lower()
+    return any(str(key or "").strip().lower() == clean_lower and bool(str(value or "").strip()) for key, value in sample_values.items())
 
 
 def _decode_java_string_literal(value: str) -> str:
@@ -702,24 +927,155 @@ def _strip_preview_markup(value: str) -> str:
     return html.unescape(text).replace("~", " ").strip()
 
 
+def _localize_i18n_markers(value: str, sample_values: Mapping[str, Any] | None = None) -> str:
+    use_spanish = _sample_is_spanish(sample_values)
+    tipo = _sample_value(sample_values, "tipoDeComprobante")
+
+    def replace_three(match: re.Match[str]) -> str:
+        spanish, english, payment = match.group(1), match.group(2), match.group(3)
+        if tipo == "P":
+            return payment
+        return spanish if use_spanish else english
+
+    def replace_two(match: re.Match[str]) -> str:
+        spanish, english = match.group(1), match.group(2)
+        return spanish if use_spanish else english
+
+    text = re.sub(r"~([^~]+)~([^~]+)~([^~]+)~", replace_three, str(value or ""))
+    return re.sub(r"~([^~]+)~([^~]+)~", replace_two, text)
+
+
+def _preview_noise_literal(value: str) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+    if re.search(r"\(\.\+\??\)|\\\$[0-9]|\$[0-9]", text):
+        return True
+    return text in {"null", "&", "&#38;"}
+
+
+def _cfdi_document_label(sample_values: Mapping[str, Any] | None) -> str:
+    language = "es" if _sample_is_spanish(sample_values) else "en"
+    doc = _sample_value(sample_values, "doc") or _sample_value(sample_values, "observaciones2")
+    if doc in CFDI_DOC_LABELS:
+        return CFDI_DOC_LABELS[doc][language]
+    tipo = _sample_value(sample_values, "tipoDeComprobante")
+    if tipo in CFDI_TYPE_LABELS:
+        return CFDI_TYPE_LABELS[tipo][language]
+    return ""
+
+
+def _join_preview_lines(*lines: str) -> str:
+    return "\n".join(line for line in (str(line or "").strip() for line in lines) if line)
+
+
+def _format_party_block(sample_values: Mapping[str, Any] | None, prefix: str) -> str:
+    name = _sample_value(sample_values, f"nombre{prefix}")
+    street = _sample_value(sample_values, f"calle{prefix}")
+    exterior = _sample_value(sample_values, f"noExt{prefix}")
+    interior = _sample_value(sample_values, f"noInt{prefix}")
+    colony = _sample_value(sample_values, f"colonia{prefix}")
+    postal_code = _sample_value(sample_values, f"cp{prefix}")
+    locality = _sample_value(sample_values, f"localidad{prefix}")
+    municipality = _sample_value(sample_values, f"municipio{prefix}")
+    state = _sample_value(sample_values, f"estado{prefix}")
+    country = _sample_value(sample_values, f"pais{prefix}")
+    rfc = _sample_value(sample_values, f"rfc{prefix}")
+    tax_id = _sample_value(sample_values, f"taxid{prefix}") or _sample_value(sample_values, "NumRegIdTrib")
+    reference = _sample_value(sample_values, f"ref{prefix}") or _sample_value(sample_values, f"referencia{prefix}")
+    customer_id = _sample_value(sample_values, f"id{prefix}")
+    street_line = " ".join(part for part in (street, f"No. {exterior}" if exterior else "", f"Int. {interior}" if interior else "") if part)
+    city_line = " ".join(part for part in (colony, f"C.P. {postal_code}" if postal_code else "") if part)
+    region_line = ", ".join(part for part in (locality, municipality, state, country) if part)
+    return _join_preview_lines(
+        name,
+        street_line,
+        city_line,
+        region_line,
+        reference,
+        f"RFC: {rfc}" if rfc else "",
+        f"TAX ID: {tax_id}" if tax_id else "",
+        f"No de cliente: {customer_id}" if customer_id else "",
+    )
+
+
+def _special_preview_expression_text(source: str, sample_values: Mapping[str, Any] | None = None) -> str:
+    if "$V{docs}" in source and ("$F{doc}" in source or "$F{tipoDeComprobante}" in source):
+        return _cfdi_document_label(sample_values)
+    if "$F{serie}" in source and "$F{folio}" in source:
+        serie = _sample_value(sample_values, "serie").upper()
+        folio = _sample_value(sample_values, "folio")
+        return f"{serie} - {folio}".strip(" -")
+    if "Folio Fiscal" in source and "$F{UUID}" in source:
+        return _join_preview_lines("Folio Fiscal:", _sample_value(sample_values, "UUID"))
+    if "Fecha/Hora" in source and "No. Certificado" in source:
+        return _join_preview_lines(
+            "Fecha/Hora Certificación:",
+            "Fecha de Emisión:",
+            "No. Certificado Digital:",
+            "No. Serie Certificado SAT:",
+        )
+    if "$F{FechaTimbrado}" in source and "$F{fechaEmision}" in source and "$F{noCertificadoSAT}" in source:
+        return _join_preview_lines(
+            _sample_value(sample_values, "FechaTimbrado"),
+            _sample_value(sample_values, "fechaEmision"),
+            _sample_value(sample_values, "noCertificadoDigital"),
+            _sample_value(sample_values, "noCertificadoSAT"),
+        )
+    if "Facturado a" in source and "Invoiced to" in source:
+        return "Facturado a:"
+    if "Embarcar a" in source and "Shipped To" in source:
+        return "Embarcar a:"
+    if "$F{nombreReceptor}" in source and "$F{rfcReceptor}" in source:
+        return _format_party_block(sample_values, "Receptor")
+    if "$F{nombreEmbarque}" in source or "$F{rfcEmbarque}" in source:
+        return _format_party_block(sample_values, "Embarque")
+    if "Lugar de Exped" in source and "$F{calleEmisor}" in source:
+        return _join_preview_lines(
+            "Lugar de Expedición:",
+            _format_party_block(sample_values, "Emisor").split("\n", 1)[1] if "\n" in _format_party_block(sample_values, "Emisor") else "",
+        )
+    if "$F{selloCFD}" in source and source.strip() == "$F{selloCFD}":
+        return _sample_value(sample_values, "selloCFD")
+    if "$F{selloSAT}" in source and source.strip() == "$F{selloSAT}":
+        return _sample_value(sample_values, "selloSAT")
+    if "$F{cadenaOriginal}" in source and source.strip() == "$F{cadenaOriginal}":
+        return _sample_value(sample_values, "cadenaOriginal")
+    if "Página" in source or "Page" in source or "$V{PAGE_NUMBER}" in source:
+        return "Página 1 de 1"
+    return ""
+
+
 def _preview_expression_text(expression: str, sample_values: Mapping[str, Any] | None = None) -> str:
     source = str(expression or "").strip()
     if not source:
         return ""
     exact_field = re.fullmatch(r"\$F\{([^}]+)\}", source)
     if exact_field:
-        return _sample_value(sample_values, exact_field.group(1)) or source
+        return _sample_value(sample_values, exact_field.group(1))
+    special_text = _special_preview_expression_text(source, sample_values)
+    if special_text:
+        return special_text
 
     parts: list[str] = []
     for match in re.finditer(r'"(?:\\.|[^"\\])*"|\$F\{([^}]+)\}', source):
         token = match.group(0)
         field_name = match.group(1)
         if field_name:
-            parts.append(_sample_value(sample_values, field_name) or f"{{{field_name}}}")
+            value = _sample_value(sample_values, field_name)
+            if value:
+                parts.append(value)
         else:
-            parts.append(_decode_java_string_literal(token))
+            literal = _decode_java_string_literal(token)
+            if _preview_noise_literal(literal):
+                continue
+            parts.append(_localize_i18n_markers(literal, sample_values))
     text = _strip_preview_markup("".join(parts))
-    return text or source
+    if text:
+        return text
+    if re.fullmatch(r'"(?:\\.|[^"\\])*"', source):
+        return _strip_preview_markup(_decode_java_string_literal(source))
+    return ""
 
 
 def _format_cfdi_total(value: Any) -> str:
@@ -758,35 +1114,89 @@ def _cfdi_qr_barcode_src_from_sample_values(sample_values: Mapping[str, Any] | N
     )
 
 
+def _literal_image_name(expression: str, sample_values: Mapping[str, Any] | None = None) -> str:
+    preview_text = _preview_expression_text(expression, sample_values).strip()
+    if re.search(r"\.(png|jpe?g|gif|webp|svg)$", preview_text, flags=re.IGNORECASE):
+        return preview_text.strip("\"'")
+    return ""
+
+
+def _image_data_uri(image_name: str, asset_base_path: str | Path | None = None) -> str:
+    if not image_name or asset_base_path is None:
+        return ""
+    base_path = Path(asset_base_path)
+    candidate = (base_path / image_name).resolve()
+    try:
+        candidate.relative_to(base_path.resolve())
+    except ValueError:
+        return ""
+    if not candidate.is_file():
+        return ""
+    mime_type = IMAGE_MIME_TYPES.get(candidate.suffix.lower())
+    if not mime_type:
+        return ""
+    encoded = base64.b64encode(candidate.read_bytes()).decode("ascii")
+    return f"data:{mime_type};base64,{encoded}"
+
+
+def _print_when_allows(element: Mapping[str, Any], sample_values: Mapping[str, Any] | None = None) -> bool:
+    report_element = element.get("report_element") if isinstance(element.get("report_element"), Mapping) else {}
+    print_when = report_element.get("print_when") if isinstance(report_element.get("print_when"), Mapping) else {}
+    expression = str(print_when.get("expression") or "").strip()
+    if not expression:
+        return True
+    not_null = re.fullmatch(r"\$F\{([^}]+)\}\s*!=\s*null", expression)
+    if not_null:
+        return _sample_present(sample_values, not_null.group(1))
+    is_null = re.fullmatch(r"\$F\{([^}]+)\}\s*==\s*null", expression)
+    if is_null:
+        return not _sample_present(sample_values, is_null.group(1))
+    return True
+
+
 def _preview_element_html(
     element: Mapping[str, Any],
     *,
+    asset_base_path: str | Path | None = None,
+    offset_x: int = 0,
     offset_y: int = 0,
     sample_values: Mapping[str, Any] | None = None,
+    styles: Mapping[str, Any] | None = None,
 ) -> str:
+    if not _print_when_allows(element, sample_values):
+        return ""
     kind = str(element.get("type") or "")
-    geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
-    base_style = _join_inline_style(
-        _style_from_geometry(geometry, offset_y=offset_y),
-        "position:absolute;box-sizing:border-box;border:1px solid rgba(59,130,246,.35);color:#111827;font-size:10px;line-height:1.15;overflow:hidden;padding:2px;white-space:pre-wrap;background:#fff",
-    )
     classes = "oc_report_designer_preview__element"
     if kind:
         classes += f" oc_report_designer_preview__element--{html.escape(kind)}"
     if kind == "staticText":
+        text_style = element.get("text_style") if isinstance(element.get("text_style"), Mapping) else {}
+        box = element.get("box") if isinstance(element.get("box"), Mapping) else {}
+        base_style = _join_inline_style(
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            _font_css(text_style),
+            _text_alignment_css(text_style),
+            _padding_css(box, _effective_named_box(element, styles)),
+        )
         content = html.escape(str(element.get("text") or ""))
     elif kind == "textField":
-        expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
-        base_style = _join_inline_style(base_style, "background:#eff6ff")
-        preview_text = _preview_expression_text(str(expression or ""), sample_values)
-        content = (
-            '<span class="oc_report_designer_preview__expr" '
-            'style="color:#1d4ed8;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;">'
-            f"{html.escape(preview_text or 'campo')}</span>"
+        text_style = element.get("text_style") if isinstance(element.get("text_style"), Mapping) else {}
+        box = element.get("box") if isinstance(element.get("box"), Mapping) else {}
+        base_style = _join_inline_style(
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            _font_css(text_style),
+            _text_alignment_css(text_style),
+            _padding_css(box, _effective_named_box(element, styles)),
         )
-    elif kind == "image":
         expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
-        base_style = _join_inline_style(base_style, "padding:0;background:#e5e7eb")
+        preview_text = _preview_expression_text(str(expression or ""), sample_values)
+        content = html.escape(preview_text)
+    elif kind == "image":
+        base_style = _join_inline_style(
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            "padding:0",
+        )
+        expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
         qr_src = _cfdi_qr_barcode_src_from_sample_values(sample_values) if "qrcode" in str(expression or "").lower() or "?re=" in str(expression or "") else ""
         if qr_src:
             content = (
@@ -794,70 +1204,114 @@ def _preview_element_html(
                 'style="display:block;height:100%;object-fit:contain;width:100%;" alt="Codigo QR CFDI"/>'
             )
         else:
-            content = (
-                '<span class="oc_report_designer_preview__image" '
-                'style="align-items:center;box-sizing:border-box;display:flex;height:100%;justify-content:center;padding:2px;text-align:center;text-transform:uppercase;">'
-                f"imagen {html.escape(_preview_expression_text(str(expression or ''), sample_values))}</span>"
-            )
+            image_name = _literal_image_name(str(expression or ""), sample_values)
+            data_uri = _image_data_uri(image_name, asset_base_path)
+            if data_uri:
+                content = (
+                    f'<img class="oc_report_designer_preview__asset" src="{html.escape(data_uri, quote=True)}" '
+                    'style="display:block;height:100%;object-fit:contain;width:100%;" alt=""/>'
+                )
+            else:
+                content = ""
     elif kind == "line":
         content = ""
         classes += " oc_report_designer_preview__line"
-        base_style = _join_inline_style(base_style, "border:0;border-top:1px solid #111827;background:transparent;padding:0")
+        geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
+        report_element = element.get("report_element") if isinstance(element.get("report_element"), Mapping) else {}
+        color = _css_color(report_element.get("forecolor"), "#000000")
+        line_style = "dotted" if "Dotted" in str(element.get("graphic") or "") else "solid"
+        border_css = f"border-left:1px {line_style} {color}" if int(geometry.get("width") or 0) <= 1 else f"border-top:1px {line_style} {color}"
+        base_style = _join_inline_style(
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            "background:transparent;padding:0",
+            "border:0",
+            border_css,
+        )
     elif kind == "rectangle":
         content = ""
         classes += " oc_report_designer_preview__rectangle"
-        base_style = _join_inline_style(base_style, "background:rgba(248,250,252,.45)")
+        report_element = element.get("report_element") if isinstance(element.get("report_element"), Mapping) else {}
+        color = _css_color(report_element.get("forecolor"), "#8E8E8E")
+        radius = str(element.get("radius") or "").strip()
+        radius_css = f"border-radius:{radius}px" if radius.isdigit() else ""
+        base_style = _join_inline_style(
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, default_border=f"1px solid {color}"),
+            radius_css,
+            "pointer-events:none",
+        )
     elif kind == "frame":
+        base_style = _join_inline_style(
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            "padding:0",
+        )
         child_html = "".join(
-            _preview_element_html(child, offset_y=0, sample_values=sample_values)
+            _preview_element_html(
+                child,
+                asset_base_path=asset_base_path,
+                offset_x=0,
+                offset_y=0,
+                sample_values=sample_values,
+                styles=styles,
+            )
             for child in element.get("children") or []
             if isinstance(child, Mapping)
         )
-        content = child_html or '<span class="oc_report_designer_preview__muted" style="color:#64748b;">frame</span>'
+        content = child_html
         classes += " oc_report_designer_preview__frame"
-        base_style = _join_inline_style(base_style, "background:rgba(248,250,252,.45)")
     elif kind == "componentElement":
-        content = (
-            '<span class="oc_report_designer_preview__component" '
-            'style="background:#fef3c7;color:#92400e;display:inline-block;padding:2px 4px;">'
-            f"{html.escape(str(element.get('component') or 'componente'))}</span>"
+        content = ""
+        base_style = _join_inline_style(
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            "padding:0",
         )
+    elif kind in {"subreport", "break", "printWhenExpression"}:
+        return ""
     else:
-        content = html.escape(kind or "elemento")
+        base_style = _base_element_css(element, offset_x=offset_x, offset_y=offset_y)
+        content = ""
     return f"<div class=\"{classes}\" style=\"{base_style}\">{content}</div>"
 
 
 def build_preview_html(
     blueprint: Mapping[str, Any],
     *,
+    asset_base_path: str | Path | None = None,
     max_bands: int = 12,
     sample_values: Mapping[str, Any] | None = None,
 ) -> str:
     """Build a safe HTML preview that resembles the fixed-band JRXML canvas."""
     page = blueprint.get("page") if isinstance(blueprint.get("page"), Mapping) else {}
     width = int(page.get("width") or 612)
+    margins = page.get("margins") if isinstance(page.get("margins"), Mapping) else {}
+    margin_left = int(margins.get("left") or 0)
+    margin_top = int(margins.get("top") or 0)
+    margin_bottom = int(margins.get("bottom") or 0)
+    styles = blueprint.get("styles") if isinstance(blueprint.get("styles"), Mapping) else {}
     bands = list(blueprint.get("bands") or [])[: max(int(max_bands or 0), 1)]
     current_y = 0
-    band_html: list[str] = []
     element_html: list[str] = []
     for band in bands:
         if not isinstance(band, Mapping):
             continue
         height = max(int(band.get("height") or 1), 1)
-        band_name = html.escape(str(band.get("name") or "band"))
-        band_html.append(
-            f"<div class=\"oc_report_designer_preview__band\" style=\"position:absolute;left:0;right:0;top:{current_y}px;height:{height}px;border-top:1px dashed #cbd5e1;color:#64748b;font-size:9px;line-height:1;pointer-events:none;\">"
-            f"<span style=\"background:#f8fafc;padding:1px 4px;\">{band_name}</span></div>"
-        )
         for element in band.get("elements") or []:
             if isinstance(element, Mapping):
-                element_html.append(_preview_element_html(element, offset_y=current_y, sample_values=sample_values))
+                element_html.append(
+                    _preview_element_html(
+                        element,
+                        asset_base_path=asset_base_path,
+                        offset_x=margin_left,
+                        offset_y=margin_top + current_y,
+                        sample_values=sample_values,
+                        styles=styles,
+                    )
+                )
         current_y += height
-    height = max(current_y, int(page.get("height") or 792))
+    height = max(margin_top + current_y + margin_bottom, int(page.get("height") or 792))
     return (
-        '<div class="oc_report_designer_preview" style="background:#f3f4f6;border:1px solid #d1d5db;box-sizing:border-box;max-width:100%;overflow:auto;padding:16px;">'
-        f'<div class="oc_report_designer_preview__page" style="background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.18);height:{height}px;margin:0 auto;position:relative;width:{width}px;">'
-        f"{''.join(band_html)}{''.join(element_html)}</div></div>"
+        '<div class="oc_report_designer_preview" style="background:#e5e7eb;border:1px solid #d1d5db;box-sizing:border-box;max-width:100%;overflow:auto;padding:12px;">'
+        f'<div class="oc_report_designer_preview__page" style="background:#fff;box-shadow:0 4px 18px rgba(15,23,42,.22);height:{height}px;margin:0 auto;position:relative;width:{width}px;">'
+        f"{''.join(element_html)}</div></div>"
     )
 
 
@@ -881,7 +1335,9 @@ def build_design_record_values(
     sample_schemas = [flatten_xml_sample_file(Path(sample_path)) for sample_path in sample_xml_paths]
     sample_field_values: dict[str, str] = {}
     for sample_path in sample_xml_paths:
-        sample_field_values.update(build_sample_field_values(blueprint, Path(sample_path)))
+        values = build_sample_field_values(blueprint, Path(sample_path))
+        if not sample_field_values:
+            sample_field_values = values
     stats = blueprint.get("stats") or {}
     display_name = name or str((blueprint.get("source") or {}).get("report_name") or path.stem)
     return {
@@ -901,7 +1357,7 @@ def build_design_record_values(
         "x_layout_json": dumps_canonical_json(blueprint),
         "x_expression_json": dumps_canonical_json(blueprint.get("expression_index") or {}),
         "x_data_schema_json": dumps_canonical_json({"samples": sample_schemas, "field_values": sample_field_values}),
-        "x_preview_html": build_preview_html(blueprint, sample_values=sample_field_values),
+        "x_preview_html": build_preview_html(blueprint, asset_base_path=path.parent, sample_values=sample_field_values),
         "x_source_jrxml": path.read_text(encoding="utf-8"),
         "x_notes": "Imported from JRXML. Expressions are indexed for migration and preview but are not executed.",
     }

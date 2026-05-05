@@ -1,0 +1,19 @@
+{
+  "key": "report-template-mapping",
+  "title": "Neutral Report Template Mapping",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "smp-ireport",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "report_template_mapping.py"
+  ],
+  "capabilities": [
+    "jrxml-field-alias-mapping",
+    "qweb-mapping-context",
+    "cfdi40-sat-qr-payload",
+    "odoo-barcode-qr-image"
+  ]
+}

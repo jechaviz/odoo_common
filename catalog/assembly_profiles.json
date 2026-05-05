@@ -460,6 +460,7 @@
     "components": [
       "report-template-designer",
       "report-template-builder",
+      "report-template-mapping",
       "text-templates",
       "report-upserts",
       "record-upserts",
@@ -470,6 +471,8 @@
       "band and fixed-canvas inspection",
       "XML sample data mapping",
       "safe expression indexing",
+      "JRXML alias to Odoo/QWeb/XML mapping",
+      "SAT CFDI QR payload generation",
       "designer records independent of business verticals",
       "band-driven QWeb publication plans",
       "reserved PDF header/footer layout plans"

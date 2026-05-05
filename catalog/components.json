@@ -1065,6 +1065,25 @@
     ]
   },
   {
+    "key": "report-template-mapping",
+    "title": "Neutral Report Template Mapping",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/report_template_mapping",
+    "origins": [
+      {
+        "project": "smp-ireport",
+        "path": "C:\\git\\customers\\smp\\Templates\\plantilla"
+      }
+    ],
+    "features": [
+      "JRXML field alias mapping",
+      "QWeb mapping context",
+      "SAT CFDI 4.0 QR verification payload",
+      "Odoo barcode QR image source"
+    ]
+  },
+  {
     "key": "mail-template-upserts",
     "title": "Odoo Mail Template Upserts",
     "runtime": "python",

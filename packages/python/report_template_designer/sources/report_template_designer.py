@@ -529,10 +529,17 @@ def _style_from_geometry(geometry: Mapping[str, Any], *, offset_y: int = 0) -> s
     return f"left:{x}px;top:{y}px;width:{width}px;height:{height}px;"
 
 
+def _join_inline_style(*parts: str) -> str:
+    return "".join(part.rstrip(";") + ";" for part in parts if str(part or "").strip())
+
+
 def _preview_element_html(element: Mapping[str, Any], *, offset_y: int = 0) -> str:
     kind = str(element.get("type") or "")
     geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
-    base_style = _style_from_geometry(geometry, offset_y=offset_y)
+    base_style = _join_inline_style(
+        _style_from_geometry(geometry, offset_y=offset_y),
+        "position:absolute;box-sizing:border-box;border:1px solid rgba(59,130,246,.35);color:#111827;font-size:10px;line-height:1.15;overflow:hidden;padding:2px;white-space:pre-wrap;background:#fff",
+    )
     classes = "oc_report_designer_preview__element"
     if kind:
         classes += f" oc_report_designer_preview__element--{html.escape(kind)}"
@@ -540,26 +547,43 @@ def _preview_element_html(element: Mapping[str, Any], *, offset_y: int = 0) -> s
         content = html.escape(str(element.get("text") or ""))
     elif kind == "textField":
         expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
-        content = f"<span class=\"oc_report_designer_preview__expr\">{html.escape(str(expression or 'campo'))}</span>"
+        base_style = _join_inline_style(base_style, "background:#eff6ff")
+        content = (
+            '<span class="oc_report_designer_preview__expr" '
+            'style="color:#1d4ed8;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;">'
+            f"{html.escape(str(expression or 'campo'))}</span>"
+        )
     elif kind == "image":
         expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
-        content = f"<span class=\"oc_report_designer_preview__image\">imagen {html.escape(str(expression or ''))}</span>"
+        base_style = _join_inline_style(base_style, "padding:0;background:#e5e7eb")
+        content = (
+            '<span class="oc_report_designer_preview__image" '
+            'style="align-items:center;box-sizing:border-box;display:flex;height:100%;justify-content:center;padding:2px;text-align:center;text-transform:uppercase;">'
+            f"imagen {html.escape(str(expression or ''))}</span>"
+        )
     elif kind == "line":
         content = ""
         classes += " oc_report_designer_preview__line"
+        base_style = _join_inline_style(base_style, "border:0;border-top:1px solid #111827;background:transparent;padding:0")
     elif kind == "rectangle":
         content = ""
         classes += " oc_report_designer_preview__rectangle"
+        base_style = _join_inline_style(base_style, "background:rgba(248,250,252,.45)")
     elif kind == "frame":
         child_html = "".join(
             _preview_element_html(child, offset_y=0)
             for child in element.get("children") or []
             if isinstance(child, Mapping)
         )
-        content = child_html or "<span class=\"oc_report_designer_preview__muted\">frame</span>"
+        content = child_html or '<span class="oc_report_designer_preview__muted" style="color:#64748b;">frame</span>'
         classes += " oc_report_designer_preview__frame"
+        base_style = _join_inline_style(base_style, "background:rgba(248,250,252,.45)")
     elif kind == "componentElement":
-        content = f"<span class=\"oc_report_designer_preview__component\">{html.escape(str(element.get('component') or 'componente'))}</span>"
+        content = (
+            '<span class="oc_report_designer_preview__component" '
+            'style="background:#fef3c7;color:#92400e;display:inline-block;padding:2px 4px;">'
+            f"{html.escape(str(element.get('component') or 'componente'))}</span>"
+        )
     else:
         content = html.escape(kind or "elemento")
     return f"<div class=\"{classes}\" style=\"{base_style}\">{content}</div>"
@@ -579,8 +603,8 @@ def build_preview_html(blueprint: Mapping[str, Any], *, max_bands: int = 12) -> 
         height = max(int(band.get("height") or 1), 1)
         band_name = html.escape(str(band.get("name") or "band"))
         band_html.append(
-            f"<div class=\"oc_report_designer_preview__band\" style=\"top:{current_y}px;height:{height}px;\">"
-            f"<span>{band_name}</span></div>"
+            f"<div class=\"oc_report_designer_preview__band\" style=\"position:absolute;left:0;right:0;top:{current_y}px;height:{height}px;border-top:1px dashed #cbd5e1;color:#64748b;font-size:9px;line-height:1;pointer-events:none;\">"
+            f"<span style=\"background:#f8fafc;padding:1px 4px;\">{band_name}</span></div>"
         )
         for element in band.get("elements") or []:
             if isinstance(element, Mapping):
@@ -588,22 +612,8 @@ def build_preview_html(blueprint: Mapping[str, Any], *, max_bands: int = 12) -> 
         current_y += height
     height = max(current_y, int(page.get("height") or 792))
     return (
-        "<style>"
-        ".oc_report_designer_preview{background:#f3f4f6;border:1px solid #d1d5db;overflow:auto;padding:16px;}"
-        ".oc_report_designer_preview__page{background:white;box-shadow:0 12px 30px rgba(15,23,42,.18);position:relative;}"
-        ".oc_report_designer_preview__band{border-top:1px dashed #cbd5e1;color:#64748b;font-size:9px;left:0;position:absolute;right:0;}"
-        ".oc_report_designer_preview__band span{background:#f8fafc;padding:1px 4px;}"
-        ".oc_report_designer_preview__element{border:1px solid rgba(59,130,246,.35);box-sizing:border-box;color:#111827;font-size:10px;overflow:hidden;padding:2px;position:absolute;white-space:pre-wrap;}"
-        ".oc_report_designer_preview__element--textField{background:#eff6ff;}"
-        ".oc_report_designer_preview__element--staticText{background:#fff;}"
-        ".oc_report_designer_preview__expr{color:#1d4ed8;font-family:monospace;}"
-        ".oc_report_designer_preview__image{align-items:center;background:#e5e7eb;display:flex;height:100%;justify-content:center;text-transform:uppercase;}"
-        ".oc_report_designer_preview__line{border:0;border-top:1px solid #111827;padding:0;}"
-        ".oc_report_designer_preview__rectangle,.oc_report_designer_preview__frame{background:rgba(248,250,252,.45);}"
-        ".oc_report_designer_preview__component{background:#fef3c7;color:#92400e;display:inline-block;padding:2px 4px;}"
-        ".oc_report_designer_preview__muted{color:#64748b;}"
-        "</style>"
-        f"<div class=\"oc_report_designer_preview\"><div class=\"oc_report_designer_preview__page\" style=\"width:{width}px;height:{height}px;\">"
+        '<div class="oc_report_designer_preview" style="background:#f3f4f6;border:1px solid #d1d5db;box-sizing:border-box;max-width:100%;overflow:auto;padding:16px;">'
+        f'<div class="oc_report_designer_preview__page" style="background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.18);height:{height}px;margin:0 auto;position:relative;width:{width}px;">'
         f"{''.join(band_html)}{''.join(element_html)}</div></div>"
     )
 
@@ -768,28 +778,35 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
             """
             <form string="Diseno de plantilla">
                 <sheet>
-                    <group>
-                        <group string="Plantilla">
-                            <field name="x_name"/>
-                            <field name="x_code"/>
-                            <field name="x_document_family"/>
-                            <field name="x_source_format"/>
-                            <field name="x_render_stage"/>
-                            <field name="x_active"/>
-                        </group>
-                        <group string="Complejidad">
-                            <field name="x_source_name"/>
-                            <field name="x_page_width"/>
-                            <field name="x_page_height"/>
-                            <field name="x_band_count"/>
-                            <field name="x_element_count"/>
-                            <field name="x_dataset_count"/>
-                            <field name="x_expression_count"/>
-                        </group>
-                    </group>
                     <notebook>
                         <page string="Preview">
-                            <field name="x_preview_html" nolabel="1"/>
+                            <group>
+                                <field name="x_code" readonly="1"/>
+                                <field name="x_name" readonly="1"/>
+                                <field name="x_source_name" readonly="1"/>
+                            </group>
+                            <field name="x_preview_html" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="Resumen">
+                            <group>
+                                <group string="Plantilla">
+                                    <field name="x_name"/>
+                                    <field name="x_code"/>
+                                    <field name="x_document_family"/>
+                                    <field name="x_source_format"/>
+                                    <field name="x_render_stage"/>
+                                    <field name="x_active"/>
+                                </group>
+                                <group string="Complejidad">
+                                    <field name="x_source_name"/>
+                                    <field name="x_page_width"/>
+                                    <field name="x_page_height"/>
+                                    <field name="x_band_count"/>
+                                    <field name="x_element_count"/>
+                                    <field name="x_dataset_count"/>
+                                    <field name="x_expression_count"/>
+                                </group>
+                            </group>
                         </page>
                         <page string="Bandas y layout">
                             <field name="x_layout_json" nolabel="1"/>

@@ -273,6 +273,8 @@ def render_template_registry(
     rendered: dict[str, str] = {}
     for entry_value in entries:
         entry = entry_value if isinstance(entry_value, TemplateRegistryEntry) else TemplateRegistryEntry(**dict(entry_value))
+        if entry.key in rendered:
+            raise ValueError(f"Duplicate report template registry key: {entry.key!r}")
         rendered[entry.key] = render_template_file(
             templates_dir,
             entry.filename,

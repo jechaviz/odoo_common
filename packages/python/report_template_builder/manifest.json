@@ -10,6 +10,13 @@
     "__init__.py",
     "report_template_builder.py"
   ],
+  "dependencies": [
+    "record-upserts",
+    "report-template-designer",
+    "report-upserts",
+    "text-templates",
+    "view-upserts"
+  ],
   "capabilities": [
     "report-template-plan",
     "band-driven-qweb-template",

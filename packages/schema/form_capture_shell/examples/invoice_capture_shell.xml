@@ -8,7 +8,7 @@
     <group name="example_capture_party"
            data-surface-form-column="primary"
            data-surface-form-column-role="party">
-        <div data-surface-form-section-title="1">Cliente</div>
+        <div data-surface-form-section-title="1">Receptor CFDI 4.0</div>
         <field name="partner_id"/>
         <field name="fiscal_position_id"/>
         <field name="partner_shipping_id"/>
@@ -17,10 +17,13 @@
            data-surface-form-column="secondary"
            data-surface-form-column-role="document"
            col="2">
-        <div data-surface-form-section-title="1">Emision y cobro</div>
+        <div data-surface-form-section-title="1">Emisión CFDI 4.0</div>
         <field name="invoice_date"/>
         <field name="invoice_payment_term_id"/>
         <field name="invoice_date_due"/>
         <field name="invoice_user_id"/>
+        <field name="l10n_mx_edi_payment_policy"/>
+        <field name="l10n_mx_edi_payment_method_id"/>
+        <field name="l10n_mx_edi_usage"/>
     </group>
 </group>

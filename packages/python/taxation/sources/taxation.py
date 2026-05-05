@@ -4,10 +4,100 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, Protocol, runtime_checkable
 
 
 logger = logging.getLogger(__name__)
+
+
+CFDI40_MEXICO_VIEW_LABELS = MappingProxyType(
+    {
+        "RECEPTOR_SECTION": "Receptor CFDI 4.0",
+        "RECEPTOR_FIELD": "Receptor",
+        "ODOO_FISCAL_POSITION_FIELD": "Reglas fiscales Odoo",
+        "BILLING_CARD": "Domicilio fiscal receptor",
+        "BILLING_EMPTY": "Selecciona un receptor para validar RFC, régimen fiscal y código postal fiscal.",
+        "BILLING_EMPTY_TITLE": "Receptor sin seleccionar",
+        "BILLING_EMPTY_DETAILS": "Selecciona un receptor para ver RFC, régimen fiscal y código postal fiscal.",
+        "DELIVERY_CARD": "Domicilio de entrega",
+        "DELIVERY_TITLE": "Mismo domicilio comercial",
+        "DELIVERY_DETAILS": "El CFDI usa el domicilio fiscal del receptor; asigna entrega solo si la operación lo requiere.",
+        "COMMERCIAL_CARD": "Condiciones comerciales",
+        "COMMERCIAL_REFERENCE": "Lista de precios",
+        "COMMERCIAL_REFERENCE_META_LABEL": "Cobertura",
+        "COMMERCIAL_REFERENCE_META_VALUE": "Sin reglas",
+        "COMMERCIAL_CONDITION_LABEL": "Condiciones de pago",
+        "COMMERCIAL_CONDITION_VALUE": "Sin default",
+        "COMMERCIAL_CONDITION_META_LABEL": "Aplicación",
+        "COMMERCIAL_CONDITION_META_VALUE": "Sin override",
+        "COMMERCIAL_NOTE": "Se aplican al capturar los conceptos de la factura.",
+        "DOCUMENT_SECTION": "Emisión CFDI 4.0",
+        "INVOICE_DATE_FIELD": "Fecha de emisión",
+        "PAYMENT_TERMS_FIELD": "Condiciones de pago",
+        "DUE_DATE_FIELD": "Fecha de vencimiento",
+        "SALES_PERSON_FIELD": "Responsable comercial",
+        "PAYMENT_POLICY_FIELD": "Método de pago SAT",
+        "PAYMENT_METHOD_FIELD": "Forma de pago SAT",
+        "USAGE_FIELD": "Uso CFDI",
+        "EXPORTACION_FIELD": "Exportación",
+        "CFDI_RELATED_SECTION": "CFDI relacionados",
+        "CFDI_ORIGIN_FIELD": "Tipo relación y UUID relacionados",
+        "GLOBAL_INFO_SECTION": "Información global",
+        "GLOBAL_PUBLIC_FIELD": "CFDI público en general",
+        "GLOBAL_PERIODICITY_FIELD": "Periodicidad",
+        "GLOBAL_MONTHS_FIELD": "Meses",
+        "GLOBAL_YEAR_FIELD": "Año",
+        "TAX_OBJECT_FIELD": "Objeto de impuesto",
+        "DOCUMENT_TEMPLATE_FIELD": "Plantilla CFDI 4.0",
+        "CURRENCY_FIELD": "Moneda",
+        "SERIES_FIELD": "Serie CFDI",
+        "BRANCH_FIELD": "Lugar de expedición",
+        "BRANCH_PLACEHOLDER": "Sucursal fiscal",
+        "WORKSPACE_ADVANCED_TAB": "Avanzado",
+        "WORKSPACE_CFDI_PANEL": "Emisión CFDI 4.0",
+        "WORKSPACE_COMPANY_FIELD": "Emisor / lugar de expedición",
+        "WORKSPACE_TEMPLATES_PANEL": "Plantillas CFDI 4.0",
+        "WORKSPACE_PAYLOADS_TAB": "XML y payloads",
+        "WORKSPACE_PAYLOADS_GROUP": "Payloads fiscales avanzados",
+        "DOCUMENT_TYPE_FIELD": "Tipo de comprobante SAT",
+        "REP_PANEL": "Complemento de pago REP 2.0",
+        "PAYROLL_PANEL": "Nómina 1.2",
+        "TRANSPORT_PANEL": "Traslado",
+    }
+)
+
+CFDI40_MEXICO_DYNAMIC_RULES = (
+    "Uso CFDI se selecciona conforme al régimen fiscal del receptor.",
+    "Método de pago SAT distingue PUE de PPD; Forma de pago SAT conserva el catálogo c_FormaPago.",
+    "En PPD, el cobro se documenta después con complemento de pago REP.",
+    "El receptor CFDI 4.0 requiere RFC, nombre o razón social, régimen fiscal y código postal fiscal.",
+)
+
+
+def cfdi40_mexico_view_label(key: str) -> str:
+    """Return one reusable CFDI 4.0 Mexico label by key."""
+    clean_key = str(key or "").strip()
+    if not clean_key:
+        raise ValueError("CFDI 4.0 Mexico label key is required")
+    try:
+        return str(CFDI40_MEXICO_VIEW_LABELS[clean_key])
+    except KeyError as exc:
+        raise KeyError(f"Unknown CFDI 4.0 Mexico label key: {clean_key}") from exc
+
+
+def build_cfdi40_mexico_view_label_substitutions(
+    *,
+    prefix: str = "{{CFDI40_",
+    suffix: str = "}}",
+) -> dict[str, str]:
+    """Build token substitutions for XML fragments that consume CFDI 4.0 labels."""
+    clean_prefix = str(prefix)
+    clean_suffix = str(suffix)
+    return {
+        f"{clean_prefix}{key}{clean_suffix}": value
+        for key, value in CFDI40_MEXICO_VIEW_LABELS.items()
+    }
 
 
 @dataclass(frozen=True)

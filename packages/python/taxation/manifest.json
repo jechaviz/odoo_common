@@ -11,6 +11,7 @@
   ],
   "capabilities": [
     "sales-tax-spec-upsert",
-    "taxation-connection-contract"
+    "taxation-connection-contract",
+    "cfdi40-mexico-nomenclature"
   ]
 }

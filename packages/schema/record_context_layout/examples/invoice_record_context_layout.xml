@@ -2,22 +2,22 @@
 <div data-surface-record-context-panel="1"
      data-surface-record-context-layout="detail-list">
     <div data-surface-record-context-card="billing">
-        <div>Direccion de facturacion</div>
-        <div data-surface-record-context-primary-name="1">Cliente sin seleccionar</div>
-        <div data-surface-record-context-primary-details="1">Selecciona un cliente para ver el resumen fiscal.</div>
+        <div>Domicilio fiscal receptor</div>
+        <div data-surface-record-context-primary-name="1">Receptor sin seleccionar</div>
+        <div data-surface-record-context-primary-details="1">Selecciona un receptor para ver RFC, régimen fiscal y código postal fiscal.</div>
         <strong data-surface-record-context-identifier="1">-</strong>
     </div>
     <div data-surface-record-context-card="shipping">
-        <div>Envio</div>
-        <div data-surface-record-context-secondary-name="1">Mismo destino comercial</div>
-        <div data-surface-record-context-secondary-details="1">La factura usa la direccion comercial del cliente mientras no asignes un envio especifico.</div>
+        <div>Domicilio de entrega</div>
+        <div data-surface-record-context-secondary-name="1">Mismo domicilio comercial</div>
+        <div data-surface-record-context-secondary-details="1">El CFDI usa el domicilio fiscal del receptor; asigna entrega solo si la operación lo requiere.</div>
     </div>
     <div data-surface-record-context-card="commercial">
-        <div>Tarifa y descuentos</div>
-        <div data-surface-record-context-reference="1">Tarifa base</div>
+        <div>Condiciones comerciales</div>
+        <div data-surface-record-context-reference="1">Lista de precios</div>
         <strong data-surface-record-context-reference-meta="1">Sin reglas</strong>
         <strong data-surface-record-context-condition="1">Sin default</strong>
         <strong data-surface-record-context-condition-meta="1">Sin override</strong>
-        <div data-surface-record-context-note="1">Se aplican al capturar las lineas de la factura.</div>
+        <div data-surface-record-context-note="1">Se aplican al capturar los conceptos de la factura.</div>
     </div>
 </div>

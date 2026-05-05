@@ -409,7 +409,8 @@
     ],
     "features": [
       "tax helper utilities",
-      "server-side taxation support"
+      "server-side taxation support",
+      "CFDI 4.0 Mexico reusable nomenclature"
     ]
   },
   {

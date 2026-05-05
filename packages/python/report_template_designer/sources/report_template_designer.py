@@ -1117,6 +1117,50 @@ def _format_party_block(sample_values: Mapping[str, Any] | None, prefix: str) ->
     )
 
 
+def _format_address_block(sample_values: Mapping[str, Any] | None, prefix: str) -> str:
+    street = _sample_value(sample_values, f"calle{prefix}")
+    exterior = _sample_value(sample_values, f"noExt{prefix}")
+    interior = _sample_value(sample_values, f"noInt{prefix}")
+    colony = _sample_value(sample_values, f"colonia{prefix}")
+    postal_code = _sample_value(sample_values, f"cp{prefix}")
+    locality = _sample_value(sample_values, f"localidad{prefix}")
+    municipality = _sample_value(sample_values, f"municipio{prefix}")
+    state = _sample_value(sample_values, f"estado{prefix}")
+    country = _sample_value(sample_values, f"pais{prefix}")
+    street_line = " ".join(part for part in (street, f"No. {exterior}" if exterior else "", f"Int. {interior}" if interior else "") if part)
+    city_line = " ".join(part for part in (colony, f"C.P. {postal_code}" if postal_code else "") if part)
+    region_line = ", ".join(part for part in (locality, municipality, state, country) if part)
+    return _join_preview_lines(street_line, city_line, region_line)
+
+
+def _cfdi_type_display(sample_values: Mapping[str, Any] | None) -> str:
+    value = _sample_value(sample_values, "tipoDeComprobante")
+    labels = {
+        "I": "I - Ingreso",
+        "E": "E - Egreso",
+        "T": "T - Traslado",
+        "P": "P - Pago",
+        "N": "N - Nomina",
+    }
+    return labels.get(value, value)
+
+
+def _payment_terms_block(sample_values: Mapping[str, Any] | None) -> str:
+    return _join_preview_lines(
+        f"Metodo de Pago: {_sample_value(sample_values, 'metodoDePago')}" if _sample_value(sample_values, "metodoDePago") else "Metodo de Pago:",
+        f"Forma de pago: {_sample_value(sample_values, 'formaDePago')}" if _sample_value(sample_values, "formaDePago") else "Forma de pago:",
+        f"Uso CFDI: {_sample_value(sample_values, 'usoCfdi')}" if _sample_value(sample_values, "usoCfdi") else "",
+        f"Tipo de Comprobante: {_cfdi_type_display(sample_values)}" if _cfdi_type_display(sample_values) else "",
+    )
+
+
+def _legend_block(sample_values: Mapping[str, Any] | None) -> str:
+    return _join_preview_lines(
+        f"Importe con letra: {_sample_value(sample_values, 'cantidadLetra')}" if _sample_value(sample_values, "cantidadLetra") else "",
+        f"Documento de Referencia: {_sample_value(sample_values, 'referenciaMensaje')}" if _sample_value(sample_values, "referenciaMensaje") else "",
+    )
+
+
 def _special_preview_expression_text(source: str, sample_values: Mapping[str, Any] | None = None) -> str:
     if "$F{idReceptor}.contains" in source and "802442" in source:
         id_receptor = _sample_value(sample_values, "idReceptor")
@@ -1136,6 +1180,10 @@ def _special_preview_expression_text(source: str, sample_values: Mapping[str, An
         return f"${precio} {categoria}".strip()
     if "$F{importe}.toDouble()" in source:
         return _format_preview_amount(_sample_value(sample_values, "importe"), 2)
+    if "$F{metodoDePago}" in source and "$F{formaDePago}" in source and "$F{usoCfdi}" in source:
+        return _payment_terms_block(sample_values)
+    if "$F{cantidadLetra}" in source and "$F{referenciaMensaje}" in source:
+        return _legend_block(sample_values)
     if "$V{docs}" in source and ("$F{doc}" in source or "$F{tipoDeComprobante}" in source):
         return _cfdi_document_label(sample_values)
     if "$F{serie}" in source and "$F{folio}" in source:
@@ -1162,14 +1210,14 @@ def _special_preview_expression_text(source: str, sample_values: Mapping[str, An
         return "Facturado a:"
     if "Embarcar a" in source and "Shipped To" in source:
         return "Embarcar a:"
-    if "$F{nombreReceptor}" in source and "$F{rfcReceptor}" in source:
+    if "$F{nombreReceptor}" in source and "$F{rfcReceptor}" in source and "$F{calleReceptor}" in source:
         return _format_party_block(sample_values, "Receptor")
-    if "$F{nombreEmbarque}" in source or "$F{rfcEmbarque}" in source:
+    if "$F{nombreEmbarque}" in source or ("$F{rfcEmbarque}" in source and "$F{calleEmbarque}" in source):
         return _format_party_block(sample_values, "Embarque")
     if "Lugar de Exped" in source and "$F{calleEmisor}" in source:
         return _join_preview_lines(
             "Lugar de Expedición:",
-            _format_party_block(sample_values, "Emisor").split("\n", 1)[1] if "\n" in _format_party_block(sample_values, "Emisor") else "",
+            _format_address_block(sample_values, "Emisor"),
         )
     if "$F{selloCFD}" in source and source.strip() == "$F{selloCFD}":
         return _sample_value(sample_values, "selloCFD")

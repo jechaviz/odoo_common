@@ -98,6 +98,82 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("/report/barcode/?barcode_type=QR", preview)
         self.assertIn("verificacfdi.facturaelectronica.sat.gob.mx", preview)
 
+    def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
+        ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')
+        self.assertTrue(ternary["supported"], ternary)
+        self.assertIn('field("NumPosicion")', ternary["python_source"])
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression(
+                '$F{NumPosicion}!=null?$F{NumPosicion}:"-"',
+                fields={"NumPosicion": "45844"},
+            ),
+            "45844",
+        )
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression(
+                '$F{NumPosicion}!=null?$F{NumPosicion}:"-"',
+                fields={},
+            ),
+            "-",
+        )
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression(
+                '$F{idReceptor}.contains("802442")',
+                fields={"idReceptor": "0000900301"},
+            ),
+            False,
+        )
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression(
+                '$F{serie}!=null?$F{serie}.toUpperCase():""',
+                fields={"serie": "t"},
+            ),
+            "T",
+        )
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression(
+                'String.format(Locale.US,"%,.2f",$F{cantidad}.toDouble())',
+                fields={"cantidad": "1"},
+            ),
+            "1.00",
+        )
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression(
+                '"~Pedido~OrderNo~".replaceAll("~(.+)~(.+)~",$F{es}?"\\\\$1":"\\\\$2")',
+                fields={"es": True},
+            ),
+            "Pedido",
+        )
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression("['MXN':'\\\\$ ','USD':'USD ']", fields={}),
+            {"MXN": "$ ", "USD": "USD "},
+        )
+        self.assertEqual(
+            designer.evaluate_jrxml_python_expression('new java.text.DecimalFormat("0000.00")', fields={}),
+            {"type": "decimal_format", "pattern": "0000.00"},
+        )
+
+    def test_expression_index_includes_python_translation_without_executing(self):
+        blueprint = designer.parse_jrxml_document(
+            """
+            <jasperReport name="sample" pageWidth="200" pageHeight="120" columnWidth="200">
+                <field name="serie" class="java.lang.String"/>
+                <detail><band height="20">
+                    <textField><reportElement x="0" y="0" width="100" height="20"/><textFieldExpression>$F{serie}!=null?$F{serie}.toUpperCase():""</textFieldExpression></textField>
+                </band></detail>
+            </jasperReport>
+            """,
+            source_name="sample.jrxml",
+        )
+        expression_index = blueprint["expression_index"]
+        self.assertEqual(expression_index["unsupported_policy"], "stored-not-executed")
+        self.assertGreater(expression_index["count"], 0)
+        self.assertIn('"target_language": "python"', designer.dumps_canonical_json(expression_index))
+        self.assertIn(
+            'to_upper(field("serie"))',
+            expression_index["items"][0]["python"]["python_source"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

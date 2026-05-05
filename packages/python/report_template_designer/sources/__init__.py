@@ -8,6 +8,7 @@ from .report_template_designer import (
     REPORT_DESIGNER_VIEW_BLUEPRINTS,
     REPORT_TEMPLATE_RENDER_STAGE_OPTIONS,
     REPORT_TEMPLATE_SOURCE_FORMAT_OPTIONS,
+    ReportDesignerExpressionTranslation,
     ReportDesignerFieldSpec,
     ReportDesignerModelSpec,
     ReportDesignerViewBlueprint,
@@ -15,11 +16,13 @@ from .report_template_designer import (
     build_preview_html,
     build_sample_field_values,
     dumps_canonical_json,
+    evaluate_jrxml_python_expression,
     flatten_xml_sample,
     flatten_xml_sample_file,
     parse_jrxml_document,
     parse_jrxml_file,
     summarize_design_blueprint,
+    translate_jrxml_expression_to_python,
 )
 
 __all__ = [
@@ -30,6 +33,7 @@ __all__ = [
     "REPORT_DESIGNER_VIEW_BLUEPRINTS",
     "REPORT_TEMPLATE_RENDER_STAGE_OPTIONS",
     "REPORT_TEMPLATE_SOURCE_FORMAT_OPTIONS",
+    "ReportDesignerExpressionTranslation",
     "ReportDesignerFieldSpec",
     "ReportDesignerModelSpec",
     "ReportDesignerViewBlueprint",
@@ -37,9 +41,11 @@ __all__ = [
     "build_preview_html",
     "build_sample_field_values",
     "dumps_canonical_json",
+    "evaluate_jrxml_python_expression",
     "flatten_xml_sample",
     "flatten_xml_sample_file",
     "parse_jrxml_document",
     "parse_jrxml_file",
     "summarize_design_blueprint",
+    "translate_jrxml_expression_to_python",
 ]

@@ -8,6 +8,7 @@ QWeb, Python, or another trusted renderer.
 
 from __future__ import annotations
 
+import ast
 import base64
 from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
@@ -108,6 +109,659 @@ def _expression_refs(expression: str) -> dict[str, list[str]]:
         "parameters": sorted(set(re.findall(r"\$P\{([^}]+)\}", value))),
         "variables": sorted(set(re.findall(r"\$V\{([^}]+)\}", value))),
     }
+
+
+@dataclass(frozen=True)
+class ReportDesignerExpressionTranslation:
+    source: str
+    python_source: str
+    supported: bool
+    notes: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_language": "jrxml-java-groovy-subset",
+            "target_language": "python",
+            "python_source": self.python_source,
+            "supported": self.supported,
+            "notes": list(self.notes),
+            "safe_eval": "opt-in",
+        }
+
+
+_STRING_LITERAL_RE = re.compile(r'("(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')')
+_REF_CALL_RE = r'(?:field|param|var)\("[^"]+"\)'
+_STRING_VALUE_RE = r'(?:"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\')'
+_SIMPLE_CALL_RE = rf"(?:{_REF_CALL_RE}|{_STRING_VALUE_RE}|[A-Za-z_]\w*\([^()]*\))"
+_ARGUMENTS_RE = r"((?:[^()]|\([^()]*\))*)"
+_ALLOWED_EXPRESSION_FUNCTIONS = {
+    "contains",
+    "contains_key",
+    "decimal_format",
+    "decimal_formatter",
+    "equals",
+    "field",
+    "format_us",
+    "is_empty",
+    "length",
+    "map_get",
+    "param",
+    "regex_replace",
+    "to_float",
+    "to_int",
+    "to_string",
+    "to_upper",
+    "trim",
+    "var",
+}
+_ALLOWED_EXPRESSION_AST_NODES = (
+    ast.Expression,
+    ast.Constant,
+    ast.Name,
+    ast.Load,
+    ast.Call,
+    ast.BinOp,
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.FloorDiv,
+    ast.Mod,
+    ast.BoolOp,
+    ast.And,
+    ast.Or,
+    ast.UnaryOp,
+    ast.Not,
+    ast.USub,
+    ast.UAdd,
+    ast.Compare,
+    ast.Eq,
+    ast.NotEq,
+    ast.Is,
+    ast.IsNot,
+    ast.Lt,
+    ast.LtE,
+    ast.Gt,
+    ast.GtE,
+    ast.IfExp,
+    ast.Dict,
+    ast.List,
+    ast.Tuple,
+)
+
+
+def _replace_outside_string_literals(value: str, replacer: Any) -> str:
+    parts = _STRING_LITERAL_RE.split(str(value or ""))
+    for index, part in enumerate(parts):
+        if index % 2 == 0 and part:
+            parts[index] = replacer(part)
+    return "".join(parts)
+
+
+def _without_string_literals(value: str) -> str:
+    parts = _STRING_LITERAL_RE.split(str(value or ""))
+    for index in range(1, len(parts), 2):
+        parts[index] = '""'
+    return "".join(parts)
+
+
+def _normalize_string_literals(value: str) -> str:
+    parts = _STRING_LITERAL_RE.split(str(value or ""))
+    for index in range(1, len(parts), 2):
+        parts[index] = re.sub(r"\\+\$", "$", parts[index])
+    return "".join(parts)
+
+
+def _replace_java_keywords(value: str) -> str:
+    def replace_segment(segment: str) -> str:
+        segment = re.sub(r"\bnull\b", "None", segment)
+        segment = re.sub(r"\btrue\b", "True", segment, flags=re.IGNORECASE)
+        segment = re.sub(r"\bfalse\b", "False", segment, flags=re.IGNORECASE)
+        segment = segment.replace("&&", " and ").replace("||", " or ")
+        segment = re.sub(r"!(?!=)", " not ", segment)
+        return segment
+
+    return _replace_outside_string_literals(value, replace_segment)
+
+
+def _strip_balanced_outer_parentheses(value: str) -> str:
+    text = str(value or "").strip()
+    while text.startswith("(") and text.endswith(")"):
+        depth = 0
+        quote = ""
+        escaped = False
+        balanced_at_end = False
+        for index, char in enumerate(text):
+            if quote:
+                escaped = (char == "\\" and not escaped)
+                if char == quote and not escaped:
+                    quote = ""
+                elif char != "\\":
+                    escaped = False
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                escaped = False
+                continue
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    balanced_at_end = index == len(text) - 1
+                    break
+        if not balanced_at_end:
+            return text
+        text = text[1:-1].strip()
+    return text
+
+
+def _split_top_level_args(value: str) -> list[str]:
+    args: list[str] = []
+    start = 0
+    depth = 0
+    quote = ""
+    escaped = False
+    for index, char in enumerate(value):
+        if quote:
+            escaped = (char == "\\" and not escaped)
+            if char == quote and not escaped:
+                quote = ""
+            elif char != "\\":
+                escaped = False
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            escaped = False
+            continue
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(depth - 1, 0)
+        elif char == "," and depth == 0:
+            args.append(value[start:index].strip())
+            start = index + 1
+    tail = value[start:].strip()
+    if tail:
+        args.append(tail)
+    return args
+
+
+def _split_top_level_key_value(value: str) -> tuple[str, str] | None:
+    depth = 0
+    quote = ""
+    escaped = False
+    for index, char in enumerate(value):
+        if quote:
+            escaped = (char == "\\" and not escaped)
+            if char == quote and not escaped:
+                quote = ""
+            elif char != "\\":
+                escaped = False
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            escaped = False
+            continue
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth = max(depth - 1, 0)
+        elif char == ":" and depth == 0:
+            return value[:index].strip(), value[index + 1 :].strip()
+    return None
+
+
+def _find_matching_paren(value: str, open_index: int) -> int:
+    depth = 0
+    quote = ""
+    escaped = False
+    for index in range(open_index, len(value)):
+        char = value[index]
+        if quote:
+            escaped = (char == "\\" and not escaped)
+            if char == quote and not escaped:
+                quote = ""
+            elif char != "\\":
+                escaped = False
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            escaped = False
+            continue
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    return -1
+
+
+def _split_java_ternary(value: str) -> tuple[str, str, str] | None:
+    text = _strip_balanced_outer_parentheses(value)
+    depth = 0
+    quote = ""
+    escaped = False
+    question_index = -1
+    nested_ternaries = 0
+    for index, char in enumerate(text):
+        if quote:
+            escaped = (char == "\\" and not escaped)
+            if char == quote and not escaped:
+                quote = ""
+            elif char != "\\":
+                escaped = False
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            escaped = False
+            continue
+        if char in "([{":
+            depth += 1
+            continue
+        if char in ")]}":
+            depth = max(depth - 1, 0)
+            continue
+        if depth != 0:
+            continue
+        if char == "," and question_index == -1:
+            return None
+        if char == "?":
+            if question_index == -1:
+                question_index = index
+            nested_ternaries += 1
+        elif char == ":" and question_index != -1:
+            nested_ternaries -= 1
+            if nested_ternaries == 0:
+                return (
+                    text[:question_index].strip(),
+                    text[question_index + 1 : index].strip(),
+                    text[index + 1 :].strip(),
+                )
+    return None
+
+
+def _translate_java_ternary(value: str) -> str:
+    text = _strip_balanced_outer_parentheses(value)
+    split = _split_java_ternary(text)
+    if split is None:
+        return text
+    condition, true_value, false_value = split
+    return (
+        f"({_translate_java_ternary(true_value)} "
+        f"if {_translate_java_ternary(condition)} "
+        f"else {_translate_java_ternary(false_value)})"
+    )
+
+
+def _rewrite_parenthesized_ternaries(value: str) -> str:
+    text = str(value or "")
+    for _ in range(12):
+        stack: list[int] = []
+        quote = ""
+        escaped = False
+        changed = False
+        for index, char in enumerate(text):
+            if quote:
+                escaped = (char == "\\" and not escaped)
+                if char == quote and not escaped:
+                    quote = ""
+                elif char != "\\":
+                    escaped = False
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                escaped = False
+                continue
+            if char == "(":
+                stack.append(index)
+            elif char == ")" and stack:
+                open_index = stack.pop()
+                content = text[open_index + 1 : index]
+                if _split_java_ternary(content) is None:
+                    continue
+                replacement = _translate_java_ternary(content)
+                text = text[:open_index] + replacement + text[index + 1 :]
+                changed = True
+                break
+        if not changed:
+            return text
+    return text
+
+
+def _rewrite_function_arg_ternaries(value: str) -> str:
+    text = str(value or "")
+    function_pattern = re.compile(rf"\b({'|'.join(sorted(_ALLOWED_EXPRESSION_FUNCTIONS))})\(")
+    search_start = 0
+    while True:
+        match = function_pattern.search(text, search_start)
+        if not match:
+            return text
+        open_index = match.end() - 1
+        close_index = _find_matching_paren(text, open_index)
+        if close_index == -1:
+            return text
+        args = _split_top_level_args(text[open_index + 1 : close_index])
+        rewritten_args: list[str] = []
+        changed = False
+        for arg in args:
+            rewritten_arg = _rewrite_parenthesized_ternaries(arg)
+            if _split_java_ternary(rewritten_arg) is not None:
+                rewritten_arg = _translate_java_ternary(rewritten_arg)
+            changed = changed or rewritten_arg != arg
+            rewritten_args.append(rewritten_arg)
+        if changed:
+            replacement = f"{match.group(1)}({', '.join(rewritten_args)})"
+            text = text[: match.start()] + replacement + text[close_index + 1 :]
+            search_start = match.start() + len(replacement)
+        else:
+            search_start = close_index + 1
+
+
+def _rewrite_embedded_ternaries(value: str) -> str:
+    text = _rewrite_parenthesized_ternaries(value)
+    text = _rewrite_function_arg_ternaries(text)
+    if _split_java_ternary(text) is not None:
+        text = _translate_java_ternary(text)
+    return text
+
+
+def _replace_jasper_refs(value: str) -> str:
+    def replace_ref(match: re.Match[str]) -> str:
+        kind = match.group(1)
+        name = match.group(2).replace("\\", "\\\\").replace('"', '\\"')
+        helper = {"F": "field", "P": "param", "V": "var"}[kind]
+        return f'{helper}("{name}")'
+
+    return re.sub(r"\$([FPV])\{([^}]+)\}", replace_ref, value)
+
+
+def _rewrite_groovy_map_literal(value: str) -> str:
+    text = _strip_balanced_outer_parentheses(value)
+    if not text.startswith("[") or not text.endswith("]"):
+        return value
+    entries = _split_top_level_args(text[1:-1])
+    if not entries:
+        return "{}"
+    rewritten_entries: list[str] = []
+    for entry in entries:
+        split = _split_top_level_key_value(entry)
+        if split is None:
+            return value
+        key, item_value = split
+        rewritten_entries.append(f"{key}: {item_value}")
+    return "{" + ", ".join(rewritten_entries) + "}"
+
+
+def _rewrite_simple_methods(value: str) -> str:
+    text = value
+    no_arg_methods = {
+        "toUpperCase": "to_upper",
+        "toString": "to_string",
+        "toDouble": "to_float",
+        "doubleValue": "to_float",
+        "intValue": "to_int",
+        "trim": "trim",
+        "isEmpty": "is_empty",
+        "length": "length",
+    }
+    for _ in range(4):
+        previous = text
+        for java_method, helper in no_arg_methods.items():
+            text = re.sub(
+                rf"(?P<base>{_SIMPLE_CALL_RE})\.{java_method}\(\)",
+                lambda match, fn=helper: f'{fn}({match.group("base")})',
+                text,
+            )
+        arg_methods = {
+            "contains": "contains",
+            "containsKey": "contains_key",
+            "equals": "equals",
+            "get": "map_get",
+            "replaceAll": "regex_replace",
+        }
+        for java_method, helper in arg_methods.items():
+            text = re.sub(
+                rf"(?P<base>{_SIMPLE_CALL_RE})\.{java_method}\({_ARGUMENTS_RE}\)",
+                lambda match, fn=helper: f'{fn}({match.group("base")}, {match.group(2).strip()})',
+                text,
+            )
+        if text == previous:
+            break
+    return text
+
+
+def _rewrite_string_format_calls(value: str) -> str:
+    text = value
+    needle = "String.format("
+    start = text.find(needle)
+    while start != -1:
+        open_index = start + len("String.format")
+        close_index = _find_matching_paren(text, open_index)
+        if close_index == -1:
+            break
+        args = _split_top_level_args(text[open_index + 1 : close_index])
+        if args and args[0] == "Locale.US":
+            args = args[1:]
+        if len(args) >= 2:
+            replacement = f"format_us({', '.join(args)})"
+            text = text[:start] + replacement + text[close_index + 1 :]
+            start = text.find(needle, start + len(replacement))
+        else:
+            start = text.find(needle, close_index + 1)
+    return text
+
+
+def _rewrite_decimal_format_calls(value: str) -> str:
+    pattern = re.compile(
+        r"new\s+(?:java\.text\.)?DecimalFormat\((?P<format>\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*')\)\.format\("
+    )
+    text = value
+    search_start = 0
+    while True:
+        match = pattern.search(text, search_start)
+        if not match:
+            return text
+        open_index = match.end() - 1
+        close_index = _find_matching_paren(text, open_index)
+        if close_index == -1:
+            return text
+        expression = text[open_index + 1 : close_index].strip()
+        replacement = f"decimal_format({match.group('format')}, {expression})"
+        text = text[: match.start()] + replacement + text[close_index + 1 :]
+        search_start = match.start() + len(replacement)
+
+
+def _rewrite_decimal_format_constructors(value: str) -> str:
+    return re.sub(
+        r"new\s+(?:java\.text\.)?DecimalFormat\((?P<format>\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*')\)",
+        lambda match: f"decimal_formatter({match.group('format')})",
+        value,
+    )
+
+
+def _validate_python_expression_ast(python_source: str) -> tuple[bool, list[str]]:
+    notes: list[str] = []
+    try:
+        parsed = ast.parse(python_source, mode="eval")
+    except SyntaxError as exc:
+        return False, [f"python-parse-error:{exc.msg}"]
+    for node in ast.walk(parsed):
+        if not isinstance(node, _ALLOWED_EXPRESSION_AST_NODES):
+            return False, [f"unsupported-python-node:{node.__class__.__name__}"]
+        if isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Name) or node.func.id not in _ALLOWED_EXPRESSION_FUNCTIONS:
+                return False, ["unsupported-python-call"]
+        if isinstance(node, ast.Name) and node.id not in _ALLOWED_EXPRESSION_FUNCTIONS and node.id not in {"None", "True", "False"}:
+            return False, [f"unsupported-python-name:{node.id}"]
+    notes.append("safe-python-subset")
+    return True, notes
+
+
+def translate_jrxml_expression_to_python(source: str) -> dict[str, Any]:
+    """Translate a conservative JRXML Java/Groovy expression subset to Python."""
+    original = str(source or "").strip()
+    if not original:
+        return ReportDesignerExpressionTranslation(original, "", False, ("empty-expression",)).to_dict()
+    notes: list[str] = []
+    python_source = _replace_jasper_refs(original)
+    python_source = _replace_java_keywords(python_source)
+    python_source = _rewrite_groovy_map_literal(python_source)
+    python_source = _rewrite_simple_methods(python_source)
+    python_source = _rewrite_embedded_ternaries(python_source)
+    python_source = _rewrite_string_format_calls(python_source)
+    python_source = _rewrite_decimal_format_calls(python_source)
+    python_source = _rewrite_decimal_format_constructors(python_source)
+    python_source = _rewrite_simple_methods(python_source)
+    python_source = _rewrite_embedded_ternaries(python_source)
+    python_source = _normalize_string_literals(python_source)
+    unsupported_markers = [
+        (r"\$[FPV]\{", "untranslated-jasper-reference"),
+        (r"\bnew\s+", "unsupported-java-constructor"),
+        (r"\bString\.", "unsupported-java-string-format"),
+        (r"\bLocale\.", "unsupported-java-locale"),
+        (r"\.[A-Za-z_]\w*\(", "unsupported-java-method"),
+    ]
+    searchable_python_source = _without_string_literals(python_source)
+    for pattern, note in unsupported_markers:
+        if re.search(pattern, searchable_python_source):
+            notes.append(note)
+    supported, ast_notes = _validate_python_expression_ast(python_source)
+    notes.extend(ast_notes)
+    if notes and any(note.startswith(("unsupported-", "untranslated-", "python-parse-error")) for note in notes):
+        supported = False
+    return ReportDesignerExpressionTranslation(original, python_source, supported, tuple(dict.fromkeys(notes))).to_dict()
+
+
+def _case_insensitive_lookup(values: Mapping[str, Any] | None, name: str) -> Any:
+    if not values:
+        return None
+    if name in values:
+        return values[name]
+    clean_name = str(name or "").strip().lower()
+    for key, value in values.items():
+        if str(key or "").strip().lower() == clean_name:
+            return value
+    return None
+
+
+def _java_bool_text(value: bool) -> str:
+    return "true" if value else "false"
+
+
+def evaluate_jrxml_python_expression(
+    source: str,
+    *,
+    fields: Mapping[str, Any] | None = None,
+    parameters: Mapping[str, Any] | None = None,
+    variables: Mapping[str, Any] | None = None,
+) -> Any:
+    """Evaluate a translated JRXML expression inside a tiny Python allow-list."""
+    translation = translate_jrxml_expression_to_python(source)
+    if not translation.get("supported"):
+        return None
+    python_source = str(translation.get("python_source") or "")
+
+    def field_value(name: str) -> Any:
+        return _case_insensitive_lookup(fields, name)
+
+    def param_value(name: str) -> Any:
+        return _case_insensitive_lookup(parameters, name)
+
+    def var_value(name: str) -> Any:
+        return _case_insensitive_lookup(variables, name)
+
+    def to_string(value: Any) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return _java_bool_text(value)
+        return str(value)
+
+    def to_float(value: Any) -> float:
+        if value in (None, ""):
+            return 0.0
+        try:
+            return float(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return 0.0
+
+    def to_int(value: Any) -> int:
+        return int(to_float(value))
+
+    def format_us(format_spec: str, *values: Any) -> str:
+        spec = str(format_spec or "")
+        if spec.startswith("%"):
+            spec = spec[1:]
+        if not values:
+            return ""
+        if spec.endswith("s"):
+            return spec[:-1] + to_string(values[0])
+        try:
+            return format(to_float(values[0]), spec)
+        except (TypeError, ValueError):
+            return to_string(values[0])
+
+    def decimal_format(pattern: str, value: Any) -> str:
+        clean_pattern = str(pattern or "")
+        decimals = len(clean_pattern.split(".", 1)[1]) if "." in clean_pattern else 0
+        integer_pattern = clean_pattern.split(".", 1)[0]
+        integer_width = integer_pattern.count("0")
+        decimal_value = Decimal(str(to_float(value))).quantize(
+            Decimal("1") if decimals == 0 else Decimal("1." + ("0" * decimals)),
+            rounding=ROUND_HALF_UP,
+        )
+        sign = "-" if decimal_value < 0 else ""
+        text = format(abs(decimal_value), f".{decimals}f")
+        integer, _, fractional = text.partition(".")
+        integer = integer.zfill(integer_width)
+        return sign + integer + (("." + fractional) if decimals else "")
+
+    def map_get(mapping: Any, key: Any) -> Any:
+        if isinstance(mapping, Mapping):
+            if key in mapping:
+                return mapping[key]
+            return mapping.get(to_string(key))
+        return None
+
+    def contains(value: Any, needle: Any) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, Mapping):
+            return needle in value or to_string(needle) in value
+        return to_string(needle) in to_string(value)
+
+    def regex_replace(value: Any, pattern: Any, replacement: Any) -> str:
+        replacement_text = re.sub(r"\$(\d+)", r"\\\1", to_string(replacement).replace(r"\$", "$"))
+        return re.sub(str(pattern or ""), replacement_text, to_string(value))
+
+    helpers = {
+        "contains": contains,
+        "contains_key": contains,
+        "decimal_format": decimal_format,
+        "decimal_formatter": lambda pattern: {"type": "decimal_format", "pattern": str(pattern or "")},
+        "equals": lambda value, other: value == other or to_string(value) == to_string(other),
+        "field": field_value,
+        "format_us": format_us,
+        "is_empty": lambda value: to_string(value) == "",
+        "length": lambda value: len(to_string(value)),
+        "map_get": map_get,
+        "param": param_value,
+        "regex_replace": regex_replace,
+        "to_float": to_float,
+        "to_int": to_int,
+        "to_string": to_string,
+        "to_upper": lambda value: to_string(value).upper(),
+        "trim": lambda value: to_string(value).strip(),
+        "var": var_value,
+    }
+    try:
+        parsed = ast.parse(python_source, mode="eval")
+        code = compile(parsed, "<jrxml-expression>", "eval")
+        return eval(code, {"__builtins__": {}}, helpers)
+    except Exception:
+        return None
 
 
 def _xml_name_matches(actual: str, expected: str) -> bool:
@@ -638,11 +1292,13 @@ def _expression_index(blueprint: Mapping[str, Any]) -> dict[str, Any]:
                     source = str(value.get(expression_key) or "")
                     if not source:
                         continue
+                    translation = translate_jrxml_expression_to_python(source)
                     expressions.append(
                         {
                             "path": f"{path}.{expression_key}" if path else expression_key,
                             "source": source,
                             "refs": _expression_refs(source),
+                            "python": translation,
                         }
                     )
             for key, child_value in value.items():
@@ -668,12 +1324,14 @@ def _raw_jrxml_expression_index(root: ET.Element) -> dict[str, Any]:
         source = _node_text(node)
         if not source:
             continue
+        translation = translate_jrxml_expression_to_python(source)
         expressions.append(
             {
                 "index": index,
                 "tag": tag,
                 "source": source,
                 "refs": _expression_refs(source),
+                "python": translation,
             }
         )
     return {
@@ -1245,6 +1903,17 @@ def _preview_expression_text(expression: str, sample_values: Mapping[str, Any] |
         return special_text
     if special_text:
         return special_text
+    evaluated = evaluate_jrxml_python_expression(
+        source,
+        fields=sample_values,
+        parameters=sample_values,
+        variables=sample_values,
+    )
+    if evaluated is not None:
+        evaluated_text = _java_bool_text(evaluated) if isinstance(evaluated, bool) else str(evaluated)
+        evaluated_text = _strip_preview_markup(_localize_i18n_markers(evaluated_text, sample_values))
+        if evaluated_text:
+            return evaluated_text
 
     parts: list[str] = []
     for match in re.finditer(r'"(?:\\.|[^"\\])*"|\$F\{([^}]+)\}', source):
@@ -1811,14 +2480,17 @@ __all__ = [
     "REPORT_TEMPLATE_RENDER_STAGE_OPTIONS",
     "REPORT_TEMPLATE_SOURCE_FORMAT_OPTIONS",
     "ReportDesignerFieldSpec",
+    "ReportDesignerExpressionTranslation",
     "ReportDesignerModelSpec",
     "ReportDesignerViewBlueprint",
     "build_design_record_values",
     "build_preview_html",
     "dumps_canonical_json",
+    "evaluate_jrxml_python_expression",
     "flatten_xml_sample",
     "flatten_xml_sample_file",
     "parse_jrxml_document",
     "parse_jrxml_file",
     "summarize_design_blueprint",
+    "translate_jrxml_expression_to_python",
 ]

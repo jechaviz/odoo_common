@@ -44,6 +44,7 @@ Y ademas los bloques propios de esta superficie:
 - `copy`
 - `slotOverrides`
 - `noteRenderer`
+- `enrichData`
 
 `referenceMeta` gobierna el lookup y el resumen de la referencia comercial:
 
@@ -57,6 +58,9 @@ Y ademas los bloques propios de esta superficie:
 - `summarySeparator`
 - `itemCountSingularLabel`
 - `itemCountPluralTemplate`
+
+`enrichData(context)` permite que un consumidor agregue datos verticales al panel sin reimplementar el
+adaptador compartido. El resultado se mezcla con la metadata comercial resuelta por `referenceMeta`.
 
 Para adapters nuevos, declara `nameField`, `currencyField` e `itemIdsField` aunque coincidan con los defaults historicos de Odoo (`name`, `currency_id`, `item_ids`). Si la referencia comercial no expone moneda o lista de items, pasa esa clave como string vacio para desactivar su lookup y evitar que el fallback vuelva a entrar.
 

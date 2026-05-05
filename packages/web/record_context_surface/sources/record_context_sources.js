@@ -39,6 +39,21 @@
     return normalized;
   }
 
+  function normalizePartnerFormResolutionSpec(value) {
+    var raw = value === true
+      ? { enabled: true }
+      : value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+    return {
+      enabled: !!raw.enabled,
+      searchFields: mergeRelationalFieldNames(raw.searchFields, ["display_name", "name"]),
+      minLength: Math.max(1, Number.parseInt(String(raw.minLength || 2), 10) || 2),
+      exactOperator: normalizeRelationalText(raw.exactOperator || "="),
+      fuzzyOperator: normalizeRelationalText(raw.fuzzyOperator || "ilike"),
+    };
+  }
+
   function normalizeRelationalMany2oneValue(value) {
     var normalized = normalizeMany2oneValue(value) || {};
     return {
@@ -312,6 +327,7 @@
       recordModel: normalizeRelationalText(spec.recordModel),
       enrichData: typeof spec.enrichData === "function" ? spec.enrichData : null,
       resolvePartnerRecord: typeof spec.resolvePartnerRecord === "function" ? spec.resolvePartnerRecord : null,
+      formPartnerResolution: normalizePartnerFormResolutionSpec(spec.formPartnerResolution),
       record: recordSchema,
       partner: partnerSchema,
       form: {
@@ -338,6 +354,27 @@
 
   function readScalarFieldValue(record, fieldName) {
     return fieldName ? normalizeRelationalText(record && record[fieldName]) : "";
+  }
+
+  function buildRelationalOrDomain(conditions) {
+    var filtered = (Array.isArray(conditions) ? conditions : []).filter(function (condition) {
+      return Array.isArray(condition) && condition.length >= 3;
+    });
+    if (filtered.length <= 1) {
+      return filtered;
+    }
+    return new Array(filtered.length - 1).fill("|").concat(filtered);
+  }
+
+  function buildPartnerFormResolutionDomain(formText, searchFields, operator) {
+    var value = normalizeRelationalText(formText);
+    var fields = normalizeFieldNameList(searchFields);
+    if (!value || !fields.length) {
+      return [];
+    }
+    return buildRelationalOrDomain(fields.map(function (fieldName) {
+      return [fieldName, operator || "ilike", value];
+    }));
   }
 
   function selectPartnerCommercialResolver(sourceSchema, role) {
@@ -395,6 +432,48 @@
       return null;
     }
     return null;
+  }
+
+  async function resolvePartnerCommercialRecordFromFormText(sourceSchema, role, context) {
+    var resolution = sourceSchema && sourceSchema.formPartnerResolution;
+    if (!(resolution && resolution.enabled)) {
+      return null;
+    }
+    var helpers = context && context.helpers;
+    if (!(helpers && typeof helpers.searchReadFirst === "function")) {
+      return null;
+    }
+    var formText = role === "shipping"
+      ? context && context.shippingFormValue
+      : context && context.billingFormValue;
+    formText = normalizeRelationalText(formText);
+    if (!formText || formText.length < resolution.minLength) {
+      return null;
+    }
+    var partnerFields = Array.isArray(context && context.partnerFields) ? context.partnerFields : [];
+    var exactDomain = buildPartnerFormResolutionDomain(formText, resolution.searchFields, resolution.exactOperator);
+    var exactPartner = exactDomain.length
+      ? await helpers.searchReadFirst("res.partner", exactDomain, partnerFields, { limit: 1, order: "id asc" })
+      : null;
+    if (exactPartner) {
+      return exactPartner;
+    }
+    var fuzzyDomain = buildPartnerFormResolutionDomain(formText, resolution.searchFields, resolution.fuzzyOperator);
+    return fuzzyDomain.length
+      ? helpers.searchReadFirst("res.partner", fuzzyDomain, partnerFields, { limit: 1, order: "id asc" })
+      : null;
+  }
+
+  async function resolveCommercialPartnerFromBillingPartner(billingPartner, helpers, partnerFields) {
+    if (!(billingPartner && typeof billingPartner === "object")) {
+      return null;
+    }
+    var billingId = Number.parseInt(String(billingPartner.id || 0), 10) || 0;
+    var commercialValue = helpers.normalizeMany2oneValue(billingPartner.commercial_partner_id);
+    if (commercialValue.id > 0 && commercialValue.id !== billingId) {
+      return helpers.readRecordById("res.partner", commercialValue.id, partnerFields, { limit: 1, order: "id asc" });
+    }
+    return billingPartner;
   }
 
   async function resolvePartnerCommercialRecordContextData(sourceSchema, runtimeContext) {
@@ -507,8 +586,52 @@
         commercialPartner: commercialPartner,
       });
     }
+    if (!billingPartner) {
+      billingPartner = await resolvePartnerCommercialRecordFromFormText(sourceSchema, "billing", {
+        spec: spec,
+        schema: sourceSchema,
+        runtimeContext: runtimeContext,
+        ormService: ormService,
+        helpers: helpers,
+        recordId: recordId,
+        recordRow: recordRow,
+        formRoot: formRoot,
+        fieldReader: fieldReader,
+        recordFieldMap: recordFieldMap,
+        partnerFieldMap: partnerFieldMap,
+        formFieldMap: formFieldMap,
+        partnerFields: partnerFields,
+        billingFormValue: billingFormValue,
+        shippingFormValue: shippingFormValue,
+        commercialPartner: commercialPartner,
+      });
+    }
+    if (!commercialPartner && billingPartner) {
+      commercialPartner = await resolveCommercialPartnerFromBillingPartner(billingPartner, helpers, partnerFields);
+    }
     if (!shippingPartner) {
       shippingPartner = await resolvePartnerCommercialRecordFromHook(sourceSchema, "shipping", {
+        spec: spec,
+        schema: sourceSchema,
+        runtimeContext: runtimeContext,
+        ormService: ormService,
+        helpers: helpers,
+        recordId: recordId,
+        recordRow: recordRow,
+        formRoot: formRoot,
+        fieldReader: fieldReader,
+        recordFieldMap: recordFieldMap,
+        partnerFieldMap: partnerFieldMap,
+        formFieldMap: formFieldMap,
+        partnerFields: partnerFields,
+        billingFormValue: billingFormValue,
+        shippingFormValue: shippingFormValue,
+        commercialPartner: commercialPartner,
+        billingPartner: billingPartner,
+      });
+    }
+    if (!shippingPartner) {
+      shippingPartner = await resolvePartnerCommercialRecordFromFormText(sourceSchema, "shipping", {
         spec: spec,
         schema: sourceSchema,
         runtimeContext: runtimeContext,

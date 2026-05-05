@@ -19,6 +19,13 @@ body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][da
   vertical-align: middle;
 }
 
+body.o_surface_workspace_form .o_form_view [data-surface-header-identity="1"][data-surface-header-identity-placement="sheet"] {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0.12rem 0 0.66rem;
+  width: 100%;
+}
+
 body.o_surface_workspace_form .o_form_view .o_surface_header_identity_control_group,
 body.o_surface_workspace_form .o_form_view [data-surface-header-identity-slot] {
   display: grid;

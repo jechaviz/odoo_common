@@ -241,10 +241,28 @@
       var referenceValue = context && context.referenceValue && typeof context.referenceValue === "object"
         ? context.referenceValue
         : { id: 0, label: "" };
-      if (!helpers) {
-        return {};
+      var customData = {};
+      if (typeof spec.adapterSpec.enrichData === "function") {
+        try {
+          var resolvedCustomData = spec.adapterSpec.enrichData(context);
+          if (resolvedCustomData && typeof resolvedCustomData.then === "function") {
+            resolvedCustomData = await resolvedCustomData;
+          }
+          if (resolvedCustomData && typeof resolvedCustomData === "object" && !Array.isArray(resolvedCustomData)) {
+            customData = resolvedCustomData;
+          }
+        } catch (_error) {
+          customData = {};
+        }
       }
-      return readReferenceMeta(helpers, spec.referenceMeta, referenceValue);
+      if (!helpers) {
+        return customData;
+      }
+      return Object.assign(
+        {},
+        await readReferenceMeta(helpers, spec.referenceMeta, referenceValue),
+        customData
+      );
     };
   }
 

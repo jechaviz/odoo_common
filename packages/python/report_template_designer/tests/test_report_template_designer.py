@@ -98,6 +98,43 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("/report/barcode/?barcode_type=QR", preview)
         self.assertIn("verificacfdi.facturaelectronica.sat.gob.mx", preview)
 
+    def test_stretching_long_text_fields_wrap_without_clipping(self):
+        preview = designer.build_preview_html(
+            {
+                "page": {"width": 300, "height": 120},
+                "bands": [
+                    {
+                        "name": "detail",
+                        "height": 40,
+                        "elements": [
+                            {
+                                "type": "textField",
+                                "stretch_with_overflow": "true",
+                                "geometry": {"x": 10, "y": 10, "width": 120, "height": 10},
+                                "text_style": {
+                                    "textAlignment": "Left",
+                                    "verticalAlignment": "Middle",
+                                    "font": {"size": "6"},
+                                },
+                                "expression": {"source": "$F{cadenaOriginal}"},
+                            },
+                        ],
+                    }
+                ],
+            },
+            sample_values={
+                "cadenaOriginal": "||1.1|5803EB8D-81CD-4557-8719-26632D2FA434|LONGTOKENWITHOUTSPACES0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ||",
+            },
+            scale=1,
+        )
+
+        self.assertIn("overflow-wrap:anywhere", preview)
+        self.assertIn("word-break:break-word", preview)
+        self.assertIn("height:auto", preview)
+        self.assertIn("min-height:10px", preview)
+        self.assertIn("overflow:visible", preview)
+        self.assertNotIn("display:flex;align-items:center", preview)
+
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
         ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')
         self.assertTrue(ternary["supported"], ternary)

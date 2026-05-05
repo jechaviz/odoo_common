@@ -1570,7 +1570,7 @@ def _font_css(text_style: Mapping[str, Any] | None, *, scale: float = 1.0) -> st
     return ";".join(css)
 
 
-def _text_alignment_css(text_style: Mapping[str, Any] | None) -> str:
+def _text_alignment_css(text_style: Mapping[str, Any] | None, *, allow_vertical: bool = True) -> str:
     if not isinstance(text_style, Mapping):
         return ""
     css: list[str] = []
@@ -1578,6 +1578,8 @@ def _text_alignment_css(text_style: Mapping[str, Any] | None) -> str:
     if horizontal in {"left", "center", "right", "justify"}:
         css.append(f"text-align:{horizontal}")
     vertical = str(text_style.get("verticalAlignment") or "").strip().lower()
+    if not allow_vertical:
+        return ";".join(css)
     if vertical == "middle":
         css.extend(["display:flex", "align-items:center"])
         if horizontal == "center":
@@ -1645,6 +1647,32 @@ def _base_element_css(
         f"color:{forecolor}",
         f"background:{background}",
     )
+
+
+def _longest_text_token_length(value: str) -> int:
+    tokens = re.split(r"\s+", str(value or "").strip())
+    return max((len(token) for token in tokens), default=0)
+
+
+def _text_needs_free_flow(value: str) -> bool:
+    text = str(value or "")
+    return "\n" in text or len(text) > 52 or _longest_text_token_length(text) > 38
+
+
+def _text_flow_css(element: Mapping[str, Any], preview_text: str, *, scale: float = 1.0) -> str:
+    css = ["overflow-wrap:anywhere", "word-break:break-word"]
+    if _truthy_text(element.get("stretch_with_overflow")) and _text_needs_free_flow(preview_text):
+        geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
+        height = max(int(geometry.get("height") or 0), 1)
+        css.extend(
+            [
+                "display:block",
+                "height:auto",
+                f"min-height:{_css_px(_scaled(height, scale))}",
+                "overflow:visible",
+            ]
+        )
+    return ";".join(css)
 
 
 def _sample_value(sample_values: Mapping[str, Any] | None, field_name: str) -> str:
@@ -2084,24 +2112,28 @@ def _preview_element_html(
     if kind == "staticText":
         text_style = element.get("text_style") if isinstance(element.get("text_style"), Mapping) else {}
         box = element.get("box") if isinstance(element.get("box"), Mapping) else {}
+        static_text = str(element.get("text") or "")
         base_style = _join_inline_style(
             _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             _font_css(text_style, scale=scale),
             _text_alignment_css(text_style),
             _padding_css(box, _effective_named_box(element, styles), scale=scale),
+            _text_flow_css(element, static_text, scale=scale),
         )
-        content = html.escape(str(element.get("text") or ""))
+        content = html.escape(static_text)
     elif kind == "textField":
         text_style = element.get("text_style") if isinstance(element.get("text_style"), Mapping) else {}
         box = element.get("box") if isinstance(element.get("box"), Mapping) else {}
+        expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
+        preview_text = _preview_expression_text(str(expression or ""), sample_values)
+        needs_free_flow = _truthy_text(element.get("stretch_with_overflow")) and _text_needs_free_flow(preview_text)
         base_style = _join_inline_style(
             _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             _font_css(text_style, scale=scale),
-            _text_alignment_css(text_style),
+            _text_alignment_css(text_style, allow_vertical=not needs_free_flow),
             _padding_css(box, _effective_named_box(element, styles), scale=scale),
+            _text_flow_css(element, preview_text, scale=scale),
         )
-        expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
-        preview_text = _preview_expression_text(str(expression or ""), sample_values)
         content = html.escape(preview_text)
     elif kind == "image":
         base_style = _join_inline_style(

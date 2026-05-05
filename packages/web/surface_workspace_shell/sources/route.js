@@ -70,6 +70,19 @@
   }
 
   function readCurrentSurfaceActionModel() {
+    try {
+      var root = window.odoo && window.odoo.__WOWL_DEBUG__ && window.odoo.__WOWL_DEBUG__.root;
+      var actionService = root && root.env && root.env.services ? root.env.services.action : null;
+      var currentController = actionService && actionService.currentController ? actionService.currentController : null;
+      var controllerModel = currentController && currentController.props
+        ? currentController.props.resModel
+        : currentController && currentController.state && currentController.state.model && currentController.state.model.root
+        ? currentController.state.model.root.resModel
+        : "";
+      if (String(controllerModel || "").trim()) {
+        return String(controllerModel || "").trim();
+      }
+    } catch (_error) {}
     var currentAction = readCurrentSurfaceActionServiceAction();
     return String(currentAction && currentAction.res_model || "").trim();
   }

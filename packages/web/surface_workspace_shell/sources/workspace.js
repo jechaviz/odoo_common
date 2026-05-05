@@ -262,10 +262,30 @@
     return "";
   }
 
+  function readConfiguredWorkspaceModels(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var models = [];
+    function addModel(value) {
+      var normalized = String(value || "").trim().toLowerCase();
+      if (normalized && models.indexOf(normalized) < 0) {
+        models.push(normalized);
+      }
+    }
+    addModel(settings.model);
+    [
+      settings.models,
+      settings.allowedModels,
+      settings.workspaceModels,
+    ].forEach(function (values) {
+      (Array.isArray(values) ? values : []).forEach(addModel);
+    });
+    return models;
+  }
+
   function currentActionModelMatchesWorkspace(config) {
-    var workspaceModel = String(config && config.model || "").trim().toLowerCase();
+    var workspaceModels = readConfiguredWorkspaceModels(config);
     var currentModel = readCurrentActionModel().toLowerCase();
-    return !workspaceModel || !currentModel || workspaceModel === currentModel;
+    return !workspaceModels.length || !currentModel || workspaceModels.indexOf(currentModel) >= 0;
   }
 
   function isElementVisible(node) {
@@ -1287,10 +1307,10 @@
     ) {
       strictFormRoot = findVisibleFormWithoutMarker(config, { allowFallback: false });
     }
+    var hasCurrentActionModelMismatch = !currentActionModelMatchesWorkspace(config);
     var hasActionModelMismatchedForm = !!(
       strictFormRoot instanceof HTMLElement &&
-      !routeOwnership.matchesAction &&
-      !currentActionModelMatchesWorkspace(config)
+      hasCurrentActionModelMismatch
     );
     if (hasActionModelMismatchedForm) {
       strictFormRoot = null;

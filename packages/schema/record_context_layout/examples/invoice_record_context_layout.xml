@@ -13,11 +13,11 @@
         <div data-surface-record-context-secondary-details="1">El CFDI usa el domicilio fiscal del receptor; asigna entrega solo si la operación lo requiere.</div>
     </div>
     <div data-surface-record-context-card="commercial">
-        <div>Condiciones comerciales</div>
+        <div>Venta y pago</div>
         <div data-surface-record-context-reference="1">Lista de precios</div>
         <strong data-surface-record-context-reference-meta="1">Sin reglas</strong>
-        <strong data-surface-record-context-condition="1">Sin default</strong>
-        <strong data-surface-record-context-condition-meta="1">Sin override</strong>
+        <strong data-surface-record-context-condition="1">Por definir</strong>
+        <strong data-surface-record-context-condition-meta="1">Sin regla especial</strong>
         <div data-surface-record-context-note="1">Se aplican al capturar los conceptos de la factura.</div>
     </div>
 </div>

@@ -85,9 +85,9 @@
     var copy = readSpecObject(rawCopy);
     return {
       referenceFallback: readConfiguredText(copy, "referenceFallback", "Tarifa base"),
-      referenceMetaFallback: readConfiguredText(copy, "referenceMetaFallback", "Sin reglas"),
-      conditionFallback: readConfiguredText(copy, "conditionFallback", "Sin default"),
-      conditionMetaFallback: readConfiguredText(copy, "conditionMetaFallback", "Sin override"),
+      referenceMetaFallback: readConfiguredText(copy, "referenceMetaFallback", "Por definir"),
+      conditionFallback: readConfiguredText(copy, "conditionFallback", "Por definir"),
+      conditionMetaFallback: readConfiguredText(copy, "conditionMetaFallback", "Sin regla especial"),
       noteWithReferenceAndItems: readConfiguredText(copy, "noteWithReferenceAndItems", "La referencia comercial ya tiene reglas activas."),
       noteWithReferenceNoItems: readConfiguredText(copy, "noteWithReferenceNoItems", "La referencia comercial existe, pero aun no tiene reglas activas."),
       noteWithoutReference: readConfiguredText(copy, "noteWithoutReference", "Este registro usa la politica comercial base."),

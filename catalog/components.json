@@ -1004,6 +1004,34 @@
     ]
   },
   {
+    "key": "report-template-designer",
+    "title": "Neutral Report Template Designer",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/report_template_designer",
+    "origins": [
+      {
+        "project": "smp-ireport",
+        "path": "C:\\git\\customers\\smp\\Templates\\plantilla"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/report_templates.py"
+      },
+      {
+        "project": "odoo-template",
+        "path": "C:\\git\\odoo\\odoo-template"
+      }
+    ],
+    "features": [
+      "jrxml band import",
+      "fixed canvas preview",
+      "xml sample schema",
+      "expression reference index",
+      "neutral Odoo designer model specs"
+    ]
+  },
+  {
     "key": "mail-template-upserts",
     "title": "Odoo Mail Template Upserts",
     "runtime": "python",

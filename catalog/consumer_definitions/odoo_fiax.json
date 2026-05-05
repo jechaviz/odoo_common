@@ -154,6 +154,12 @@
       "target_relative": "src/odoo_common/report_upserts",
       "mode": "tree",
       "prune": true
+    },
+    {
+      "component_key": "report-template-designer",
+      "target_relative": "src/odoo_common/report_template_designer",
+      "mode": "tree",
+      "prune": true
     }
   ],
   "adapter_policy": {

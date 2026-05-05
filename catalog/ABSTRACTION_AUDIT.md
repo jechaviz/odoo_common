@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 21 total, 17 canonical, 4 source-derived.
-- Python packages: 34 total, 34 canonical.
+- Python packages: 35 total, 35 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
 
@@ -75,6 +75,7 @@ Scope:
 - Added: `action-menu-upserts` canonicalizes exact `ir.actions.act_window`, `ir.actions.act_url`, and `ir.ui.menu` writes without legacy name matching or group-field detection.
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views, QWeb views, and keyed QWeb templates without legacy view cleanup, key-to-name fallback, or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.
+- Added: `report-template-designer` canonicalizes neutral JRXML/iReport band import, XML sample-schema extraction, safe expression indexing, and fixed-canvas preview records without executing Groovy/Java or binding to a fiscal vertical.
 - Added: `mail-template-upserts` canonicalizes `mail.template` publication through modern `report_template_ids` without XML ID resolution, legacy `report_template` fallback, field detection, or business-specific content.
 - Added: `custom-field-upserts` canonicalizes manual model/field creation, strict existing-field contract validation, and selection row reconciliation without legacy value migrations.
 - Added: `security-upserts` canonicalizes security publication without user assignment, version field detection, missing-metadata ignores, or legacy group absorption.

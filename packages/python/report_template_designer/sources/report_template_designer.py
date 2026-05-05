@@ -1,0 +1,837 @@
+"""Reusable report-template designer contracts and importers.
+
+The module intentionally converts legacy designer files into a neutral
+blueprint instead of executing their expressions.  Consumers can store the
+blueprint in Odoo, render a safe preview, and progressively map expressions to
+QWeb, Python, or another trusted renderer.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import html
+import json
+import re
+from pathlib import Path
+import xml.etree.ElementTree as ET
+from typing import Any, Mapping, Sequence
+
+
+JRXML_NAMESPACE = "http://jasperreports.sourceforge.net/jasperreports"
+JR = f"{{{JRXML_NAMESPACE}}}"
+REPORT_DESIGNER_SCHEMA_VERSION = "odoo_common.report_template_designer.v1"
+
+
+def _local_name(tag: str) -> str:
+    return str(tag or "").split("}", 1)[-1]
+
+
+def _node_text(node: ET.Element | None) -> str:
+    if node is None:
+        return ""
+    return "".join(node.itertext()).strip()
+
+
+def _int_attr(node: ET.Element, name: str, default: int = 0) -> int:
+    raw_value = str(node.get(name) or "").strip()
+    if not raw_value:
+        return default
+    try:
+        return int(float(raw_value))
+    except ValueError:
+        return default
+
+
+def _clean_text(value: Any) -> str:
+    return str(value or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+
+
+def _first_child(node: ET.Element, child_name: str) -> ET.Element | None:
+    for child in list(node):
+        if _local_name(child.tag) == child_name:
+            return child
+    return None
+
+
+def _children(node: ET.Element, child_name: str) -> list[ET.Element]:
+    return [child for child in list(node) if _local_name(child.tag) == child_name]
+
+
+def _all_direct_named(root: ET.Element, child_name: str) -> list[ET.Element]:
+    return [child for child in list(root) if _local_name(child.tag) == child_name]
+
+
+def _expression_refs(expression: str) -> dict[str, list[str]]:
+    value = str(expression or "")
+    return {
+        "fields": sorted(set(re.findall(r"\$F\{([^}]+)\}", value))),
+        "parameters": sorted(set(re.findall(r"\$P\{([^}]+)\}", value))),
+        "variables": sorted(set(re.findall(r"\$V\{([^}]+)\}", value))),
+    }
+
+
+def _element_geometry(element: ET.Element) -> dict[str, int]:
+    report_element = _first_child(element, "reportElement")
+    source = report_element if report_element is not None else element
+    return {
+        "x": _int_attr(source, "x"),
+        "y": _int_attr(source, "y"),
+        "width": _int_attr(source, "width"),
+        "height": _int_attr(source, "height"),
+    }
+
+
+def _report_element_attrs(element: ET.Element) -> dict[str, Any]:
+    report_element = _first_child(element, "reportElement")
+    if report_element is None:
+        return {}
+    attrs: dict[str, Any] = {}
+    for key in (
+        "key",
+        "style",
+        "mode",
+        "forecolor",
+        "backcolor",
+        "positionType",
+        "stretchType",
+        "isPrintRepeatedValues",
+        "isRemoveLineWhenBlank",
+        "isPrintInFirstWholeBand",
+        "isPrintWhenDetailOverflows",
+    ):
+        if report_element.get(key) is not None:
+            attrs[key] = report_element.get(key)
+    print_when = _node_text(_first_child(report_element, "printWhenExpression"))
+    if print_when:
+        attrs["print_when"] = {
+            "expression": print_when,
+            "refs": _expression_refs(print_when),
+        }
+    return attrs
+
+
+def _text_style(element: ET.Element) -> dict[str, Any]:
+    text_element = _first_child(element, "textElement")
+    if text_element is None:
+        return {}
+    style: dict[str, Any] = {
+        key: value
+        for key, value in text_element.attrib.items()
+        if str(value or "").strip()
+    }
+    font = _first_child(text_element, "font")
+    if font is not None:
+        style["font"] = {
+            key: value
+            for key, value in font.attrib.items()
+            if str(value or "").strip()
+        }
+    return style
+
+
+def _box_style(element: ET.Element) -> dict[str, Any]:
+    box = _first_child(element, "box")
+    if box is None:
+        return {}
+    style: dict[str, Any] = {
+        key: value
+        for key, value in box.attrib.items()
+        if str(value or "").strip()
+    }
+    pens: dict[str, dict[str, str]] = {}
+    for child in list(box):
+        local = _local_name(child.tag)
+        if local.endswith("Pen") or local == "pen":
+            pens[local] = {
+                key: value
+                for key, value in child.attrib.items()
+                if str(value or "").strip()
+            }
+    if pens:
+        style["pens"] = pens
+    return style
+
+
+def _component_payload(element: ET.Element) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for child in list(element):
+        local = _local_name(child.tag)
+        if local == "reportElement":
+            continue
+        if local == "jr":
+            continue
+        if local in {"list", "table"}:
+            payload["component"] = local
+            dataset_run = _first_child(child, "datasetRun")
+            if dataset_run is not None:
+                payload["dataset_run"] = {
+                    "sub_dataset": dataset_run.get("subDataset"),
+                    "data_source_expression": _node_text(_first_child(dataset_run, "dataSourceExpression")),
+                }
+            payload["raw_children"] = [_local_name(grandchild.tag) for grandchild in list(child)]
+            break
+    if not payload:
+        payload["raw_children"] = [_local_name(child.tag) for child in list(element)]
+    return payload
+
+
+def _parse_element(element: ET.Element) -> dict[str, Any]:
+    element_type = _local_name(element.tag)
+    parsed: dict[str, Any] = {
+        "type": element_type,
+        "geometry": _element_geometry(element),
+    }
+    attrs = _report_element_attrs(element)
+    if attrs:
+        parsed["report_element"] = attrs
+    box = _box_style(element)
+    if box:
+        parsed["box"] = box
+
+    if element_type == "staticText":
+        parsed["text"] = _node_text(_first_child(element, "text"))
+        style = _text_style(element)
+        if style:
+            parsed["text_style"] = style
+    elif element_type == "textField":
+        expression = _node_text(_first_child(element, "textFieldExpression"))
+        parsed["expression"] = {
+            "kind": "text_field",
+            "source": expression,
+            "refs": _expression_refs(expression),
+        }
+        if element.get("isStretchWithOverflow") is not None:
+            parsed["stretch_with_overflow"] = element.get("isStretchWithOverflow")
+        style = _text_style(element)
+        if style:
+            parsed["text_style"] = style
+    elif element_type == "image":
+        expression = _node_text(_first_child(element, "imageExpression"))
+        parsed["expression"] = {
+            "kind": "image",
+            "source": expression,
+            "refs": _expression_refs(expression),
+        }
+        if element.get("scaleImage") is not None:
+            parsed["scale_image"] = element.get("scaleImage")
+    elif element_type == "frame":
+        parsed["children"] = [
+            _parse_element(child)
+            for child in list(element)
+            if _local_name(child.tag) not in {"reportElement", "box"}
+        ]
+    elif element_type == "componentElement":
+        parsed.update(_component_payload(element))
+    elif element_type == "line":
+        graphic = _first_child(element, "graphicElement")
+        if graphic is not None:
+            parsed["graphic"] = dict(graphic.attrib)
+    elif element_type == "rectangle":
+        graphic = _first_child(element, "graphicElement")
+        if graphic is not None:
+            parsed["graphic"] = dict(graphic.attrib)
+    else:
+        parsed["raw_children"] = [_local_name(child.tag) for child in list(element)]
+    return parsed
+
+
+def _parse_field_like(node: ET.Element) -> dict[str, Any]:
+    payload = {
+        "name": node.get("name") or "",
+        "class": node.get("class") or "",
+    }
+    description = _node_text(_first_child(node, "fieldDescription"))
+    if description:
+        payload["description"] = description
+    return {key: value for key, value in payload.items() if value}
+
+
+def _parse_variable(node: ET.Element) -> dict[str, Any]:
+    expression = _node_text(_first_child(node, "variableExpression"))
+    payload: dict[str, Any] = {
+        "name": node.get("name") or "",
+        "class": node.get("class") or "",
+        "calculation": node.get("calculation") or "",
+        "reset_type": node.get("resetType") or "",
+        "expression": expression,
+    }
+    if expression:
+        payload["refs"] = _expression_refs(expression)
+    return {key: value for key, value in payload.items() if value}
+
+
+def _parse_dataset(node: ET.Element) -> dict[str, Any]:
+    dataset: dict[str, Any] = {
+        "name": node.get("name") or "",
+        "fields": [_parse_field_like(field_node) for field_node in _all_direct_named(node, "field")],
+        "variables": [_parse_variable(variable_node) for variable_node in _all_direct_named(node, "variable")],
+    }
+    query = _node_text(_first_child(node, "queryString"))
+    if query:
+        dataset["query"] = query
+    return dataset
+
+
+def _parse_band(parent_name: str, band: ET.Element, index: int) -> dict[str, Any]:
+    return {
+        "name": parent_name,
+        "index": index,
+        "height": _int_attr(band, "height"),
+        "split_type": band.get("splitType") or "",
+        "elements": [
+            _parse_element(child)
+            for child in list(band)
+            if _local_name(child.tag) not in {"property"}
+        ],
+    }
+
+
+def _parse_bands(root: ET.Element) -> list[dict[str, Any]]:
+    band_parent_names = {
+        "background",
+        "title",
+        "pageHeader",
+        "columnHeader",
+        "detail",
+        "columnFooter",
+        "pageFooter",
+        "lastPageFooter",
+        "summary",
+        "groupHeader",
+        "groupFooter",
+    }
+    bands: list[dict[str, Any]] = []
+    for parent in root.iter():
+        parent_name = _local_name(parent.tag)
+        if parent_name not in band_parent_names:
+            continue
+        for band_index, band in enumerate(_children(parent, "band")):
+            bands.append(_parse_band(parent_name, band, band_index))
+    return bands
+
+
+def _expression_index(blueprint: Mapping[str, Any]) -> dict[str, Any]:
+    expressions: list[dict[str, Any]] = []
+
+    def visit(value: Any, path: str) -> None:
+        if isinstance(value, Mapping):
+            for expression_key in ("source", "expression", "data_source_expression"):
+                if expression_key in value and isinstance(value.get(expression_key), str):
+                    source = str(value.get(expression_key) or "")
+                    if not source:
+                        continue
+                    expressions.append(
+                        {
+                            "path": f"{path}.{expression_key}" if path else expression_key,
+                            "source": source,
+                            "refs": _expression_refs(source),
+                        }
+                    )
+            for key, child_value in value.items():
+                visit(child_value, f"{path}.{key}" if path else str(key))
+        elif isinstance(value, list):
+            for index, item in enumerate(value):
+                visit(item, f"{path}[{index}]")
+
+    visit(blueprint, "")
+    return {
+        "count": len(expressions),
+        "items": expressions,
+        "unsupported_policy": "stored-not-executed",
+    }
+
+
+def _raw_jrxml_expression_index(root: ET.Element) -> dict[str, Any]:
+    expressions: list[dict[str, Any]] = []
+    for index, node in enumerate(root.iter()):
+        tag = _local_name(node.tag)
+        if not tag.endswith("Expression"):
+            continue
+        source = _node_text(node)
+        if not source:
+            continue
+        expressions.append(
+            {
+                "index": index,
+                "tag": tag,
+                "source": source,
+                "refs": _expression_refs(source),
+            }
+        )
+    return {
+        "count": len(expressions),
+        "items": expressions,
+        "unsupported_policy": "stored-not-executed",
+    }
+
+
+def parse_jrxml_document(source: str | bytes | Path, *, source_name: str = "") -> dict[str, Any]:
+    """Parse a JasperReports JRXML document into a safe designer blueprint."""
+    if isinstance(source, Path):
+        source_text = source.read_text(encoding="utf-8")
+        resolved_source_name = source_name or source.name
+    else:
+        source_text = source.decode("utf-8") if isinstance(source, bytes) else str(source or "")
+        resolved_source_name = source_name
+
+    root = ET.fromstring(source_text)
+    if _local_name(root.tag) != "jasperReport":
+        raise ValueError(f"JRXML root must be jasperReport, got {_local_name(root.tag)!r}")
+
+    blueprint: dict[str, Any] = {
+        "schema_version": REPORT_DESIGNER_SCHEMA_VERSION,
+        "source": {
+            "format": "jrxml",
+            "name": resolved_source_name or root.get("name") or "jrxml",
+            "report_name": root.get("name") or "",
+            "language": root.get("language") or "",
+        },
+        "page": {
+            "width": _int_attr(root, "pageWidth"),
+            "height": _int_attr(root, "pageHeight"),
+            "column_width": _int_attr(root, "columnWidth"),
+            "margins": {
+                "top": _int_attr(root, "topMargin"),
+                "right": _int_attr(root, "rightMargin"),
+                "bottom": _int_attr(root, "bottomMargin"),
+                "left": _int_attr(root, "leftMargin"),
+            },
+        },
+        "parameters": [_parse_field_like(node) for node in _all_direct_named(root, "parameter")],
+        "fields": [_parse_field_like(node) for node in _all_direct_named(root, "field")],
+        "variables": [_parse_variable(node) for node in _all_direct_named(root, "variable")],
+        "datasets": [_parse_dataset(node) for node in _all_direct_named(root, "subDataset")],
+        "bands": _parse_bands(root),
+    }
+    structural_expression_index = _expression_index(blueprint)
+    raw_expression_index = _raw_jrxml_expression_index(root)
+    blueprint["expression_index"] = {
+        **raw_expression_index,
+        "structural_count": structural_expression_index["count"],
+        "structural_items": structural_expression_index["items"],
+    }
+    blueprint["stats"] = summarize_design_blueprint(blueprint)
+    return blueprint
+
+
+def parse_jrxml_file(path: str | Path) -> dict[str, Any]:
+    return parse_jrxml_document(Path(path), source_name=Path(path).name)
+
+
+def flatten_xml_sample(source: str | bytes | Path, *, source_name: str = "") -> dict[str, Any]:
+    """Flatten an XML payload into paths usable by a report-template designer."""
+    if isinstance(source, Path):
+        source_text = source.read_text(encoding="utf-8")
+        resolved_source_name = source_name or source.name
+    else:
+        source_text = source.decode("utf-8") if isinstance(source, bytes) else str(source or "")
+        resolved_source_name = source_name
+    root = ET.fromstring(source_text)
+
+    path_rows: dict[str, dict[str, Any]] = {}
+
+    def walk(node: ET.Element, path: str) -> None:
+        local = _local_name(node.tag)
+        current_path = f"{path}/{local}" if path else f"/{local}"
+        row = path_rows.setdefault(
+            current_path,
+            {
+                "path": current_path,
+                "element": local,
+                "count": 0,
+                "attributes": {},
+                "text_examples": [],
+            },
+        )
+        row["count"] += 1
+        for attr_name, attr_value in sorted(node.attrib.items()):
+            attr_local = _local_name(attr_name)
+            attr_row = row["attributes"].setdefault(
+                attr_local,
+                {
+                    "name": attr_local,
+                    "count": 0,
+                    "examples": [],
+                },
+            )
+            attr_row["count"] += 1
+            if attr_value and attr_value not in attr_row["examples"] and len(attr_row["examples"]) < 3:
+                attr_row["examples"].append(attr_value)
+        node_text = _clean_text(node.text)
+        if node_text and node_text not in row["text_examples"] and len(row["text_examples"]) < 3:
+            row["text_examples"].append(node_text)
+        for child in list(node):
+            walk(child, current_path)
+
+    walk(root, "")
+    rows = sorted(path_rows.values(), key=lambda item: item["path"])
+    for row in rows:
+        row["attributes"] = sorted(row["attributes"].values(), key=lambda item: item["name"])
+        row["repeating"] = int(row["count"]) > 1
+    return {
+        "schema_version": REPORT_DESIGNER_SCHEMA_VERSION,
+        "source": {
+            "format": "xml",
+            "name": resolved_source_name or _local_name(root.tag),
+            "root": _local_name(root.tag),
+        },
+        "paths": rows,
+        "stats": {
+            "path_count": len(rows),
+            "repeating_path_count": sum(1 for row in rows if row["repeating"]),
+            "attribute_count": sum(len(row["attributes"]) for row in rows),
+        },
+    }
+
+
+def flatten_xml_sample_file(path: str | Path) -> dict[str, Any]:
+    return flatten_xml_sample(Path(path), source_name=Path(path).name)
+
+
+def summarize_design_blueprint(blueprint: Mapping[str, Any]) -> dict[str, int]:
+    bands = list(blueprint.get("bands") or [])
+    elements: list[Mapping[str, Any]] = []
+
+    def visit_element(element: Mapping[str, Any]) -> None:
+        elements.append(element)
+        for child in element.get("children") or []:
+            if isinstance(child, Mapping):
+                visit_element(child)
+
+    for band in bands:
+        for element in band.get("elements") or []:
+            if isinstance(element, Mapping):
+                visit_element(element)
+    element_types: dict[str, int] = {}
+    for element in elements:
+        kind = str(element.get("type") or "unknown")
+        element_types[kind] = element_types.get(kind, 0) + 1
+    return {
+        "band_count": len(bands),
+        "element_count": len(elements),
+        "dataset_count": len(blueprint.get("datasets") or []),
+        "field_count": len(blueprint.get("fields") or []),
+        "variable_count": len(blueprint.get("variables") or []),
+        "expression_count": int((blueprint.get("expression_index") or {}).get("count") or 0),
+        **{f"element_{key}_count": value for key, value in sorted(element_types.items())},
+    }
+
+
+def dumps_canonical_json(payload: Mapping[str, Any]) -> str:
+    return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def _style_from_geometry(geometry: Mapping[str, Any], *, offset_y: int = 0) -> str:
+    x = int(geometry.get("x") or 0)
+    y = int(geometry.get("y") or 0) + int(offset_y or 0)
+    width = max(int(geometry.get("width") or 0), 1)
+    height = max(int(geometry.get("height") or 0), 1)
+    return f"left:{x}px;top:{y}px;width:{width}px;height:{height}px;"
+
+
+def _preview_element_html(element: Mapping[str, Any], *, offset_y: int = 0) -> str:
+    kind = str(element.get("type") or "")
+    geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
+    base_style = _style_from_geometry(geometry, offset_y=offset_y)
+    classes = "oc_report_designer_preview__element"
+    if kind:
+        classes += f" oc_report_designer_preview__element--{html.escape(kind)}"
+    if kind == "staticText":
+        content = html.escape(str(element.get("text") or ""))
+    elif kind == "textField":
+        expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
+        content = f"<span class=\"oc_report_designer_preview__expr\">{html.escape(str(expression or 'campo'))}</span>"
+    elif kind == "image":
+        expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
+        content = f"<span class=\"oc_report_designer_preview__image\">imagen {html.escape(str(expression or ''))}</span>"
+    elif kind == "line":
+        content = ""
+        classes += " oc_report_designer_preview__line"
+    elif kind == "rectangle":
+        content = ""
+        classes += " oc_report_designer_preview__rectangle"
+    elif kind == "frame":
+        child_html = "".join(
+            _preview_element_html(child, offset_y=0)
+            for child in element.get("children") or []
+            if isinstance(child, Mapping)
+        )
+        content = child_html or "<span class=\"oc_report_designer_preview__muted\">frame</span>"
+        classes += " oc_report_designer_preview__frame"
+    elif kind == "componentElement":
+        content = f"<span class=\"oc_report_designer_preview__component\">{html.escape(str(element.get('component') or 'componente'))}</span>"
+    else:
+        content = html.escape(kind or "elemento")
+    return f"<div class=\"{classes}\" style=\"{base_style}\">{content}</div>"
+
+
+def build_preview_html(blueprint: Mapping[str, Any], *, max_bands: int = 12) -> str:
+    """Build a safe HTML preview that resembles the fixed-band JRXML canvas."""
+    page = blueprint.get("page") if isinstance(blueprint.get("page"), Mapping) else {}
+    width = int(page.get("width") or 612)
+    bands = list(blueprint.get("bands") or [])[: max(int(max_bands or 0), 1)]
+    current_y = 0
+    band_html: list[str] = []
+    element_html: list[str] = []
+    for band in bands:
+        if not isinstance(band, Mapping):
+            continue
+        height = max(int(band.get("height") or 1), 1)
+        band_name = html.escape(str(band.get("name") or "band"))
+        band_html.append(
+            f"<div class=\"oc_report_designer_preview__band\" style=\"top:{current_y}px;height:{height}px;\">"
+            f"<span>{band_name}</span></div>"
+        )
+        for element in band.get("elements") or []:
+            if isinstance(element, Mapping):
+                element_html.append(_preview_element_html(element, offset_y=current_y))
+        current_y += height
+    height = max(current_y, int(page.get("height") or 792))
+    return (
+        "<style>"
+        ".oc_report_designer_preview{background:#f3f4f6;border:1px solid #d1d5db;overflow:auto;padding:16px;}"
+        ".oc_report_designer_preview__page{background:white;box-shadow:0 12px 30px rgba(15,23,42,.18);position:relative;}"
+        ".oc_report_designer_preview__band{border-top:1px dashed #cbd5e1;color:#64748b;font-size:9px;left:0;position:absolute;right:0;}"
+        ".oc_report_designer_preview__band span{background:#f8fafc;padding:1px 4px;}"
+        ".oc_report_designer_preview__element{border:1px solid rgba(59,130,246,.35);box-sizing:border-box;color:#111827;font-size:10px;overflow:hidden;padding:2px;position:absolute;white-space:pre-wrap;}"
+        ".oc_report_designer_preview__element--textField{background:#eff6ff;}"
+        ".oc_report_designer_preview__element--staticText{background:#fff;}"
+        ".oc_report_designer_preview__expr{color:#1d4ed8;font-family:monospace;}"
+        ".oc_report_designer_preview__image{align-items:center;background:#e5e7eb;display:flex;height:100%;justify-content:center;text-transform:uppercase;}"
+        ".oc_report_designer_preview__line{border:0;border-top:1px solid #111827;padding:0;}"
+        ".oc_report_designer_preview__rectangle,.oc_report_designer_preview__frame{background:rgba(248,250,252,.45);}"
+        ".oc_report_designer_preview__component{background:#fef3c7;color:#92400e;display:inline-block;padding:2px 4px;}"
+        ".oc_report_designer_preview__muted{color:#64748b;}"
+        "</style>"
+        f"<div class=\"oc_report_designer_preview\"><div class=\"oc_report_designer_preview__page\" style=\"width:{width}px;height:{height}px;\">"
+        f"{''.join(band_html)}{''.join(element_html)}</div></div>"
+    )
+
+
+def _slug_code(value: str) -> str:
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", str(value or "").strip()).strip("-").upper()
+    return slug[:48] or "REPORT-DESIGN"
+
+
+def build_design_record_values(
+    jrxml_path: str | Path,
+    *,
+    sample_xml_paths: Sequence[str | Path] = (),
+    code: str = "",
+    name: str = "",
+    document_family: str = "",
+    active: bool = True,
+) -> dict[str, Any]:
+    """Build Odoo custom-model values for an imported report design."""
+    path = Path(jrxml_path)
+    blueprint = parse_jrxml_file(path)
+    sample_schemas = [flatten_xml_sample_file(Path(sample_path)) for sample_path in sample_xml_paths]
+    stats = blueprint.get("stats") or {}
+    display_name = name or str((blueprint.get("source") or {}).get("report_name") or path.stem)
+    return {
+        "x_name": display_name,
+        "x_code": code or _slug_code(path.stem),
+        "x_active": bool(active),
+        "x_source_format": "jrxml",
+        "x_render_stage": "imported",
+        "x_document_family": document_family or "generic",
+        "x_source_name": path.name,
+        "x_page_width": int((blueprint.get("page") or {}).get("width") or 0),
+        "x_page_height": int((blueprint.get("page") or {}).get("height") or 0),
+        "x_band_count": int(stats.get("band_count") or 0),
+        "x_element_count": int(stats.get("element_count") or 0),
+        "x_dataset_count": int(stats.get("dataset_count") or 0),
+        "x_expression_count": int(stats.get("expression_count") or 0),
+        "x_layout_json": dumps_canonical_json(blueprint),
+        "x_expression_json": dumps_canonical_json(blueprint.get("expression_index") or {}),
+        "x_data_schema_json": dumps_canonical_json({"samples": sample_schemas}),
+        "x_preview_html": build_preview_html(blueprint),
+        "x_source_jrxml": path.read_text(encoding="utf-8"),
+        "x_notes": "Imported from JRXML. Expressions are indexed for migration and preview but are not executed.",
+    }
+
+
+@dataclass(frozen=True)
+class ReportDesignerModelSpec:
+    model: str
+    name: str
+    info: str
+
+
+@dataclass(frozen=True)
+class ReportDesignerFieldSpec:
+    model: str
+    name: str
+    field_description: str
+    field_type: str
+    relation: str | None = None
+    help_text: str | None = None
+    selection_options: tuple[tuple[str, str], ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class ReportDesignerViewBlueprint:
+    name: str
+    model: str
+    view_type: str
+    arch_db: str
+
+
+REPORT_TEMPLATE_SOURCE_FORMAT_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("jrxml", "JRXML / JasperReports"),
+    ("qweb", "QWeb Odoo"),
+    ("html", "HTML"),
+    ("xml", "XML"),
+)
+
+REPORT_TEMPLATE_RENDER_STAGE_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("imported", "Importada"),
+    ("mapped", "Mapeada"),
+    ("preview_ready", "Lista para preview"),
+    ("production", "Produccion"),
+)
+
+REPORT_DESIGNER_MODELS: tuple[ReportDesignerModelSpec, ...] = (
+    ReportDesignerModelSpec(
+        model="x_odoo_report_design",
+        name="Report Template Design",
+        info="Reusable report/template designer records with JRXML import, band blueprint, expression index, sample data schema, and safe preview HTML.",
+    ),
+)
+
+REPORT_DESIGNER_FIELDS: tuple[ReportDesignerFieldSpec, ...] = (
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_name", "Nombre", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_code", "Clave", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_active", "Activo", "boolean"),
+    ReportDesignerFieldSpec(
+        "x_odoo_report_design",
+        "x_source_format",
+        "Formato origen",
+        "selection",
+        selection_options=REPORT_TEMPLATE_SOURCE_FORMAT_OPTIONS,
+    ),
+    ReportDesignerFieldSpec(
+        "x_odoo_report_design",
+        "x_render_stage",
+        "Estado de diseno",
+        "selection",
+        selection_options=REPORT_TEMPLATE_RENDER_STAGE_OPTIONS,
+    ),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_document_family", "Familia de documento", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_source_name", "Archivo origen", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_page_width", "Ancho pagina", "integer"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_page_height", "Alto pagina", "integer"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_band_count", "Bandas", "integer"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_element_count", "Elementos", "integer"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_dataset_count", "Datasets", "integer"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_expression_count", "Expresiones", "integer"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_layout_json", "Layout normalizado", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_expression_json", "Indice de logica", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_data_schema_json", "Datos de prueba", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_preview_html", "Preview", "html"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_source_jrxml", "JRXML original", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_notes", "Notas", "text"),
+)
+
+
+def _arch(value: str) -> str:
+    return "\n".join(line.rstrip() for line in value.strip().splitlines())
+
+
+REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
+    ReportDesignerViewBlueprint(
+        name="Odoo Report Designer List",
+        model="x_odoo_report_design",
+        view_type="list",
+        arch_db=_arch(
+            """
+            <list string="Disenos de plantillas">
+                <field name="x_name"/>
+                <field name="x_code"/>
+                <field name="x_document_family"/>
+                <field name="x_source_format"/>
+                <field name="x_render_stage"/>
+                <field name="x_band_count" optional="show"/>
+                <field name="x_element_count" optional="show"/>
+                <field name="x_dataset_count" optional="show"/>
+                <field name="x_expression_count" optional="show"/>
+                <field name="x_active" optional="show"/>
+            </list>
+            """
+        ),
+    ),
+    ReportDesignerViewBlueprint(
+        name="Odoo Report Designer Form",
+        model="x_odoo_report_design",
+        view_type="form",
+        arch_db=_arch(
+            """
+            <form string="Diseno de plantilla">
+                <sheet>
+                    <group>
+                        <group string="Plantilla">
+                            <field name="x_name"/>
+                            <field name="x_code"/>
+                            <field name="x_document_family"/>
+                            <field name="x_source_format"/>
+                            <field name="x_render_stage"/>
+                            <field name="x_active"/>
+                        </group>
+                        <group string="Complejidad">
+                            <field name="x_source_name"/>
+                            <field name="x_page_width"/>
+                            <field name="x_page_height"/>
+                            <field name="x_band_count"/>
+                            <field name="x_element_count"/>
+                            <field name="x_dataset_count"/>
+                            <field name="x_expression_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Preview">
+                            <field name="x_preview_html" nolabel="1"/>
+                        </page>
+                        <page string="Bandas y layout">
+                            <field name="x_layout_json" nolabel="1"/>
+                        </page>
+                        <page string="Logica">
+                            <field name="x_expression_json" nolabel="1"/>
+                        </page>
+                        <page string="Datos de prueba">
+                            <field name="x_data_schema_json" nolabel="1"/>
+                        </page>
+                        <page string="JRXML original" groups="base.group_no_one">
+                            <field name="x_source_jrxml" nolabel="1"/>
+                        </page>
+                        <page string="Notas">
+                            <field name="x_notes" nolabel="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+            """
+        ),
+    ),
+)
+
+
+__all__ = [
+    "JRXML_NAMESPACE",
+    "REPORT_DESIGNER_FIELDS",
+    "REPORT_DESIGNER_MODELS",
+    "REPORT_DESIGNER_SCHEMA_VERSION",
+    "REPORT_DESIGNER_VIEW_BLUEPRINTS",
+    "REPORT_TEMPLATE_RENDER_STAGE_OPTIONS",
+    "REPORT_TEMPLATE_SOURCE_FORMAT_OPTIONS",
+    "ReportDesignerFieldSpec",
+    "ReportDesignerModelSpec",
+    "ReportDesignerViewBlueprint",
+    "build_design_record_values",
+    "build_preview_html",
+    "dumps_canonical_json",
+    "flatten_xml_sample",
+    "flatten_xml_sample_file",
+    "parse_jrxml_document",
+    "parse_jrxml_file",
+    "summarize_design_blueprint",
+]

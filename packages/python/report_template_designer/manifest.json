@@ -1,0 +1,19 @@
+{
+  "key": "report-template-designer",
+  "title": "Report Template Designer",
+  "status": "canonical",
+  "language": "python",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "report_template_designer.py"
+  ],
+  "capabilities": [
+    "jrxml-band-import",
+    "xml-sample-schema",
+    "safe-expression-index",
+    "odoo-designer-model-spec",
+    "fixed-canvas-preview"
+  ]
+}

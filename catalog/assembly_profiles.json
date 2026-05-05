@@ -455,6 +455,22 @@
     ]
   },
   {
+    "key": "neutral_report_template_design",
+    "title": "Neutral Report Template Design",
+    "components": [
+      "report-template-designer",
+      "report-upserts",
+      "view-upserts"
+    ],
+    "use_cases": [
+      "JRXML/iReport import",
+      "band and fixed-canvas inspection",
+      "XML sample data mapping",
+      "safe expression indexing",
+      "designer records independent of business verticals"
+    ]
+  },
+  {
     "key": "mail_template_publication",
     "title": "Mail Template Publication",
     "components": [

@@ -56,7 +56,7 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertNotIn("<style", preview)
         self.assertIn("position:relative", preview)
         self.assertIn("position:absolute", preview)
-        self.assertIn("left:10px;top:5px;width:80px;height:20px", preview)
+        self.assertIn("left:13.33px;top:6.67px;width:106.67px;height:26.67px", preview)
         self.assertNotIn("rgba(59,130,246", preview)
         self.assertIn("14300.00", preview)
 

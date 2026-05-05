@@ -24,6 +24,7 @@ JRXML_NAMESPACE = "http://jasperreports.sourceforge.net/jasperreports"
 JR = f"{{{JRXML_NAMESPACE}}}"
 REPORT_DESIGNER_SCHEMA_VERSION = "odoo_common.report_template_designer.v1"
 SAT_CFDI_VERIFICATION_URL = "https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx"
+JASPER_POINT_TO_CSS_PIXEL = 4 / 3
 CFDI_FIELD_FALLBACK_PATHS: dict[str, tuple[str, ...]] = {
     "uuid": ("TimbreFiscalDigital/@UUID",),
     "rfcemisor": ("Emisor/@Rfc", "Emisor/@rfc"),
@@ -236,6 +237,20 @@ def _resolve_field_description_value(root: ET.Element, description: str, *, fall
     return ""
 
 
+def _resolve_dataset_field_value(root: ET.Element, row_node: ET.Element, description: str, *, fallback_name: str = "") -> str:
+    candidates = [candidate.strip() for candidate in str(description or "").split("|") if candidate.strip()]
+    if fallback_name:
+        candidates.extend(CFDI_FIELD_FALLBACK_PATHS.get(fallback_name.lower(), ()))
+        candidates.append(f"@{fallback_name}")
+        candidates.append(fallback_name)
+    for candidate in candidates:
+        source_node = root if candidate.startswith("/") else row_node
+        value = _resolve_xml_path_value(source_node, candidate)
+        if value:
+            return value
+    return ""
+
+
 def _field_description_exists(root: ET.Element, description: str, *, fallback_name: str = "") -> bool:
     candidates = [candidate.strip() for candidate in str(description or "").split("|") if candidate.strip()]
     if fallback_name:
@@ -245,10 +260,66 @@ def _field_description_exists(root: ET.Element, description: str, *, fallback_na
     return any(_xml_path_exists(root, candidate) for candidate in candidates)
 
 
+def _child_node_by_name(node: ET.Element, name: str) -> ET.Element | None:
+    for child in list(node):
+        if _xml_node_matches_segment(child, name):
+            return child
+    return None
+
+
+def _concept_dataset_nodes(root: ET.Element, sample_values: Mapping[str, Any] | None = None) -> list[ET.Element]:
+    serie = (_sample_value(sample_values, "serie") or _xml_attr_value(root, "Serie") or _xml_attr_value(root, "serie")).upper()
+    if serie == "A":
+        especiales = _child_node_by_name(root, "Especiales")
+        especiales_conceptos = _child_node_by_name(especiales, "Conceptos") if especiales is not None else None
+        nodes = _xml_child_nodes_by_name([especiales_conceptos], "Concepto") if especiales_conceptos is not None else []
+        if nodes:
+            return nodes
+    conceptos = _child_node_by_name(root, "Conceptos")
+    nodes = _xml_child_nodes_by_name([conceptos], "Concepto") if conceptos is not None else []
+    if nodes:
+        return nodes
+    return _xml_descendants_by_name(root, "Concepto")
+
+
+def _sample_dataset_rows(root: ET.Element, blueprint: Mapping[str, Any], sample_values: Mapping[str, Any]) -> dict[str, list[dict[str, str]]]:
+    rows_by_dataset: dict[str, list[dict[str, str]]] = {}
+    for dataset in blueprint.get("datasets") or []:
+        if not isinstance(dataset, Mapping):
+            continue
+        dataset_name = str(dataset.get("name") or "").strip()
+        if not dataset_name:
+            continue
+        if dataset_name == "Conceptos":
+            row_nodes = _concept_dataset_nodes(root, sample_values)
+        else:
+            row_nodes = []
+        if not row_nodes:
+            continue
+        dataset_rows: list[dict[str, str]] = []
+        for row_node in row_nodes:
+            row_values: dict[str, str] = {}
+            for field_spec in dataset.get("fields") or []:
+                if not isinstance(field_spec, Mapping):
+                    continue
+                field_name = str(field_spec.get("name") or "").strip()
+                if not field_name:
+                    continue
+                description = str(field_spec.get("description") or "").strip()
+                value = _resolve_dataset_field_value(root, row_node, description, fallback_name=field_name)
+                if value:
+                    row_values[field_name] = value
+            if row_values:
+                dataset_rows.append(row_values)
+        if dataset_rows:
+            rows_by_dataset[dataset_name] = dataset_rows
+    return rows_by_dataset
+
+
 def build_sample_field_values(
     blueprint: Mapping[str, Any],
     sample_xml_source: str | bytes | Path,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Resolve JRXML field names against one sample XML document.
 
     Field descriptions may contain one or more XML paths separated by `|`, such
@@ -259,7 +330,7 @@ def build_sample_field_values(
     else:
         source_text = sample_xml_source.decode("utf-8") if isinstance(sample_xml_source, bytes) else str(sample_xml_source or "")
     root = ET.fromstring(source_text)
-    values: dict[str, str] = {}
+    values: dict[str, Any] = {}
     for field_spec in blueprint.get("fields") or []:
         if not isinstance(field_spec, Mapping):
             continue
@@ -272,6 +343,9 @@ def build_sample_field_values(
             values[field_name] = value
         elif _field_description_exists(root, field_description, fallback_name=field_name):
             values[field_name] = "__present__"
+    dataset_rows = _sample_dataset_rows(root, blueprint, values)
+    if dataset_rows:
+        values["__datasets__"] = dataset_rows
     return values
 
 
@@ -390,6 +464,17 @@ def _component_payload(element: ET.Element) -> dict[str, Any]:
                 payload["dataset_run"] = {
                     "sub_dataset": dataset_run.get("subDataset"),
                     "data_source_expression": _node_text(_first_child(dataset_run, "dataSourceExpression")),
+                }
+            list_contents = _first_child(child, "listContents")
+            if list_contents is not None:
+                payload["list_contents"] = {
+                    "height": _int_attr(list_contents, "height"),
+                    "width": _int_attr(list_contents, "width"),
+                    "elements": [
+                        _parse_element(grandchild)
+                        for grandchild in list(list_contents)
+                        if _local_name(grandchild.tag) not in {"property"}
+                    ],
                 }
             payload["raw_children"] = [_local_name(grandchild.tag) for grandchild in list(child)]
             break
@@ -755,13 +840,32 @@ def dumps_canonical_json(payload: Mapping[str, Any]) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
 
 
-def _style_from_geometry(geometry: Mapping[str, Any], *, offset_x: int = 0, offset_y: int = 0) -> str:
-    x = int(geometry.get("x") or 0)
+def _css_px(value: float) -> str:
+    rounded = round(float(value or 0), 2)
+    if abs(rounded - round(rounded)) < 0.01:
+        return f"{int(round(rounded))}px"
+    return f"{rounded:.2f}".rstrip("0").rstrip(".") + "px"
+
+
+def _scaled(value: Any, scale: float) -> float:
+    return float(value or 0) * float(scale or 1)
+
+
+def _style_from_geometry(
+    geometry: Mapping[str, Any],
+    *,
+    offset_x: int = 0,
+    offset_y: int = 0,
+    scale: float = 1.0,
+) -> str:
+    x = int(geometry.get("x") or 0) + int(offset_x or 0)
     y = int(geometry.get("y") or 0) + int(offset_y or 0)
-    x += int(offset_x or 0)
     width = max(int(geometry.get("width") or 0), 1)
     height = max(int(geometry.get("height") or 0), 1)
-    return f"left:{x}px;top:{y}px;width:{width}px;height:{height}px;"
+    return (
+        f"left:{_css_px(_scaled(x, scale))};top:{_css_px(_scaled(y, scale))};"
+        f"width:{_css_px(_scaled(width, scale))};height:{_css_px(_scaled(height, scale))};"
+    )
 
 
 def _join_inline_style(*parts: str) -> str:
@@ -791,14 +895,14 @@ def _sample_is_spanish(sample_values: Mapping[str, Any] | None) -> bool:
     return _truthy_text(_sample_value(sample_values, "es"), default=True)
 
 
-def _font_css(text_style: Mapping[str, Any] | None) -> str:
+def _font_css(text_style: Mapping[str, Any] | None, *, scale: float = 1.0) -> str:
     font = text_style.get("font") if isinstance(text_style, Mapping) and isinstance(text_style.get("font"), Mapping) else {}
     css = ["font-family:Arial,Helvetica,sans-serif", "line-height:1.05"]
     size = str(font.get("size") or "").strip()
     if size.isdigit():
-        css.append(f"font-size:{size}px")
+        css.append(f"font-size:{_css_px(_scaled(int(size), scale))}")
     else:
-        css.append("font-size:8px")
+        css.append(f"font-size:{_css_px(_scaled(8, scale))}")
     if _truthy_text(font.get("isBold")):
         css.append("font-weight:700")
     if _truthy_text(font.get("isItalic")):
@@ -827,7 +931,12 @@ def _text_alignment_css(text_style: Mapping[str, Any] | None) -> str:
     return ";".join(css)
 
 
-def _padding_css(box: Mapping[str, Any] | None = None, named_box: Mapping[str, Any] | None = None) -> str:
+def _padding_css(
+    box: Mapping[str, Any] | None = None,
+    named_box: Mapping[str, Any] | None = None,
+    *,
+    scale: float = 1.0,
+) -> str:
     merged: dict[str, Any] = {}
     if isinstance(named_box, Mapping):
         merged.update(named_box)
@@ -843,7 +952,7 @@ def _padding_css(box: Mapping[str, Any] | None = None, named_box: Mapping[str, A
     ):
         value = str(merged.get(key) or "").strip()
         if value.lstrip("-").isdigit():
-            css.append(f"{css_key}:{int(value)}px")
+            css.append(f"{css_key}:{_css_px(_scaled(int(value), scale))}")
     return ";".join(css)
 
 
@@ -863,6 +972,7 @@ def _base_element_css(
     offset_y: int = 0,
     default_border: str = "0",
     default_background: str = "transparent",
+    scale: float = 1.0,
 ) -> str:
     geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
     report_element = element.get("report_element") if isinstance(element.get("report_element"), Mapping) else {}
@@ -871,7 +981,7 @@ def _base_element_css(
     backcolor = _css_color(report_element.get("backcolor"), default_background)
     background = backcolor if mode == "opaque" else default_background
     return _join_inline_style(
-        _style_from_geometry(geometry, offset_x=offset_x, offset_y=offset_y),
+        _style_from_geometry(geometry, offset_x=offset_x, offset_y=offset_y, scale=scale),
         "position:absolute;box-sizing:border-box;overflow:hidden;white-space:pre-wrap",
         f"border:{default_border}",
         f"color:{forecolor}",
@@ -969,6 +1079,14 @@ def _join_preview_lines(*lines: str) -> str:
     return "\n".join(line for line in (str(line or "").strip() for line in lines) if line)
 
 
+def _format_preview_amount(value: Any, decimals: int = 2) -> str:
+    try:
+        decimal_value = Decimal(str(value or "0")).quantize(Decimal("1." + ("0" * decimals)), rounding=ROUND_HALF_UP)
+        return f"{decimal_value:,.{decimals}f}"
+    except Exception:
+        return str(value or "")
+
+
 def _format_party_block(sample_values: Mapping[str, Any] | None, prefix: str) -> str:
     name = _sample_value(sample_values, f"nombre{prefix}")
     street = _sample_value(sample_values, f"calle{prefix}")
@@ -1000,6 +1118,24 @@ def _format_party_block(sample_values: Mapping[str, Any] | None, prefix: str) ->
 
 
 def _special_preview_expression_text(source: str, sample_values: Mapping[str, Any] | None = None) -> str:
+    if "$F{idReceptor}.contains" in source and "802442" in source:
+        id_receptor = _sample_value(sample_values, "idReceptor")
+        if "802442" not in id_receptor:
+            return ""
+    if "$F{claveProdServ}" in source and "$F{descripcion}" in source:
+        clave = _sample_value(sample_values, "claveProdServ")
+        descripcion = _sample_value(sample_values, "descripcion")
+        return f"{clave} - {descripcion}".strip(" -")
+    if "$F{cantidad}.toDouble()" in source:
+        cantidad = _format_preview_amount(_sample_value(sample_values, "cantidad"), 2)
+        unidad = _sample_value(sample_values, "unidad")
+        return f"{cantidad} {unidad}".strip()
+    if "$F{valorUnitarioPlantilla}.toDouble()" in source:
+        precio = _format_preview_amount(_sample_value(sample_values, "valorUnitarioPlantilla") or _sample_value(sample_values, "valorUnitario"), 2)
+        categoria = _sample_value(sample_values, "categoria")
+        return f"${precio} {categoria}".strip()
+    if "$F{importe}.toDouble()" in source:
+        return _format_preview_amount(_sample_value(sample_values, "importe"), 2)
     if "$V{docs}" in source and ("$F{doc}" in source or "$F{tipoDeComprobante}" in source):
         return _cfdi_document_label(sample_values)
     if "$F{serie}" in source and "$F{folio}" in source:
@@ -1041,8 +1177,11 @@ def _special_preview_expression_text(source: str, sample_values: Mapping[str, An
         return _sample_value(sample_values, "selloSAT")
     if "$F{cadenaOriginal}" in source and source.strip() == "$F{cadenaOriginal}":
         return _sample_value(sample_values, "cadenaOriginal")
-    if "Página" in source or "Page" in source or "$V{PAGE_NUMBER}" in source:
-        return "Página 1 de 1"
+    if "$V{PAGE_NUMBER}" in source:
+        if source.strip().startswith('" "'):
+            return "1"
+        if "Página" in source or "Page" in source:
+            return "Página 1 de"
     return ""
 
 
@@ -1054,6 +1193,8 @@ def _preview_expression_text(expression: str, sample_values: Mapping[str, Any] |
     if exact_field:
         return _sample_value(sample_values, exact_field.group(1))
     special_text = _special_preview_expression_text(source, sample_values)
+    if "$F{idReceptor}.contains" in source and "802442" in source:
+        return special_text
     if special_text:
         return special_text
 
@@ -1154,6 +1295,59 @@ def _print_when_allows(element: Mapping[str, Any], sample_values: Mapping[str, A
     return True
 
 
+def _sample_dataset_values(sample_values: Mapping[str, Any] | None, dataset_name: str) -> list[dict[str, Any]]:
+    datasets = sample_values.get("__datasets__") if isinstance(sample_values, Mapping) else None
+    if not isinstance(datasets, Mapping):
+        return []
+    rows = datasets.get(dataset_name)
+    if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes)):
+        return []
+    return [dict(row) for row in rows if isinstance(row, Mapping)]
+
+
+def _merged_sample_values(sample_values: Mapping[str, Any] | None, row_values: Mapping[str, Any]) -> dict[str, Any]:
+    merged = dict(sample_values or {})
+    merged.update(row_values)
+    return merged
+
+
+def _component_list_html(
+    element: Mapping[str, Any],
+    *,
+    asset_base_path: str | Path | None,
+    offset_x: int,
+    offset_y: int,
+    sample_values: Mapping[str, Any] | None,
+    scale: float,
+    styles: Mapping[str, Any] | None,
+) -> str:
+    dataset_run = element.get("dataset_run") if isinstance(element.get("dataset_run"), Mapping) else {}
+    dataset_name = str(dataset_run.get("sub_dataset") or "").strip()
+    rows = _sample_dataset_values(sample_values, dataset_name)
+    list_contents = element.get("list_contents") if isinstance(element.get("list_contents"), Mapping) else {}
+    content_elements = [child for child in list_contents.get("elements") or [] if isinstance(child, Mapping)]
+    if not rows or not content_elements:
+        return ""
+    row_height = int(list_contents.get("height") or (element.get("geometry") or {}).get("height") or 1)
+    rendered_rows: list[str] = []
+    for row_index, row_values in enumerate(rows[:20]):
+        row_sample_values = _merged_sample_values(sample_values, row_values)
+        row_offset_y = row_height * row_index
+        rendered_rows.extend(
+            _preview_element_html(
+                child,
+                asset_base_path=asset_base_path,
+                offset_x=0,
+                offset_y=row_offset_y,
+                sample_values=row_sample_values,
+                scale=scale,
+                styles=styles,
+            )
+            for child in content_elements
+        )
+    return "".join(rendered_rows)
+
+
 def _preview_element_html(
     element: Mapping[str, Any],
     *,
@@ -1161,6 +1355,7 @@ def _preview_element_html(
     offset_x: int = 0,
     offset_y: int = 0,
     sample_values: Mapping[str, Any] | None = None,
+    scale: float = 1.0,
     styles: Mapping[str, Any] | None = None,
 ) -> str:
     if not _print_when_allows(element, sample_values):
@@ -1173,27 +1368,27 @@ def _preview_element_html(
         text_style = element.get("text_style") if isinstance(element.get("text_style"), Mapping) else {}
         box = element.get("box") if isinstance(element.get("box"), Mapping) else {}
         base_style = _join_inline_style(
-            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
-            _font_css(text_style),
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
+            _font_css(text_style, scale=scale),
             _text_alignment_css(text_style),
-            _padding_css(box, _effective_named_box(element, styles)),
+            _padding_css(box, _effective_named_box(element, styles), scale=scale),
         )
         content = html.escape(str(element.get("text") or ""))
     elif kind == "textField":
         text_style = element.get("text_style") if isinstance(element.get("text_style"), Mapping) else {}
         box = element.get("box") if isinstance(element.get("box"), Mapping) else {}
         base_style = _join_inline_style(
-            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
-            _font_css(text_style),
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
+            _font_css(text_style, scale=scale),
             _text_alignment_css(text_style),
-            _padding_css(box, _effective_named_box(element, styles)),
+            _padding_css(box, _effective_named_box(element, styles), scale=scale),
         )
         expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
         preview_text = _preview_expression_text(str(expression or ""), sample_values)
         content = html.escape(preview_text)
     elif kind == "image":
         base_style = _join_inline_style(
-            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             "padding:0",
         )
         expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
@@ -1222,7 +1417,7 @@ def _preview_element_html(
         line_style = "dotted" if "Dotted" in str(element.get("graphic") or "") else "solid"
         border_css = f"border-left:1px {line_style} {color}" if int(geometry.get("width") or 0) <= 1 else f"border-top:1px {line_style} {color}"
         base_style = _join_inline_style(
-            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             "background:transparent;padding:0",
             "border:0",
             border_css,
@@ -1235,13 +1430,19 @@ def _preview_element_html(
         radius = str(element.get("radius") or "").strip()
         radius_css = f"border-radius:{radius}px" if radius.isdigit() else ""
         base_style = _join_inline_style(
-            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, default_border=f"1px solid {color}"),
+            _base_element_css(
+                element,
+                offset_x=offset_x,
+                offset_y=offset_y,
+                default_border=f"1px solid {color}",
+                scale=scale,
+            ),
             radius_css,
             "pointer-events:none",
         )
     elif kind == "frame":
         base_style = _join_inline_style(
-            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             "padding:0",
         )
         child_html = "".join(
@@ -1251,6 +1452,7 @@ def _preview_element_html(
                 offset_x=0,
                 offset_y=0,
                 sample_values=sample_values,
+                scale=scale,
                 styles=styles,
             )
             for child in element.get("children") or []
@@ -1259,15 +1461,29 @@ def _preview_element_html(
         content = child_html
         classes += " oc_report_designer_preview__frame"
     elif kind == "componentElement":
-        content = ""
+        dataset_run = element.get("dataset_run") if isinstance(element.get("dataset_run"), Mapping) else {}
+        dataset_name = str(dataset_run.get("sub_dataset") or "").strip()
+        row_count = len(_sample_dataset_values(sample_values, dataset_name))
+        list_contents = element.get("list_contents") if isinstance(element.get("list_contents"), Mapping) else {}
+        row_height = int(list_contents.get("height") or (element.get("geometry") or {}).get("height") or 1)
+        content = _component_list_html(
+            element,
+            asset_base_path=asset_base_path,
+            offset_x=0,
+            offset_y=0,
+            sample_values=sample_values,
+            scale=scale,
+            styles=styles,
+        )
         base_style = _join_inline_style(
-            _base_element_css(element, offset_x=offset_x, offset_y=offset_y),
+            _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             "padding:0",
+            f"height:{_css_px(_scaled(max(row_count, 1) * row_height, scale))}",
         )
     elif kind in {"subreport", "break", "printWhenExpression"}:
         return ""
     else:
-        base_style = _base_element_css(element, offset_x=offset_x, offset_y=offset_y)
+        base_style = _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale)
         content = ""
     return f"<div class=\"{classes}\" style=\"{base_style}\">{content}</div>"
 
@@ -1278,6 +1494,7 @@ def build_preview_html(
     asset_base_path: str | Path | None = None,
     max_bands: int = 12,
     sample_values: Mapping[str, Any] | None = None,
+    scale: float = JASPER_POINT_TO_CSS_PIXEL,
 ) -> str:
     """Build a safe HTML preview that resembles the fixed-band JRXML canvas."""
     page = blueprint.get("page") if isinstance(blueprint.get("page"), Mapping) else {}
@@ -1303,14 +1520,17 @@ def build_preview_html(
                         offset_x=margin_left,
                         offset_y=margin_top + current_y,
                         sample_values=sample_values,
+                        scale=scale,
                         styles=styles,
                     )
                 )
         current_y += height
     height = max(margin_top + current_y + margin_bottom, int(page.get("height") or 792))
+    page_width = _css_px(_scaled(width, scale))
+    page_height = _css_px(_scaled(height, scale))
     return (
         '<div class="oc_report_designer_preview" style="background:#e5e7eb;border:1px solid #d1d5db;box-sizing:border-box;max-width:100%;overflow:auto;padding:12px;">'
-        f'<div class="oc_report_designer_preview__page" style="background:#fff;box-shadow:0 4px 18px rgba(15,23,42,.22);height:{height}px;margin:0 auto;position:relative;width:{width}px;">'
+        f'<div class="oc_report_designer_preview__page" style="background:#fff;box-shadow:0 4px 18px rgba(15,23,42,.22);height:{page_height};margin:0 auto;position:relative;width:{page_width};">'
         f"{''.join(element_html)}</div></div>"
     )
 

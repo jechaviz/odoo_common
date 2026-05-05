@@ -2412,6 +2412,13 @@ body.o_surface_workspace_form .o_form_view [data-surface-form-column="primary"] 
   grid-column: 1 / -1;
 }
 
+body.o_surface_workspace_form .o_form_view .o_surface_form_capture_column > .o_cell_custom:first-child,
+body.o_surface_workspace_form .o_form_view .o_surface_form_capture_column > .o_cell_custom:has(.o_surface_record_context_stack),
+body.o_surface_workspace_form .o_form_view [data-surface-form-column] > .o_cell_custom:first-child,
+body.o_surface_workspace_form .o_form_view [data-surface-form-column] > .o_cell_custom:has(.o_surface_record_context_stack) {
+  grid-column: 1 / -1;
+}
+
 body.o_surface_workspace_form .o_form_view .o_surface_form_capture_section_title,
 body.o_surface_workspace_form .o_form_view [data-surface-form-section-title="1"] {
   border-bottom: 1px solid rgba(164, 174, 197, 0.08);

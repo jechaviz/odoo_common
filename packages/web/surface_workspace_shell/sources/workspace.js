@@ -213,6 +213,30 @@
     return String(searchParams.get("view_type") || hashParams.get("view_type") || "").trim().toLowerCase();
   }
 
+  function readCurrentActionRecordId() {
+    try {
+      var root = window.odoo && window.odoo.__WOWL_DEBUG__ && window.odoo.__WOWL_DEBUG__.root;
+      var actionService = root && root.env && root.env.services ? root.env.services.action : null;
+      var currentController = actionService && actionService.currentController ? actionService.currentController : null;
+      var candidates = [
+        currentController && currentController.props ? currentController.props.resId : 0,
+        currentController && currentController.currentState ? currentController.currentState.resId : 0,
+        currentController && currentController.state ? currentController.state.resId : 0,
+        currentController && currentController.config ? currentController.config.resId : 0,
+        currentController && currentController.state && currentController.state.model && currentController.state.model.root
+          ? currentController.state.model.root.resId
+          : 0,
+      ];
+      for (var index = 0; index < candidates.length; index += 1) {
+        var recordId = Number.parseInt(String(candidates[index] || 0), 10) || 0;
+        if (recordId > 0) {
+          return recordId;
+        }
+      }
+    } catch (_error) {}
+    return 0;
+  }
+
   function readCurrentRecordId(url) {
     var sourceUrl = url || readCurrentUrl();
     var pathname = normalizePathname(sourceUrl ? sourceUrl.pathname : window.location.pathname || "");
@@ -225,7 +249,23 @@
     }
     var searchParams = sourceUrl ? sourceUrl.searchParams : parseSearchParams(window.location.search || "");
     var hashParams = parseSearchParams(String(window.location.hash || "").replace(/^#/, ""));
-    return Number.parseInt(String(hashParams.get("id") || searchParams.get("id") || 0), 10) || 0;
+    return Number.parseInt(String(hashParams.get("id") || searchParams.get("id") || 0), 10) ||
+      (!(url instanceof URL) || (sourceUrl instanceof URL && String(sourceUrl.href || "") === String(window.location.href || ""))
+        ? readCurrentActionRecordId()
+        : 0);
+  }
+
+  function readCurrentActionModel() {
+    if (typeof surfaceLayers.readCurrentActionModel === "function") {
+      return String(surfaceLayers.readCurrentActionModel() || "").trim();
+    }
+    return "";
+  }
+
+  function currentActionModelMatchesWorkspace(config) {
+    var workspaceModel = String(config && config.model || "").trim().toLowerCase();
+    var currentModel = readCurrentActionModel().toLowerCase();
+    return !workspaceModel || !currentModel || workspaceModel === currentModel;
   }
 
   function isElementVisible(node) {
@@ -261,6 +301,30 @@
     }) || null;
   }
 
+  function hasListOwnershipHints(config) {
+    return Array.isArray(config && config.listFieldHints) && config.listFieldHints.length > 0;
+  }
+
+  function matchesListFieldHints(table, config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var hints = Array.isArray(settings.listFieldHints) ? settings.listFieldHints : [];
+    var hintMode = String(settings.listFieldHintMode || "any").trim().toLowerCase();
+    if (!(table instanceof HTMLElement)) {
+      return false;
+    }
+    if (!hints.length) {
+      return true;
+    }
+    var matcher = hintMode === "all" ? "every" : "some";
+    return hints[matcher](function (fieldName) {
+      var normalized = String(fieldName || "").trim();
+      return !!(
+        normalized &&
+        table.querySelector("[name='" + normalized + "'], [data-name='" + normalized + "']")
+      );
+    });
+  }
+
   function findVisibleForm(config, options) {
     if (typeof surfaceLayers.findVisibleForm === "function") {
       return surfaceLayers.findVisibleForm(
@@ -268,6 +332,218 @@
       );
     }
     return null;
+  }
+
+  function findVisibleFormWithoutMarker(config, options) {
+    var markerSelector = String(config && config.formMarkerSelector || "").trim();
+    if (!markerSelector) {
+      return null;
+    }
+    return findVisibleForm(Object.assign({}, config || {}, {
+      formMarkerSelector: "",
+    }), options);
+  }
+
+  function hasFormOwnershipHints(config) {
+    return Array.isArray(config && config.formFieldHints) && config.formFieldHints.length > 0;
+  }
+
+  function readVisibleBreadcrumbLabels(options) {
+    if (typeof surfaceLayers.readSurfaceBreadcrumbTrail === "function") {
+      try {
+        return surfaceLayers.readSurfaceBreadcrumbTrail(Object.assign({
+          includeHome: true,
+          maxSegments: 20,
+        }, options || {}));
+      } catch (_error) {}
+    }
+    return [];
+  }
+
+  function normalizeBreadcrumbLabelList(labels) {
+    var normalized = [];
+    (Array.isArray(labels) ? labels : []).forEach(function (label) {
+      var text = normalizeBreadcrumbText(label);
+      if (text && normalized[normalized.length - 1] !== text) {
+        normalized.push(text);
+      }
+    });
+    return normalized;
+  }
+
+  function cloneManagedBreadcrumbAction(action) {
+    if (action && typeof action === "object" && !Array.isArray(action)) {
+      return Object.assign({}, action);
+    }
+    return action == null ? null : action;
+  }
+
+  function cloneManagedBreadcrumbMenu(menu) {
+    return (Array.isArray(menu) ? menu : []).map(function (entry) {
+      return cloneManagedBreadcrumbItem(entry);
+    }).filter(function (entry) {
+      return !!entry;
+    });
+  }
+
+  function cloneManagedBreadcrumbItem(item) {
+    if (!(item && typeof item === "object") || Array.isArray(item)) {
+      return null;
+    }
+    var label = normalizeBreadcrumbText(item.label);
+    if (!label) {
+      return null;
+    }
+    var clone = {
+      label: label,
+      href: String(item.href || "").trim(),
+      action: cloneManagedBreadcrumbAction(item.action),
+      preferAction: item.preferAction === true,
+      workspaceKey: normalizeBreadcrumbText(item.workspaceKey),
+      sectionKey: normalizeBreadcrumbText(item.sectionKey),
+      target: String(item.target || "").trim(),
+      current: !!item.current,
+      menu: cloneManagedBreadcrumbMenu(item.menu),
+    };
+    var key = normalizeBreadcrumbText(item.key);
+    if (key) {
+      clone.key = key;
+    }
+    if (item.home === true) {
+      clone.home = true;
+    }
+    return clone;
+  }
+
+  function normalizeManagedBreadcrumbItems(items) {
+    var normalized = [];
+    (Array.isArray(items) ? items : []).forEach(function (item) {
+      var clone = cloneManagedBreadcrumbItem(item);
+      var label = normalizeBreadcrumbText(clone && clone.label);
+      if (label && normalizeBreadcrumbText(normalized.length ? normalized[normalized.length - 1].label : "") !== label) {
+        normalized.push(clone);
+      }
+    });
+    return normalized;
+  }
+
+  function readBreadcrumbLabelsFromItems(items) {
+    return normalizeBreadcrumbLabelList((Array.isArray(items) ? items : []).map(function (item) {
+      return item && item.label;
+    }));
+  }
+
+  function readInheritedBreadcrumbLabels() {
+    var rememberedItems = normalizeManagedBreadcrumbItems(shared.surfaceLastManagedBreadcrumbItems);
+    var rememberedLabels = rememberedItems.length
+      ? readBreadcrumbLabelsFromItems(rememberedItems)
+      : normalizeBreadcrumbLabelList(shared.surfaceLastManagedBreadcrumbLabels);
+    if (rememberedLabels.length) {
+      return rememberedLabels;
+    }
+    return normalizeBreadcrumbLabelList(readVisibleBreadcrumbLabels());
+  }
+
+  function readInheritedBreadcrumbItems() {
+    var rememberedItems = normalizeManagedBreadcrumbItems(shared.surfaceLastManagedBreadcrumbItems);
+    if (rememberedItems.length) {
+      return rememberedItems;
+    }
+    return buildBreadcrumbItemsFromLabels(readVisibleBreadcrumbLabels());
+  }
+
+  function buildBreadcrumbItemsFromLabels(labels) {
+    return normalizeBreadcrumbLabelList(labels).map(function (label, index) {
+      return index === 0 && label.toLowerCase() === "home"
+        ? buildHomeBreadcrumbItem()
+        : buildBreadcrumbItem(label);
+    }).filter(function (item) {
+      return !!item;
+    });
+  }
+
+  function readCurrentBreadcrumbHref() {
+    var href = window.location.pathname + window.location.search + window.location.hash;
+    if (typeof surfaceLayers.normalizeSurfaceHistoryUrl === "function") {
+      try {
+        return String(surfaceLayers.normalizeSurfaceHistoryUrl(href) || href).trim();
+      } catch (_error) {}
+    }
+    return String(href || "").trim();
+  }
+
+  function rememberManagedBreadcrumbTrail(items, label) {
+    var managedItems = normalizeManagedBreadcrumbItems(items);
+    var labels = readBreadcrumbLabelsFromItems(managedItems);
+    var currentLabel = normalizeBreadcrumbText(label);
+    if (currentLabel && labels[labels.length - 1] !== currentLabel) {
+      managedItems.push(cloneManagedBreadcrumbItem(buildBreadcrumbItem(currentLabel, {
+        href: readCurrentBreadcrumbHref(),
+      })));
+    }
+    shared.surfaceLastManagedBreadcrumbItems = normalizeManagedBreadcrumbItems(managedItems);
+    shared.surfaceLastManagedBreadcrumbLabels = readBreadcrumbLabelsFromItems(shared.surfaceLastManagedBreadcrumbItems);
+    return shared.surfaceLastManagedBreadcrumbLabels.slice();
+  }
+
+  function resolveRoutePresentationSourceHref(config, state) {
+    if (!(state && (state.isList || state.isForm))) {
+      return "";
+    }
+    var configuredActionIds = (Array.isArray(config && config.actionIds) ? config.actionIds : []).map(function (actionId) {
+      return Number.parseInt(String(actionId || 0), 10) || 0;
+    }).filter(function (actionId) {
+      return actionId > 0;
+    });
+    var currentActionId = typeof surfaceLayers.readCurrentActionId === "function"
+      ? Number.parseInt(String(surfaceLayers.readCurrentActionId() || 0), 10) || 0
+      : 0;
+    if (
+      currentActionId > 0 &&
+      configuredActionIds.length &&
+      configuredActionIds.indexOf(currentActionId) < 0
+    ) {
+      return "";
+    }
+    var actionId = currentActionId > 0
+      ? currentActionId
+      : configuredActionIds.length
+      ? configuredActionIds[0]
+      : 0;
+    if (!(actionId > 0)) {
+      return "";
+    }
+    var recordId = state && state.isForm
+      ? Number.parseInt(String(state.recordId || 0), 10) || 0
+      : 0;
+    return "/odoo/action-" + String(actionId) + (recordId > 0 ? "/" + String(recordId) : "");
+  }
+
+  function syncCurrentRoutePresentation(labels, state, workspaceConfig) {
+    if (
+      typeof surfaceLayers.readSurfaceRoutePresentationConfig !== "function" ||
+      typeof surfaceLayers.syncCurrentSurfaceRoutePresentation !== "function"
+    ) {
+      return;
+    }
+    var managedLabels = normalizeBreadcrumbLabelList(labels);
+    var sourceHref = resolveRoutePresentationSourceHref(workspaceConfig, state);
+    function sync() {
+      try {
+        var config = surfaceLayers.readSurfaceRoutePresentationConfig();
+        if (managedLabels.length) {
+          config = Object.assign({}, config, { labels: managedLabels });
+        }
+        if (sourceHref) {
+          config = Object.assign({}, config, { sourceHref: sourceHref });
+        }
+        surfaceLayers.syncCurrentSurfaceRoutePresentation(config);
+      } catch (_error) {}
+    }
+    sync();
+    [80, 300].forEach(function (delayMs) {
+      window.setTimeout(sync, delayMs);
+    });
   }
 
   function resolveHostNode(rootNode) {
@@ -483,6 +759,47 @@
     return buildBreadcrumbItem("Home", Object.assign({ href: "/odoo" }, settings));
   }
 
+  function buildWorkspaceBreadcrumbTrail(state, options) {
+    var settings = options && typeof options === "object" ? options : {};
+    var inheritedItems = state && state.isForm
+      ? normalizeManagedBreadcrumbItems(state.inheritedBreadcrumbItems)
+      : [];
+    var inheritedLabels = state && state.isForm
+      ? normalizeBreadcrumbLabelList(state.inheritedBreadcrumbLabels)
+      : [];
+    var trail = inheritedItems.length
+      ? inheritedItems
+      : inheritedLabels.length
+      ? buildBreadcrumbItemsFromLabels(inheritedLabels)
+      : [buildHomeBreadcrumbItem(settings.homeOptions)];
+    if (!inheritedItems.length && !inheritedLabels.length) {
+      var rootItems = Array.isArray(settings.rootItems) ? settings.rootItems : [];
+      rootItems.forEach(function (item) {
+        if (item) {
+          trail.push(item);
+        }
+      });
+    }
+    if (!(state && state.isForm)) {
+      return trail;
+    }
+    var currentItems = Array.isArray(settings.currentItems)
+      ? settings.currentItems
+      : settings.currentItem
+      ? [settings.currentItem]
+      : [];
+    currentItems.forEach(function (item) {
+      if (item) {
+        var label = normalizeBreadcrumbText(item.label);
+        var previous = trail.length ? normalizeBreadcrumbText(trail[trail.length - 1].label) : "";
+        if (!label || label !== previous) {
+          trail.push(item);
+        }
+      }
+    });
+    return trail;
+  }
+
   function buildWorkspaceActionHref(actionRequest, options) {
     if (typeof surfaceLayers.buildSurfaceActionHref === "function") {
       return surfaceLayers.buildSurfaceActionHref(actionRequest, options);
@@ -571,6 +888,7 @@
       label: label,
       href: href,
       action: actionRequest,
+      preferAction: item.preferAction === true,
       workspaceKey: normalizeBreadcrumbText(item.workspaceKey),
       sectionKey: normalizeBreadcrumbText(item.sectionKey),
       target: String(item.target || "").trim(),
@@ -946,7 +1264,7 @@
     return null;
   }
 
-  function deriveRouteState(config) {
+  function deriveRouteState(config, handle) {
     var url = readCurrentUrl();
     var controlPanel = resolveControlPanel(null);
     var breadcrumbTrail = readBreadcrumbTrail(controlPanel);
@@ -961,17 +1279,84 @@
     var href = routeOwnership.href;
     var currentActionId = routeOwnership.currentActionId;
     var actionScoped = routeOwnership.owned;
-    var formRoot = findVisibleForm(config, { allowFallback: actionScoped });
-    var listTable = findVisibleListTable();
+    var strictFormRoot = findVisibleForm(config, { allowFallback: false });
+    if (
+      !(strictFormRoot instanceof HTMLElement) &&
+      routeOwnership.matchesAction &&
+      hasFormOwnershipHints(config)
+    ) {
+      strictFormRoot = findVisibleFormWithoutMarker(config, { allowFallback: false });
+    }
+    var hasActionModelMismatchedForm = !!(
+      strictFormRoot instanceof HTMLElement &&
+      !routeOwnership.matchesAction &&
+      !currentActionModelMatchesWorkspace(config)
+    );
+    if (hasActionModelMismatchedForm) {
+      strictFormRoot = null;
+    }
+    var anyVisibleFormRoot = strictFormRoot instanceof HTMLElement
+      ? strictFormRoot
+      : findVisibleForm({}, { allowFallback: true });
+    var hasVisibleMismatchedForm = !!(
+      actionScoped &&
+      hasFormOwnershipHints(config) &&
+      anyVisibleFormRoot instanceof HTMLElement &&
+      !(strictFormRoot instanceof HTMLElement)
+    );
+    var formRoot = strictFormRoot instanceof HTMLElement
+      ? strictFormRoot
+      : hasVisibleMismatchedForm
+      ? null
+      : hasActionModelMismatchedForm
+      ? null
+      : findVisibleForm(config, { allowFallback: actionScoped });
+    var visibleListTable = findVisibleListTable();
+    var strictListTable = visibleListTable instanceof HTMLElement && hasListOwnershipHints(config) && matchesListFieldHints(visibleListTable, config)
+      ? visibleListTable
+      : null;
+    var hasVisibleMismatchedList = !!(
+      actionScoped &&
+      hasListOwnershipHints(config) &&
+      visibleListTable instanceof HTMLElement &&
+      !(strictListTable instanceof HTMLElement)
+    );
+    var listTable = strictListTable instanceof HTMLElement
+      ? strictListTable
+      : hasVisibleMismatchedList
+      ? null
+      : visibleListTable;
     var implicitFormAllowed =
       config.allowImplicitFormActivation !== false &&
-      (!(formRoot instanceof HTMLElement) || !currentActionId || !routeOwnership.configuredActionIds.length || !!routeOwnership.matchesAction);
+      (strictFormRoot instanceof HTMLElement
+        ? true
+        : (!(formRoot instanceof HTMLElement) || !currentActionId || !routeOwnership.configuredActionIds.length || !!routeOwnership.matchesAction));
     var active = !!(
-      actionScoped ||
+      (actionScoped && !hasVisibleMismatchedForm && !hasVisibleMismatchedList) ||
+      (strictListTable instanceof HTMLElement) ||
       (formRoot instanceof HTMLElement && implicitFormAllowed)
     );
     var viewType = readCurrentViewType(url);
-    var recordId = active ? readCurrentRecordId(url) : 0;
+    var previousState = handle && handle.lastState && typeof handle.lastState === "object" ? handle.lastState : null;
+    var previousInheritedItems = previousState && previousState.inheritedRoute
+      ? normalizeManagedBreadcrumbItems(previousState.inheritedBreadcrumbItems)
+      : [];
+    var previousInheritedLabels = previousState && previousState.inheritedRoute
+      ? normalizeBreadcrumbLabelList(previousState.inheritedBreadcrumbLabels)
+      : [];
+    var inheritedBreadcrumbItems = active && strictFormRoot instanceof HTMLElement && !routeOwnership.matchesAction
+      ? previousInheritedItems.length
+        ? previousInheritedItems
+        : previousInheritedLabels.length
+        ? buildBreadcrumbItemsFromLabels(previousInheritedLabels)
+        : readInheritedBreadcrumbItems()
+      : [];
+    var inheritedBreadcrumbLabels = inheritedBreadcrumbItems.length
+      ? readBreadcrumbLabelsFromItems(inheritedBreadcrumbItems)
+      : active && strictFormRoot instanceof HTMLElement && !routeOwnership.matchesAction
+      ? readInheritedBreadcrumbLabels()
+      : [];
+    var recordId = active && (routeOwnership.matchesAction || actionScoped) ? readCurrentRecordId(url) : 0;
     var isForm = !!(active && formRoot instanceof HTMLElement);
     var isList = !!(active && !isForm && listTable instanceof HTMLElement);
     var hostNode = resolveHostNode(formRoot || listTable);
@@ -1011,6 +1396,9 @@
       controlPanel: controlPanel,
       recordId: recordId,
       recordLabel: recordLabel,
+      inheritedBreadcrumbLabels: inheritedBreadcrumbLabels,
+      inheritedBreadcrumbItems: inheritedBreadcrumbItems,
+      inheritedRoute: inheritedBreadcrumbLabels.length > 0,
       chips: Array.isArray(chips) ? chips.filter(Boolean) : buildDefaultChips(config, { isForm: isForm, recordLabel: recordLabel }),
     };
   }
@@ -1049,6 +1437,7 @@
     document.body.classList.toggle("o_surface_workspace_list", aggregate.active && aggregate.isList);
     document.body.classList.toggle("o_surface_workspace_form", aggregate.active && aggregate.isForm);
     if (aggregate.active && state.active) {
+      document.body.dataset.surfaceWorkspaceKey = String(config.key || "").trim();
       var sectionKey = normalizeBreadcrumbText(config.sidebarSectionKey);
       if (sectionKey) {
         shared.sidebarShellCurrentSectionKey = sectionKey.toLowerCase();
@@ -1064,6 +1453,9 @@
     }
     if (!aggregate.active && shared.surfaceBreadcrumbSectionKey) {
       delete shared.surfaceBreadcrumbSectionKey;
+    }
+    if (!aggregate.active) {
+      delete document.body.dataset.surfaceWorkspaceKey;
     }
   }
 
@@ -1215,7 +1607,7 @@
   }
 
   function syncWorkspace(config, handle) {
-    var state = deriveRouteState(config);
+    var state = deriveRouteState(config, handle);
     handle.lastState = state;
     applyBodyClasses(config, state);
     if (!state.active) {
@@ -1252,6 +1644,8 @@
         items: breadcrumbItems,
       });
     }
+    var managedBreadcrumbLabels = rememberManagedBreadcrumbTrail(breadcrumbItems, breadcrumbLabel);
+    syncCurrentRoutePresentation(managedBreadcrumbLabels, state, config);
     normalizeControlPanelLayout(state);
     if (state.isList) {
       relabelNativeCreateButton(
@@ -1280,6 +1674,20 @@
     }, 60);
   }
 
+  function scheduleSyncBurst(config, handle) {
+    scheduleSync(config, handle);
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(function () {
+        scheduleSync(config, handle);
+      });
+    }
+    [250, 900, 2200, 5000, 8000].forEach(function (delayMs) {
+      window.setTimeout(function () {
+        scheduleSync(config, handle);
+      }, delayMs);
+    });
+  }
+
   function installLifecycleHooks(config, handle) {
     if (handle.installed) {
       return;
@@ -1294,7 +1702,7 @@
       surfaceLayers.installPreservedHistoryPatch({
         key: "surface-workspace-" + config.key,
         onAfterChange: function () {
-          scheduleSync(config, handle);
+          scheduleSyncBurst(config, handle);
         },
       });
     }
@@ -1348,6 +1756,8 @@
       navItems: Array.isArray(settings.navItems) ? settings.navItems : [],
       navActions: settings.navActions && typeof settings.navActions === "object" ? settings.navActions : {},
       actionIds: Array.isArray(settings.actionIds) ? settings.actionIds : [],
+      listFieldHints: Array.isArray(settings.listFieldHints) ? settings.listFieldHints : [],
+      listFieldHintMode: String(settings.listFieldHintMode || "any").trim().toLowerCase() === "all" ? "all" : "any",
       managedFormEnhancers: cloneManagedFormEnhancers(settings.managedFormEnhancers),
     });
     var handle = handlesByKey[key] || {
@@ -1385,6 +1795,7 @@
     performAction: performAction,
     buildBreadcrumbItem: buildBreadcrumbItem,
     buildHomeBreadcrumbItem: buildHomeBreadcrumbItem,
+    buildWorkspaceBreadcrumbTrail: buildWorkspaceBreadcrumbTrail,
     buildWorkspaceActionHref: buildWorkspaceActionHref,
     buildSurfaceWorkspaceShellConfig: buildSurfaceWorkspaceShellConfig,
     cloneManagedFormEnhancers: cloneManagedFormEnhancers,

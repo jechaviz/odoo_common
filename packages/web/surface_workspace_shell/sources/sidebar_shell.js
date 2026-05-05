@@ -88,12 +88,14 @@
       }
       var key = normalizeSidebarShellKey(entry.key || "");
       var selector = String(entry.selector || entry.rootSelector || "").trim();
-      if (!key || !selector) {
+      var label = normalizeSidebarShellKey(entry.label || entry.text || entry.name || "");
+      if (!key || (!selector && !label)) {
         return;
       }
       shared.sidebarShellRootSectionKeyEntries.push({
         key: key,
         selector: selector,
+        label: label,
       });
     });
     scheduleSidebarShellStateSync();
@@ -318,6 +320,9 @@
         if (entry && entry.selector && node.matches(entry.selector)) {
           return normalizeSidebarShellKey(entry.key);
         }
+        if (entry && entry.label && normalizeSidebarShellKey(resolveSidebarShellMenuItemLabel(node)) === entry.label) {
+          return normalizeSidebarShellKey(entry.key);
+        }
       } catch (_error) {}
     }
     return "";
@@ -438,6 +443,16 @@
       .trim();
   }
 
+  function resolveSidebarShellPopoverOwnerLabel(popoverNode, triggerNode) {
+    var triggerLabel = resolveSidebarShellMenuItemLabel(triggerNode);
+    if (triggerLabel) {
+      return triggerLabel;
+    }
+    return String(popoverNode instanceof HTMLElement ? popoverNode.dataset.surfaceSidebarOwnerLabel || "" : "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function resolveSidebarShellMenuItemKey(node) {
     if (!(node instanceof HTMLElement)) {
       return "";
@@ -494,6 +509,13 @@
         return false;
       }
       current = current.parentElement;
+      if (
+        current !== popoverNode &&
+        current instanceof HTMLElement &&
+        current.classList.contains("o_surface_sidebar_shell_menu_popover")
+      ) {
+        return false;
+      }
     }
     return current === popoverNode;
   }
@@ -590,6 +612,9 @@
     if (itemKey) {
       nestedPopover.dataset.surfaceSidebarOwnerKey = itemKey;
     }
+    if (label) {
+      nestedPopover.dataset.surfaceSidebarOwnerLabel = label;
+    }
     nestedPopover.dataset.surfaceSidebarOwnerTriggerId = triggerId;
     nestedPopover.dataset.surfaceSidebarLevel = String(
       Math.max(Number(popoverNode.dataset.surfaceSidebarLevel || 1) || 1, 1) + 1
@@ -668,9 +693,7 @@
       if (!label) {
         return null;
       }
-      if (!configuredKey && !children.length) {
-        return null;
-      }
+      entryKey = configuredKey || (children.length ? positionalKey : normalizeSidebarShellKey(label));
       return { key: entryKey, label: label, children: children };
     }).filter(function (entry) {
       return !!(entry && entry.label);
@@ -699,7 +722,18 @@
     if (!Array.isArray(bucketMap[normalizedBucketKey])) {
       bucketMap[normalizedBucketKey] = [];
     }
+    if (bucketMap[normalizedBucketKey].indexOf(itemNode) !== -1) {
+      return;
+    }
     bucketMap[normalizedBucketKey].push(itemNode);
+  }
+
+  function pushSidebarShellItemBucketEntries(bucketMap, itemNode) {
+    if (!(itemNode instanceof HTMLElement)) {
+      return;
+    }
+    pushSidebarShellItemBucketEntry(bucketMap, resolveSidebarShellMenuItemKey(itemNode), itemNode);
+    pushSidebarShellItemBucketEntry(bucketMap, resolveSidebarShellMenuItemLabel(itemNode), itemNode);
   }
 
   function consumeSidebarShellItemBucketEntry(bucketMap, bucketKey, consumedItems) {
@@ -726,7 +760,7 @@
       if (!(itemNode instanceof HTMLElement)) {
         return;
       }
-      pushSidebarShellItemBucketEntry(itemsByKey, resolveSidebarShellMenuItemKey(itemNode), itemNode);
+      pushSidebarShellItemBucketEntries(itemsByKey, itemNode);
     });
     var consumedItems = [];
     for (var index = 0; index < leafEntries.length; index += 1) {
@@ -924,7 +958,13 @@
     } else {
       delete popoverNode.dataset.surfaceSidebarOwnerKey;
     }
-    ensureSidebarShellPopoverHeader(popoverNode, "", depth);
+    var ownerLabel = resolveSidebarShellPopoverOwnerLabel(popoverNode, triggerNode);
+    if (ownerLabel) {
+      popoverNode.dataset.surfaceSidebarOwnerLabel = ownerLabel;
+    } else {
+      delete popoverNode.dataset.surfaceSidebarOwnerLabel;
+    }
+    ensureSidebarShellPopoverHeader(popoverNode, ownerLabel, depth);
     var items = getSidebarShellMenuItems(popoverNode);
     if (!items.length) {
       delete popoverNode.dataset.surfaceSidebarHierarchy;

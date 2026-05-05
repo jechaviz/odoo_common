@@ -48,6 +48,46 @@
     return 0;
   }
 
+  function readCurrentSurfaceActionServiceAction() {
+    try {
+      var root = window.odoo && window.odoo.__WOWL_DEBUG__ && window.odoo.__WOWL_DEBUG__.root;
+      var actionService = root && root.env && root.env.services ? root.env.services.action : null;
+      var currentController = actionService && actionService.currentController ? actionService.currentController : null;
+      return currentController && currentController.action
+        ? currentController.action
+        : actionService && actionService.currentAction
+        ? actionService.currentAction
+        : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function readCurrentSurfaceActionServiceActionId() {
+    var currentAction = readCurrentSurfaceActionServiceAction();
+    var actionId = Number.parseInt(String(currentAction && currentAction.id || 0), 10) || 0;
+    return actionId > 0 ? actionId : 0;
+  }
+
+  function readCurrentSurfaceActionModel() {
+    var currentAction = readCurrentSurfaceActionServiceAction();
+    return String(currentAction && currentAction.res_model || "").trim();
+  }
+
+  function isCurrentSurfaceUrl(urlObject) {
+    if (!(urlObject instanceof URL)) {
+      return false;
+    }
+    try {
+      return urlObject.origin === window.location.origin &&
+        urlObject.pathname === window.location.pathname &&
+        urlObject.search === window.location.search &&
+        urlObject.hash === window.location.hash;
+    } catch (_error) {
+      return false;
+    }
+  }
+
   function isSurfaceActionSegment(value) {
     return /^action-\d+$/i.test(String(value || "").trim());
   }
@@ -118,6 +158,12 @@
         resolvedUrl = new URL(String(sourceUrl || "").trim(), window.location.origin);
       } catch (_error) {
         resolvedUrl = null;
+      }
+    }
+    if (!(resolvedUrl instanceof URL) || isCurrentSurfaceUrl(resolvedUrl)) {
+      var serviceActionId = readCurrentSurfaceActionServiceActionId();
+      if (serviceActionId > 0) {
+        return serviceActionId;
       }
     }
     if (resolvedUrl instanceof URL) {
@@ -245,9 +291,11 @@
       includeHome: source.includeHome === true,
       dedupe: source.dedupe !== false,
       syncCurrentLocation: source.syncCurrentLocation !== false,
+      transformHistory: source.transformHistory !== false,
       persist: source.persist !== false,
       labelSource: String(source.labelSource || "breadcrumb").trim().toLowerCase() || "breadcrumb",
       labels: Array.isArray(source.labels) ? source.labels.slice() : [],
+      sourceHref: String(source.sourceHref || "").trim(),
       resolveLabels: typeof source.resolveLabels === "function" ? source.resolveLabels : null,
       resolveCanonicalPath: typeof source.resolveCanonicalPath === "function" ? source.resolveCanonicalPath : null,
       resolveSlugPath: typeof source.resolveSlugPath === "function" ? source.resolveSlugPath : null,
@@ -268,6 +316,7 @@
       includeHome: settings.includeHome,
       dedupe: settings.dedupe,
       syncCurrentLocation: settings.syncCurrentLocation,
+      transformHistory: settings.transformHistory,
       persist: settings.persist,
       labelSource: settings.labelSource,
       labels: settings.labels.slice(),
@@ -533,19 +582,98 @@
     }
   }
 
+  function readCurrentSurfaceHistoryHref() {
+    return window.location.pathname + window.location.search + window.location.hash;
+  }
+
+  function replaceSurfaceCurrentHistoryUrl(nextHref) {
+    if (!nextHref || !window.history || typeof window.history.replaceState !== "function") {
+      return false;
+    }
+    try {
+      window.history.replaceState(window.history.state, document.title, nextHref);
+    } catch (_error) {}
+    if (readCurrentSurfaceHistoryHref() === nextHref) {
+      return true;
+    }
+    try {
+      if (
+        window.History &&
+        window.History.prototype &&
+        typeof window.History.prototype.replaceState === "function"
+      ) {
+        window.History.prototype.replaceState.call(window.history, window.history.state, document.title, nextHref);
+      }
+    } catch (_error) {}
+    return readCurrentSurfaceHistoryHref() === nextHref;
+  }
+
   function syncCurrentSurfaceRoutePresentation(config) {
     var settings = normalizeSurfaceRoutePresentationConfig(config);
     if (!settings.enabled || !settings.syncCurrentLocation || !window.history || typeof window.history.replaceState !== "function") {
       return settings;
     }
     try {
-      var currentHref = window.location.pathname + window.location.search + window.location.hash;
-      var nextHref = buildSurfacePresentedUrl(currentHref, settings);
+      var currentHref = readCurrentSurfaceHistoryHref();
+      var sourceHref = settings.sourceHref
+        ? normalizeSurfaceHistoryUrl(settings.sourceHref)
+        : currentHref;
+      var nextHref = buildSurfacePresentedUrl(sourceHref, settings);
       if (nextHref && nextHref !== currentHref) {
-        window.history.replaceState(window.history.state, document.title, nextHref);
+        replaceSurfaceCurrentHistoryUrl(nextHref);
       }
     } catch (_error) {}
     return settings;
+  }
+
+  function scheduleSurfaceRoutePresentationSync(config) {
+    var settings = normalizeSurfaceRoutePresentationConfig(config);
+    if (!settings.enabled || !settings.syncCurrentLocation) {
+      return;
+    }
+    if (shared.surfaceRoutePresentationSyncTimer) {
+      window.clearTimeout(shared.surfaceRoutePresentationSyncTimer);
+      shared.surfaceRoutePresentationSyncTimer = 0;
+    }
+    shared.surfaceRoutePresentationSyncTimer = window.setTimeout(function () {
+      shared.surfaceRoutePresentationSyncTimer = 0;
+      syncCurrentSurfaceRoutePresentation(settings);
+    }, 120);
+  }
+
+  function mutationTouchesSurfaceBreadcrumb(mutations) {
+    return (Array.isArray(mutations) ? mutations : []).some(function (mutation) {
+      var target = mutation && mutation.target instanceof Element ? mutation.target : null;
+      if (target && target.closest("[data-surface-breadcrumb-root='1'], [data-surface-breadcrumb-managed='1'], .o_surface_topbar_breadcrumb_host")) {
+        return true;
+      }
+      return Array.prototype.slice.call(mutation && mutation.addedNodes || []).some(function (node) {
+        return node instanceof Element &&
+          !!node.closest("[data-surface-breadcrumb-root='1'], [data-surface-breadcrumb-managed='1'], .o_surface_topbar_breadcrumb_host");
+      });
+    });
+  }
+
+  function installSurfaceRoutePresentationObserver(config) {
+    var settings = normalizeSurfaceRoutePresentationConfig(config);
+    if (shared.surfaceRoutePresentationObserver && typeof shared.surfaceRoutePresentationObserver.disconnect === "function") {
+      shared.surfaceRoutePresentationObserver.disconnect();
+      shared.surfaceRoutePresentationObserver = null;
+    }
+    if (!settings.enabled || !settings.syncCurrentLocation || !(document.documentElement instanceof HTMLElement)) {
+      return null;
+    }
+    shared.surfaceRoutePresentationObserver = new MutationObserver(function (mutations) {
+      if (mutationTouchesSurfaceBreadcrumb(mutations)) {
+        scheduleSurfaceRoutePresentationSync(settings);
+      }
+    });
+    shared.surfaceRoutePresentationObserver.observe(document.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+    return shared.surfaceRoutePresentationObserver;
   }
 
   function normalizeSurfaceHistoryUrl(urlValue) {
@@ -968,12 +1096,17 @@
       uninstallPreservedHistoryPatch(settings.key);
       return settings;
     }
-    installPreservedHistoryPatch({
-      key: settings.key,
-      transformUrl: function (urlValue) {
-        return buildSurfacePresentedUrl(urlValue, settings);
-      },
-    });
+    if (settings.transformHistory) {
+      installPreservedHistoryPatch({
+        key: settings.key,
+        transformUrl: function (urlValue) {
+          return buildSurfacePresentedUrl(urlValue, settings);
+        },
+      });
+    } else {
+      uninstallPreservedHistoryPatch(settings.key);
+    }
+    installSurfaceRoutePresentationObserver(settings);
     syncCurrentSurfaceRoutePresentation(settings);
     return settings;
   }
@@ -982,6 +1115,10 @@
     var settings = readSurfaceRoutePresentationConfig();
     var bindingKey = String(key || settings.key || "surface-route-presentation").trim();
     uninstallPreservedHistoryPatch(bindingKey);
+    if (shared.surfaceRoutePresentationObserver && typeof shared.surfaceRoutePresentationObserver.disconnect === "function") {
+      shared.surfaceRoutePresentationObserver.disconnect();
+      shared.surfaceRoutePresentationObserver = null;
+    }
     if (!(options && options.keepConfig === true)) {
       clearSurfaceRoutePresentationConfig();
     }
@@ -994,6 +1131,7 @@
     readSurfaceUrlParams: readSurfaceUrlParams,
     resolveCurrentActionIdFromUrl: resolveCurrentActionIdFromUrl,
     readCurrentActionId: readCurrentSurfaceActionId,
+    readCurrentActionModel: readCurrentSurfaceActionModel,
     resolveSurfaceWorkspaceOwnership: resolveSurfaceWorkspaceOwnership,
     normalizeSurfaceRoutePresentationConfig: normalizeSurfaceRoutePresentationConfig,
     readSurfaceRoutePresentationConfig: readSurfaceRoutePresentationConfig,
@@ -1004,6 +1142,7 @@
     buildSurfaceRouteSlugPath: buildSurfaceRouteSlugPath,
     buildSurfacePresentedUrl: buildSurfacePresentedUrl,
     syncCurrentSurfaceRoutePresentation: syncCurrentSurfaceRoutePresentation,
+    installSurfaceRoutePresentationObserver: installSurfaceRoutePresentationObserver,
     buildCanonicalSurfaceActionPathname: buildCanonicalSurfaceActionPathname,
     syncCurrentSurfaceActionPath: syncCurrentSurfaceActionPath,
     normalizeSurfaceHistoryUrl: normalizeSurfaceHistoryUrl,

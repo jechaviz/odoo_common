@@ -1032,6 +1032,39 @@
     ]
   },
   {
+    "key": "report-template-builder",
+    "title": "Neutral Report Template Builder",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/report_template_builder",
+    "origins": [
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/report_templates.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/report_template_sync.py"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/templates/external_layout_rp_modern.xml.tmpl"
+      },
+      {
+        "project": "rp-rental-mock",
+        "path": "odoo_migration/templates/report_web_toolbar.*.tmpl"
+      }
+    ],
+    "features": [
+      "pure report template plan",
+      "band-driven QWeb assembly",
+      "reserved PDF header/footer layout",
+      "generic web preview toolbar",
+      "escaped terms and notes rendering",
+      "strict text template registry"
+    ]
+  },
+  {
     "key": "mail-template-upserts",
     "title": "Odoo Mail Template Upserts",
     "runtime": "python",

@@ -459,7 +459,10 @@
     "title": "Neutral Report Template Design",
     "components": [
       "report-template-designer",
+      "report-template-builder",
+      "text-templates",
       "report-upserts",
+      "record-upserts",
       "view-upserts"
     ],
     "use_cases": [
@@ -467,7 +470,9 @@
       "band and fixed-canvas inspection",
       "XML sample data mapping",
       "safe expression indexing",
-      "designer records independent of business verticals"
+      "designer records independent of business verticals",
+      "band-driven QWeb publication plans",
+      "reserved PDF header/footer layout plans"
     ]
   },
   {

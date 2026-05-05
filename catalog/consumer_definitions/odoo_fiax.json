@@ -156,8 +156,26 @@
       "prune": true
     },
     {
+      "component_key": "view-upserts",
+      "target_relative": "src/odoo_common/view_upserts",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "text-templates",
+      "target_relative": "src/odoo_common/text_templates",
+      "mode": "tree",
+      "prune": true
+    },
+    {
       "component_key": "report-template-designer",
       "target_relative": "src/odoo_common/report_template_designer",
+      "mode": "tree",
+      "prune": true
+    },
+    {
+      "component_key": "report-template-builder",
+      "target_relative": "src/odoo_common/report_template_builder",
       "mode": "tree",
       "prune": true
     }

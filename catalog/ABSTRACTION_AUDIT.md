@@ -76,6 +76,7 @@ Scope:
 - Added: `view-upserts` canonicalizes exact `ir.ui.view` creation/update for model views, QWeb views, and keyed QWeb templates without legacy view cleanup, key-to-name fallback, or alternate write forms.
 - Added: `report-upserts` canonicalizes paperformat/layout/report-action publication without mail-template field fallbacks, version field detection, or legacy report matching.
 - Added: `report-template-designer` canonicalizes neutral JRXML/iReport band import, XML sample-schema extraction, safe expression indexing, and fixed-canvas preview records without executing Groovy/Java or binding to a fiscal vertical.
+- Added: `report-template-builder` canonicalizes neutral report template plans, band-driven QWeb assembly, reserved PDF header/footer layout fragments, generic web-preview toolbar markup, and escaped terms/notes rendering without RPC execution, live ID resolution, or Rental-specific report policy.
 - Added: `mail-template-upserts` canonicalizes `mail.template` publication through modern `report_template_ids` without XML ID resolution, legacy `report_template` fallback, field detection, or business-specific content.
 - Added: `custom-field-upserts` canonicalizes manual model/field creation, strict existing-field contract validation, and selection row reconciliation without legacy value migrations.
 - Added: `security-upserts` canonicalizes security publication without user assignment, version field detection, missing-metadata ignores, or legacy group absorption.

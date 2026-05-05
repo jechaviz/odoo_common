@@ -1,0 +1,21 @@
+{
+  "key": "report-template-builder",
+  "title": "Neutral Report Template Builder",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "rp-rental-mock",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "report_template_builder.py"
+  ],
+  "capabilities": [
+    "report-template-plan",
+    "band-driven-qweb-template",
+    "reserved-pdf-layout",
+    "web-preview-toolbar",
+    "terms-html-renderer",
+    "strict-template-registry"
+  ]
+}

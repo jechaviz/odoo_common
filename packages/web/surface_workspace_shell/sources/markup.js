@@ -322,7 +322,7 @@
       buildDataAttributes(settings.data) +
       ">" +
       (label ? '<div class="o_surface_premium_metric__label">' + escapeHtml(label) + "</div>" : "") +
-      (value ? '<div class="o_surface_premium_metric__value">' + escapeHtml(value) + "</div>" : "") +
+      (value ? '<strong class="o_surface_premium_metric__value">' + escapeHtml(value) + "</strong>" : "") +
       ((settings.meta || trendLabel)
         ? '<div class="o_surface_premium_metric__meta">' +
           '<span>' + escapeHtml(settings.meta || "") + "</span>" +

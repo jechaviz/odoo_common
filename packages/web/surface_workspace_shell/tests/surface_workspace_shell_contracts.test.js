@@ -291,6 +291,8 @@ for (const [fileName, expectedExports] of Object.entries(premiumPrimitiveExports
 
 const workspaceSurfaceExports = extractObjectAssignExports("workspace.js", "surfaceLayers");
 const workspaceRuntimeExports = extractObjectAssignExports("workspace.js", "workspaceApi");
+const workspaceSource = fs.readFileSync(path.join(sourcesRoot, "workspace.js"), "utf8");
+const markupSource = fs.readFileSync(path.join(sourcesRoot, "markup.js"), "utf8");
 for (const exportName of dualWorkspaceRuntimeExports) {
   assert.ok(
     workspaceSurfaceExports.has(exportName),
@@ -301,6 +303,24 @@ for (const exportName of dualWorkspaceRuntimeExports) {
     `workspace.js must expose ${exportName} on workspaceRuntime`
   );
 }
+
+for (const expectedToken of [
+  'role="tab"',
+  'data-surface-tab="1"',
+  "data-surface-tab-key",
+  "data-surface-tab-state",
+  "data-surface-toolbar-control=\"tab\"",
+]) {
+  assert.ok(
+    workspaceSource.includes(expectedToken),
+    `workspace toolbar nav must expose accessible tab token ${expectedToken}`
+  );
+}
+
+assert.ok(
+  markupSource.includes('<strong class="o_surface_premium_metric__value">'),
+  "premium metric values must use semantic strong elements for live auditability"
+);
 
 const surfaceLayerStyles = fs.readFileSync(path.join(sourcesRoot, "surface_layers.css"), "utf8");
 assert.ok(

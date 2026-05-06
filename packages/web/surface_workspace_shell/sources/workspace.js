@@ -1236,7 +1236,13 @@
               '<button type="button" class="o_surface_workspace_toolbar__nav_item' +
               (isActive ? " is-active" : "") +
               '" data-surface-nav="' + escapeHtml(key) +
-              '" aria-selected="' + (isActive ? "true" : "false") + '">' +
+              '" data-surface-tab="1"' +
+              ' data-surface-tab-key="' + escapeHtml(key) +
+              '" data-surface-tab-state="' + (isActive ? "active" : "inactive") +
+              '" data-surface-toolbar-control="tab"' +
+              ' role="tab"' +
+              ' aria-selected="' + (isActive ? "true" : "false") +
+              '" tabindex="' + (isActive ? "0" : "-1") + '">' +
               escapeHtml(label) +
               "</button>"
             );

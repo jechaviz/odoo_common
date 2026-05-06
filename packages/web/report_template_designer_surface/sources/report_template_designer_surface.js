@@ -9,14 +9,6 @@
     return String(value || "").replace(/\s+/g, " ").trim();
   }
 
-  function formatKey(kind, filename, format) {
-    return [
-      normalizeText(kind).toLowerCase(),
-      normalizeText(filename).toLowerCase(),
-      normalizeText(format).toLowerCase()
-    ].join("|");
-  }
-
   function readFormatFromText(value) {
     var normalized = normalizeText(value).toLowerCase();
     if (normalized.indexOf("json") >= 0) {
@@ -28,39 +20,50 @@
     return "";
   }
 
-  function buildSourceIndex() {
-    var index = Object.create(null);
-    Array.from(document.querySelectorAll(".oc_report_test_data__row")).forEach(function (row) {
-      var cells = row.querySelectorAll("td");
-      var payload = row.querySelector("[data-oc-report-test-code]");
-      var record;
-      if (cells.length < 4 || !payload) {
-        return;
-      }
-      record = {
-        kind: normalizeText(cells[0].textContent),
-        filename: normalizeText(cells[1].textContent),
-        formatLabel: normalizeText(cells[2].textContent),
-        size: normalizeText(cells[3].textContent),
-        code: payload.value || payload.textContent || ""
-      };
-      record.format = readFormatFromText(record.formatLabel);
-      index[formatKey(record.kind, record.filename, record.formatLabel)] = record;
-      index[formatKey(record.kind, record.filename, record.format)] = record;
-    });
-    return index;
+  function formatBytes(byteCount) {
+    var value = Math.max(Number(byteCount) || 0, 0);
+    if (value < 1024) {
+      return String(value) + " B";
+    }
+    return (value / 1024).toFixed(1) + " KB";
+  }
+
+  function utf8ByteLength(value) {
+    var text = String(value || "");
+    if (window.TextEncoder) {
+      return new TextEncoder().encode(text).length;
+    }
+    return unescape(encodeURIComponent(text)).length;
   }
 
   function nativeCell(row, fieldName) {
     return row instanceof HTMLElement ? row.querySelector('td[name="' + fieldName + '"]') : null;
   }
 
+  function readNativeCellCode(cell) {
+    var valueNode;
+    if (!(cell instanceof HTMLElement)) {
+      return "";
+    }
+    valueNode = cell.querySelector("textarea, input");
+    if (valueNode instanceof HTMLTextAreaElement || valueNode instanceof HTMLInputElement) {
+      return valueNode.value || "";
+    }
+    if (valueNode instanceof HTMLElement) {
+      return valueNode.textContent || "";
+    }
+    return cell.textContent || "";
+  }
+
   function readNativeRowInfo(row) {
     var kindCell = nativeCell(row, "x_kind");
     var filenameCell = nativeCell(row, "x_source_filename");
     var formatCell = nativeCell(row, "x_source_format");
+    var contentCell = nativeCell(row, "x_content");
     var formatLabel = normalizeText(formatCell ? formatCell.textContent : "");
+    var nativeCode = readNativeCellCode(contentCell);
     return {
+      code: nativeCode,
       kind: normalizeText(kindCell ? kindCell.textContent : ""),
       filename: normalizeText(filenameCell ? filenameCell.textContent : ""),
       formatLabel: formatLabel,
@@ -70,10 +73,17 @@
 
   function lookupNativeRecord(row) {
     var info = readNativeRowInfo(row);
-    var index = buildSourceIndex();
-    return index[formatKey(info.kind, info.filename, info.formatLabel)] ||
-      index[formatKey(info.kind, info.filename, info.format)] ||
-      null;
+    if (normalizeText(info.code)) {
+      return {
+        code: info.code,
+        filename: info.filename || "",
+        format: info.format || "",
+        formatLabel: info.formatLabel || "",
+        kind: info.kind || "",
+        size: formatBytes(utf8ByteLength(info.code))
+      };
+    }
+    return null;
   }
 
   function prettyXml(source) {
@@ -136,34 +146,90 @@
   }
 
   function closeModal(modal) {
+    var restoreFocus = modal && modal.__ocReportRestoreFocus;
     if (modal && modal.parentNode) {
       modal.parentNode.removeChild(modal);
     }
+    if (restoreFocus instanceof HTMLElement && typeof restoreFocus.focus === "function") {
+      restoreFocus.focus({ preventScroll: true });
+    }
   }
 
-  function openCodeModal(record) {
+  function getModalFocusableNodes(modal) {
+    if (!(modal instanceof HTMLElement)) {
+      return [];
+    }
+    return Array.from(modal.querySelectorAll([
+      "button:not([disabled])",
+      "a[href]",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "[tabindex]:not([tabindex='-1'])"
+    ].join(","))).filter(function (node) {
+      var rect = node instanceof HTMLElement ? node.getBoundingClientRect() : { width: 0, height: 0 };
+      return node instanceof HTMLElement &&
+        window.getComputedStyle(node).visibility !== "hidden" &&
+        window.getComputedStyle(node).display !== "none" &&
+        rect.width > 0 &&
+        rect.height > 0;
+    });
+  }
+
+  function trapModalFocus(event, modal) {
+    var focusableNodes = getModalFocusableNodes(modal);
+    var firstNode = focusableNodes[0];
+    var lastNode = focusableNodes[focusableNodes.length - 1];
+    if (!firstNode || !lastNode) {
+      event.preventDefault();
+      return;
+    }
+    if (event.shiftKey && document.activeElement === firstNode) {
+      event.preventDefault();
+      lastNode.focus();
+      return;
+    }
+    if (!event.shiftKey && document.activeElement === lastNode) {
+      event.preventDefault();
+      firstNode.focus();
+    }
+  }
+
+  function openCodeModal(record, opener) {
     var modal = document.createElement("div");
     var title = record && record.filename ? record.filename : "Codigo";
+    var titleId = "oc-report-test-code-title-" + String(Date.now()) + "-" + String(Math.floor(Math.random() * 100000));
     modal.className = "oc_report_test_data_modal";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", titleId);
+    modal.classList.add("o_surface_premium_code_modal", "is-open");
+    modal.__ocReportRestoreFocus = opener instanceof HTMLElement ? opener : document.activeElement;
     modal.innerHTML = [
-      '<div class="oc_report_test_data_modal__dialog">',
-      '<div class="oc_report_test_data_modal__header">',
-      '<div class="oc_report_test_data_modal__title"></div>',
-      '<button type="button" class="oc_report_test_data__button" data-oc-report-test-close="1">Cerrar</button>',
+      '<div class="o_surface_premium_code_modal__backdrop" data-oc-report-test-close="1"></div>',
+      '<div class="oc_report_test_data_modal__dialog o_surface_premium_code_modal__dialog" tabindex="-1">',
+      '<div class="oc_report_test_data_modal__header o_surface_premium_code_modal__header">',
+      '<div class="oc_report_test_data_modal__title o_surface_premium_code_modal__title"></div>',
+      '<button type="button" class="oc_report_test_data__button o_surface_premium_code_modal__action" data-oc-report-test-close="1">Cerrar</button>',
       "</div>",
-      '<div class="oc_report_test_data_modal__body"><pre class="oc_report_test_data_modal__pre"></pre></div>',
-      '<div class="oc_report_test_data_modal__footer">',
-      '<button type="button" class="oc_report_test_data__button" data-oc-report-test-format-modal="1">Formatear</button>',
-      '<button type="button" class="oc_report_test_data__button" data-oc-report-test-copy-modal="1">Copiar</button>',
+      '<div class="oc_report_test_data_modal__body o_surface_premium_code_modal__body"><pre class="oc_report_test_data_modal__pre o_surface_premium_code_modal__code"></pre></div>',
+      '<div class="oc_report_test_data_modal__footer o_surface_premium_code_modal__footer">',
+      '<button type="button" class="oc_report_test_data__button o_surface_premium_code_modal__action" data-oc-report-test-format-modal="1">Formatear</button>',
+      '<button type="button" class="oc_report_test_data__button o_surface_premium_code_modal__action" data-oc-report-test-copy-modal="1">Copiar</button>',
       "</div>",
       "</div>"
     ].join("");
+    modal.querySelector(".oc_report_test_data_modal__title").id = titleId;
     modal.querySelector(".oc_report_test_data_modal__title").textContent = title;
     modal.querySelector(".oc_report_test_data_modal__pre").textContent = record && record.code ? record.code : "";
     modal.__ocReportTestDataFormat = record && record.format ? record.format : "";
     document.body.appendChild(modal);
+    window.setTimeout(function () {
+      var closeButton = modal.querySelector("button[data-oc-report-test-close]");
+      if (closeButton instanceof HTMLElement) {
+        closeButton.focus({ preventScroll: true });
+      }
+    }, 0);
   }
 
   function buildButton(action, label) {
@@ -179,7 +245,8 @@
     return Array.from((root || document).querySelectorAll("table.o_list_table")).filter(function (table) {
       return table.querySelector('th[data-name="x_kind"]') &&
         table.querySelector('th[data-name="x_source_filename"]') &&
-        table.querySelector('th[data-name="x_source_format"]');
+        table.querySelector('th[data-name="x_source_format"]') &&
+        table.querySelector('th[data-name="x_content"]');
     });
   }
 
@@ -270,7 +337,7 @@
       if (record) {
         event.preventDefault();
         event.stopPropagation();
-        openCodeModal(record);
+        openCodeModal(record, openButton);
       }
       return;
     }
@@ -314,8 +381,13 @@
   });
 
   document.addEventListener("keydown", function (event) {
+    var modal = document.querySelector(".oc_report_test_data_modal");
     if (event.key === "Escape") {
-      closeModal(document.querySelector(".oc_report_test_data_modal"));
+      closeModal(modal);
+      return;
+    }
+    if (event.key === "Tab" && modal instanceof HTMLElement) {
+      trapModalFocus(event, modal);
     }
   });
 

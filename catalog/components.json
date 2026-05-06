@@ -1044,7 +1044,7 @@
       }
     ],
     "features": [
-      "report test data table",
+      "report test data native list",
       "code detail modal",
       "copy to clipboard",
       "json xml pretty format"

@@ -1,33 +1,3 @@
-.oc_report_test_data {
-  display: none !important;
-  max-width: 100%;
-}
-
-.oc_report_test_data__table {
-  border-collapse: collapse;
-  font-size: 13px;
-  width: 100%;
-}
-
-.oc_report_test_data__table th,
-.oc_report_test_data__table td {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
-  padding: 8px 10px;
-  text-align: left;
-  vertical-align: top;
-}
-
-.oc_report_test_data__table th {
-  color: inherit;
-  font-weight: 700;
-}
-
-.oc_report_test_data__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
 .oc_report_test_data__button {
   background: rgba(148, 163, 184, 0.16);
   border: 1px solid rgba(148, 163, 184, 0.32);
@@ -44,12 +14,8 @@
   border-color: rgba(14, 165, 233, 0.42);
 }
 
-.oc_report_test_data__payload {
-  display: none !important;
-}
-
 .oc_report_test_data_modal__pre {
-  background: rgba(15, 23, 42, 0.08);
+  background: rgba(5, 8, 14, 0.08);
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 6px;
   box-sizing: border-box;
@@ -68,7 +34,7 @@
 
 .oc_report_test_data_modal {
   align-items: center;
-  background: rgba(15, 23, 42, 0.62);
+  background: transparent;
   display: flex;
   inset: 0;
   justify-content: center;
@@ -77,11 +43,17 @@
   z-index: 2147482000;
 }
 
+.oc_report_test_data_modal .o_surface_premium_code_modal__backdrop {
+  background: rgba(5, 8, 14, 0.55);
+  inset: 0;
+  position: absolute;
+}
+
 .oc_report_test_data_modal__dialog {
   background: var(--body-bg, #fff);
   border: 1px solid rgba(148, 163, 184, 0.38);
   border-radius: 8px;
-  box-shadow: 0 20px 70px rgba(15, 23, 42, 0.36);
+  box-shadow: var(--o-surface-premium-shadow, none);
   color: inherit;
   max-height: min(760px, 92vh);
   max-width: min(1040px, 94vw);
@@ -120,6 +92,12 @@
 .oc_report_test_data_modal__pre {
   margin: 0;
   max-height: none;
+}
+
+body.o_surface_workspace_active .oc_report_test_data_modal__dialog {
+  background: var(--o-surface-premium-panel);
+  border-color: var(--o-surface-premium-border);
+  color: var(--o-surface-premium-ink-soft);
 }
 
 .oc_report_test_data_native_size,
@@ -194,6 +172,10 @@
   background-clip: padding-box;
 }
 
+.oc_report_test_data_native_table :where(th[data-name="x_content"], td[name="x_content"], .oc_report_test_data_native_payload) {
+  display: none !important;
+}
+
 .oc_report_test_data_native_table tbody tr.o_data_row:last-of-type > td {
   border-bottom-color: rgba(148, 163, 184, 0.16);
 }
@@ -236,4 +218,78 @@
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form {
+  color: var(--o-surface-premium-ink-soft);
+  font-size: var(--o-surface-premium-font-size);
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form :where(.o_form_sheet_bg, .o_form_sheet) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form :where(.o_group, .o_inner_group) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .o_group {
+  column-gap: 1.25rem;
+  row-gap: 0.65rem;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .o_inner_group {
+  border-top: 1px solid rgba(164, 174, 197, 0.12) !important;
+  padding-top: 0.65rem !important;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .o_horizontal_separator {
+  border: 0 !important;
+  color: var(--o-surface-premium-ink);
+  font-size: 0.72rem;
+  font-weight: 720;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.45rem;
+  padding: 0;
+  text-transform: uppercase;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form :where(.o_form_label, label) {
+  color: var(--o-surface-premium-muted);
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form :where(.o_field_widget, .o_input, textarea) {
+  color: var(--o-surface-premium-ink-soft);
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .o_notebook {
+  border-top: 1px solid rgba(164, 174, 197, 0.12);
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .o_notebook_headers,
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .nav-tabs {
+  border-bottom-color: rgba(164, 174, 197, 0.14);
+  margin-bottom: 0.7rem;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .o_notebook .nav-link {
+  color: var(--o-surface-premium-muted-strong);
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0.35rem 0.05rem 0.52rem;
+}
+
+body.o_surface_workspace_active :where(.modal, .o_dialog) .oc_report_test_file_form .o_notebook .nav-link.active {
+  color: var(--o-surface-premium-ink);
 }

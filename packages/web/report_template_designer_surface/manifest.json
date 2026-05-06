@@ -18,7 +18,7 @@
     "surface-workspace-shell"
   ],
   "capabilities": [
-    "report-test-data-table",
+    "report-test-data-native-list",
     "report-test-data-code-modal",
     "report-test-data-copy",
     "report-test-data-pretty-format"

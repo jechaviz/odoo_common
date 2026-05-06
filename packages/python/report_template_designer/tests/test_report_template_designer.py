@@ -267,21 +267,10 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("<Comprobante", records[0]["x_content"])
         self.assertIn('"field_values"', records[1]["x_content"])
         self.assertIn("3D696462-B13B-49BA-81ED-1F34FE4C60A0", records[1]["x_content"])
-
-        html = designer.build_test_data_html(records)
-        self.assertIn("oc_report_test_data__table", html)
-        self.assertIn("data-oc-report-test-open", html)
-        self.assertIn("data-oc-report-test-copy", html)
-        self.assertIn("XML original", html)
-        self.assertIn("Archivo traducido", html)
-        self.assertIn("&lt;Comprobante", html)
-        self.assertNotIn("<summary>Codigo</summary>", html)
-        self.assertNotIn("oc_report_test_data__drawer", html)
-        self.assertNotIn("oc_report_test_data__pre", html)
-        self.assertEqual(2, html.count('class="oc_report_test_data__row"'))
-        self.assertEqual(2, html.count('data-oc-report-test-code="1"'))
-        self.assertIn('hidden="hidden"', html)
-        self.assertIn('style="display:none;"', html)
+        self.assertFalse(
+            hasattr(designer, "build_test_data_html"),
+            "test data must stay in native child records; hidden HTML indexes are not supported",
+        )
 
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
         ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')

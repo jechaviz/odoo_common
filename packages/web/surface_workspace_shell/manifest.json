@@ -52,6 +52,7 @@
     "sidebar-shell",
     "breadcrumb",
     "workspace-runtime",
-    "route-state"
+    "route-state",
+    "premium-surface-kit"
   ]
 }

@@ -72,6 +72,207 @@
     return Array.isArray(value) ? value.slice() : [];
   }
 
+  function joinClassNames(values) {
+    var seen = Object.create(null);
+    return (Array.isArray(values) ? values : [values]).reduce(function (tokens, value) {
+      String(value || "").split(/\s+/).forEach(function (token) {
+        var normalized = String(token || "").trim();
+        if (!normalized || seen[normalized]) {
+          return;
+        }
+        seen[normalized] = true;
+        tokens.push(normalized);
+      });
+      return tokens;
+    }, []).join(" ");
+  }
+
+  function escapeHtml(value) {
+    if (typeof surfaceLayerApi.escapeHtml === "function") {
+      return String(surfaceLayerApi.escapeHtml(value) || "");
+    }
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function normalizePremiumSmartTableColumns(columns) {
+    return normalizeArray(columns).map(function (column, index) {
+      var entry = column && typeof column === "object" ? Object.assign({}, column) : {};
+      entry.key = String(entry.key || entry.name || ("column_" + index)).trim();
+      entry.label = String(entry.label || entry.title || entry.key).trim();
+      entry.headerClassName = String(entry.headerClassName || "").trim();
+      entry.cellClassName = String(entry.cellClassName || "").trim();
+      entry.allowHtml = entry.allowHtml === true;
+      entry.numeric = entry.numeric === true;
+      entry.nowrap = entry.nowrap === true;
+      entry.sortable = entry.sortable === true;
+      return entry;
+    }).filter(function (entry) {
+      return !!entry.key;
+    });
+  }
+
+  function buildPremiumSmartTableStatusCellMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    if (typeof surfaceLayerApi.buildPremiumStatusChipMarkup !== "function") {
+      return "";
+    }
+    return surfaceLayerApi.buildPremiumStatusChipMarkup({
+      label: settings.label || settings.text || settings.value,
+      tone: settings.tone || settings.status || settings.state,
+      state: settings.state,
+      status: settings.status,
+      dot: Object.prototype.hasOwnProperty.call(settings, "dot") ? settings.dot : true,
+      className: String(settings.className || "").trim(),
+      data: settings.data,
+      attributes: settings.attributes,
+    });
+  }
+
+  function buildPremiumSmartTableRowActionsMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var actions = normalizePreviewActions(settings.actions).filter(function (entry) {
+      return entry && entry.visible !== false;
+    });
+    if (!actions.length) {
+      return String(settings.emptyMarkup || "");
+    }
+    if (typeof surfaceLayerApi.buildPreviewActionGroupMarkup === "function") {
+      return surfaceLayerApi.buildPreviewActionGroupMarkup({
+        actions: actions.map(function (entry) {
+          if (typeof entry === "string") {
+            return entry;
+          }
+          return Object.assign({}, entry, {
+            className: joinClassNames([
+              "o_surface_premium_icon_button",
+              entry.className,
+            ]),
+          });
+        }),
+        className: joinClassNames([
+          "o_surface_premium_smart_table__row_actions",
+          settings.className,
+        ]),
+      });
+    }
+    return "";
+  }
+
+  function buildPremiumSmartTableMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var columns = normalizePremiumSmartTableColumns(settings.columns);
+    var rows = normalizeArray(settings.rows);
+    var emptyLabel = String(settings.emptyLabel || "Sin resultados").trim();
+    var summary = String(settings.summary || "").trim();
+    var toolbarMarkup = String(settings.toolbarMarkup || "").trim();
+    var rowActions = typeof settings.buildRowActions === "function"
+      ? settings.buildRowActions
+      : null;
+
+    function resolveCellMarkup(column, row, rowIndex) {
+      var rawValue = typeof column.render === "function"
+        ? column.render(row, rowIndex, column, settings)
+        : row && Object.prototype.hasOwnProperty.call(row, column.key)
+        ? row[column.key]
+        : "";
+      if (rawValue && typeof rawValue === "object" && !Array.isArray(rawValue)) {
+        if (rawValue.type === "status") {
+          return buildPremiumSmartTableStatusCellMarkup(rawValue);
+        }
+        if (rawValue.markup != null) {
+          return String(rawValue.markup || "");
+        }
+      }
+      return column.allowHtml ? String(rawValue || "") : escapeHtml(rawValue);
+    }
+
+    var headerMarkup = columns.map(function (column) {
+      var labelMarkup = column.sortable
+        ? '<button class="o_surface_premium_smart_table__sort" type="button" data-surface-sort="' +
+          escapeHtml(column.key) + '">' + escapeHtml(column.label) + "</button>"
+        : escapeHtml(column.label);
+      return (
+        '<th class="' + escapeHtml(joinClassNames([
+          column.headerClassName,
+          column.numeric ? "o_surface_premium_smart_table__cell--numeric" : "",
+          column.nowrap ? "o_surface_premium_smart_table__cell--nowrap" : "",
+        ])) + '">' + labelMarkup + "</th>"
+      );
+    }).join("") + (
+      rowActions
+        ? '<th class="' + escapeHtml(joinClassNames([
+            "o_surface_premium_smart_table__cell--actions",
+            String(settings.actionsHeaderClassName || "").trim(),
+          ])) + '">' + escapeHtml(String(settings.actionsLabel || "").trim()) + "</th>"
+        : ""
+    );
+
+    var bodyMarkup = rows.length
+      ? rows.map(function (row, rowIndex) {
+          var cellMarkup = columns.map(function (column) {
+            return (
+              '<td class="' + escapeHtml(joinClassNames([
+                column.cellClassName,
+                column.numeric ? "o_surface_premium_smart_table__cell--numeric" : "",
+                column.nowrap ? "o_surface_premium_smart_table__cell--nowrap" : "",
+              ])) + '">' +
+              resolveCellMarkup(column, row, rowIndex) +
+              "</td>"
+            );
+          }).join("");
+          var actionsMarkup = rowActions
+            ? '<td class="' + escapeHtml(joinClassNames([
+                "o_surface_premium_smart_table__cell--actions",
+                String(settings.actionsCellClassName || "").trim(),
+              ])) + '">' +
+              buildPremiumSmartTableRowActionsMarkup({
+                actions: rowActions(row, rowIndex, settings) || [],
+              }) +
+              "</td>"
+            : "";
+          return (
+            '<tr class="' + escapeHtml(String(typeof settings.getRowClassName === "function"
+              ? settings.getRowClassName(row, rowIndex, settings)
+              : ""
+            ).trim()) + '">' +
+            cellMarkup +
+            actionsMarkup +
+            "</tr>"
+          );
+        }).join("")
+      : '<tr><td class="o_surface_premium_smart_table__empty" colspan="' +
+        String(columns.length + (rowActions ? 1 : 0)) +
+        '">' + escapeHtml(emptyLabel) + "</td></tr>";
+
+    return (
+      '<section class="' + escapeHtml(joinClassNames([
+        "o_surface_premium_smart_table_shell",
+        settings.className,
+      ])) + '">' +
+      ((summary || toolbarMarkup)
+        ? '<div class="o_surface_premium_smart_table__toolbar">' +
+          (summary ? '<div class="o_surface_premium_smart_table__summary">' + escapeHtml(summary) + "</div>" : "") +
+          toolbarMarkup +
+          "</div>"
+        : "") +
+      '<div class="o_surface_premium_smart_table__scroll">' +
+      '<table class="' + escapeHtml(joinClassNames([
+        "o_surface_premium_smart_table",
+        settings.tableClassName,
+      ])) + '">' +
+      "<thead><tr>" + headerMarkup + "</tr></thead>" +
+      "<tbody>" + bodyMarkup + "</tbody>" +
+      "</table>" +
+      "</div>" +
+      "</section>"
+    );
+  }
+
   function applyPreviewButtonAttributes(target, config) {
     var attributes = target && typeof target === "object" ? Object.assign({}, target) : {};
     var settings = config && typeof config === "object" ? config : {};
@@ -583,6 +784,10 @@
     getVisibleTableHeaders: getVisibleTableHeaders,
     getTrailingRowCell: getTrailingRowCell,
     getTrailingHeaderCell: getTrailingHeaderCell,
+    normalizePremiumSmartTableColumns: normalizePremiumSmartTableColumns,
+    buildPremiumSmartTableStatusCellMarkup: buildPremiumSmartTableStatusCellMarkup,
+    buildPremiumSmartTableRowActionsMarkup: buildPremiumSmartTableRowActionsMarkup,
+    buildPremiumSmartTableMarkup: buildPremiumSmartTableMarkup,
     syncTrailingActionColumns: syncTrailingActionColumns,
     ensureManagedActionColumn: ensureManagedActionColumn,
     clearManagedActionColumn: clearManagedActionColumn,

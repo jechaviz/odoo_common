@@ -827,6 +827,197 @@
     return "";
   }
 
+  function buildPremiumWorkspaceToolbarConsoleMarkup(config, state, handle) {
+    var settings = config && typeof config === "object" ? config : {};
+    var commandBar = typeof settings.buildCommandBar === "function"
+      ? settings.buildCommandBar(state, handle, workspaceApi)
+      : settings.commandBar;
+    var metrics = typeof settings.buildMetrics === "function"
+      ? settings.buildMetrics(state, handle, workspaceApi)
+      : settings.metrics;
+    var validationRail = typeof settings.buildValidationRail === "function"
+      ? settings.buildValidationRail(state, handle, workspaceApi)
+      : settings.validationRail;
+    var emptyState = typeof settings.buildEmptyState === "function"
+      ? settings.buildEmptyState(state, handle, workspaceApi)
+      : settings.emptyState;
+    var smartTable = typeof settings.buildSmartTable === "function"
+      ? settings.buildSmartTable(state, handle, workspaceApi)
+      : settings.smartTable;
+    var toolbarMarkup = "";
+    var sections = [];
+
+    if (typeof settings.buildToolbarMarkup === "function") {
+      toolbarMarkup = String(settings.buildToolbarMarkup(state, handle, workspaceApi) || "");
+    } else if (settings.toolbarMarkup != null) {
+      toolbarMarkup = String(settings.toolbarMarkup || "");
+    } else if (settings.toolbar && typeof surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup === "function") {
+      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(settings.toolbar) || "");
+    }
+
+    if (commandBar) {
+      sections.push(
+        typeof commandBar === "string"
+          ? commandBar
+          : typeof surfaceLayers.buildPremiumCommandBarMarkup === "function"
+          ? surfaceLayers.buildPremiumCommandBarMarkup(commandBar)
+          : ""
+      );
+    }
+    if (metrics) {
+      sections.push(
+        typeof metrics === "string"
+          ? metrics
+          : typeof surfaceLayers.buildPremiumMetricStripMarkup === "function"
+          ? surfaceLayers.buildPremiumMetricStripMarkup(
+              Array.isArray(metrics)
+                ? { metrics: metrics }
+                : metrics
+            )
+          : ""
+      );
+    }
+    if (toolbarMarkup) {
+      sections.push(toolbarMarkup);
+    }
+    if (smartTable) {
+      sections.push(
+        typeof smartTable === "string"
+          ? smartTable
+          : typeof surfaceLayers.buildPremiumSmartTableMarkup === "function"
+          ? surfaceLayers.buildPremiumSmartTableMarkup(smartTable)
+          : ""
+      );
+    }
+    if (validationRail) {
+      sections.push(
+        typeof validationRail === "string"
+          ? validationRail
+          : typeof surfaceLayers.buildPremiumValidationRailMarkup === "function"
+          ? surfaceLayers.buildPremiumValidationRailMarkup(validationRail)
+          : ""
+      );
+    }
+    if (emptyState) {
+      sections.push(
+        typeof emptyState === "string"
+          ? emptyState
+          : typeof surfaceLayers.buildPremiumEmptyStateMarkup === "function"
+          ? surfaceLayers.buildPremiumEmptyStateMarkup(emptyState)
+          : ""
+      );
+    }
+    if (typeof settings.buildBodyMarkup === "function") {
+      sections.push(String(settings.buildBodyMarkup(state, handle, workspaceApi) || ""));
+    } else if (settings.bodyMarkup != null) {
+      sections.push(String(settings.bodyMarkup || ""));
+    }
+    return sections.filter(Boolean).join("");
+  }
+
+  function buildPremiumWorkspaceListConsoleMarkup(config, state, handle) {
+    var settings = config && typeof config === "object" ? config : {};
+    var toolbarMarkup = "";
+    var metrics = typeof settings.buildMetrics === "function"
+      ? settings.buildMetrics(state, handle, workspaceApi)
+      : settings.metrics;
+    var emptyState = typeof settings.buildEmptyState === "function"
+      ? settings.buildEmptyState(state, handle, workspaceApi)
+      : settings.emptyState;
+    var bodyMarkup = typeof settings.buildBodyMarkup === "function"
+      ? settings.buildBodyMarkup(state, handle, workspaceApi)
+      : settings.bodyMarkup;
+    var smartTable = typeof settings.buildSmartTable === "function"
+      ? settings.buildSmartTable(state, handle, workspaceApi)
+      : settings.smartTable;
+    var validationRail = typeof settings.buildValidationRail === "function"
+      ? settings.buildValidationRail(state, handle, workspaceApi)
+      : settings.validationRail;
+
+    if (typeof settings.buildToolbarMarkup === "function") {
+      toolbarMarkup = String(settings.buildToolbarMarkup(state, handle, workspaceApi) || "");
+    } else if (settings.toolbarMarkup != null) {
+      toolbarMarkup = String(settings.toolbarMarkup || "");
+    } else if (settings.toolbar && typeof surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup === "function") {
+      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(settings.toolbar) || "");
+    }
+
+    return buildPremiumWorkspaceToolbarConsoleMarkup({
+      commandBar: settings.commandBar,
+      buildCommandBar: settings.buildCommandBar,
+      metrics: metrics,
+      toolbarMarkup: toolbarMarkup,
+      smartTable: smartTable,
+      validationRail: validationRail,
+      emptyState: emptyState,
+      bodyMarkup: bodyMarkup,
+    }, state, handle);
+  }
+
+  function buildPremiumWorkspaceToolbarConsoleController(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    return {
+      shouldShowToolbarConsole: function (state, handle, runtimeApi) {
+        if (typeof settings.shouldShow === "function") {
+          return settings.shouldShow(state, handle, runtimeApi || workspaceApi) !== false;
+        }
+        return true;
+      },
+      buildToolbarConsoleMarkup: function (state, handle, runtimeApi) {
+        return buildPremiumWorkspaceToolbarConsoleMarkup(
+          Object.assign({}, settings, {
+            buildCommandBar: typeof settings.buildCommandBar === "function"
+              ? function (nextState, nextHandle) {
+                  return settings.buildCommandBar(nextState, nextHandle, runtimeApi || workspaceApi);
+                }
+              : settings.buildCommandBar,
+            buildMetrics: typeof settings.buildMetrics === "function"
+              ? function (nextState, nextHandle) {
+                  return settings.buildMetrics(nextState, nextHandle, runtimeApi || workspaceApi);
+                }
+              : settings.buildMetrics,
+            buildToolbarMarkup: typeof settings.buildToolbarMarkup === "function"
+              ? function (nextState, nextHandle) {
+                  return settings.buildToolbarMarkup(nextState, nextHandle, runtimeApi || workspaceApi);
+                }
+              : settings.buildToolbarMarkup,
+            buildValidationRail: typeof settings.buildValidationRail === "function"
+              ? function (nextState, nextHandle) {
+                  return settings.buildValidationRail(nextState, nextHandle, runtimeApi || workspaceApi);
+                }
+              : settings.buildValidationRail,
+            buildEmptyState: typeof settings.buildEmptyState === "function"
+              ? function (nextState, nextHandle) {
+                  return settings.buildEmptyState(nextState, nextHandle, runtimeApi || workspaceApi);
+                }
+              : settings.buildEmptyState,
+            buildSmartTable: typeof settings.buildSmartTable === "function"
+              ? function (nextState, nextHandle) {
+                  return settings.buildSmartTable(nextState, nextHandle, runtimeApi || workspaceApi);
+                }
+              : settings.buildSmartTable,
+            buildBodyMarkup: typeof settings.buildBodyMarkup === "function"
+              ? function (nextState, nextHandle) {
+                  return settings.buildBodyMarkup(nextState, nextHandle, runtimeApi || workspaceApi);
+                }
+              : settings.buildBodyMarkup,
+          }),
+          state,
+          handle
+        );
+      },
+      sync: function (toolbarRef, state, handle, runtimeApi) {
+        return syncWorkspaceToolbarConsole({
+          toolbar: toolbarRef,
+          active: this.shouldShowToolbarConsole(state, handle, runtimeApi),
+          buildMarkup: function () {
+            return String(this.buildToolbarConsoleMarkup(state, handle, runtimeApi) || "");
+          }.bind(this),
+        });
+      },
+    };
+  }
+
   function resolveBreadcrumbHref(item, state, config, actionRequest) {
     var entry = item && typeof item === "object" ? item : null;
     if (!entry) {
@@ -1803,6 +1994,9 @@
     registerManagedFormEnhancer: registerManagedFormEnhancer,
     syncManagedFormEnhancers: syncManagedFormEnhancers,
     readFieldText: readFieldText,
+    buildPremiumWorkspaceToolbarConsoleMarkup: buildPremiumWorkspaceToolbarConsoleMarkup,
+    buildPremiumWorkspaceListConsoleMarkup: buildPremiumWorkspaceListConsoleMarkup,
+    buildPremiumWorkspaceToolbarConsoleController: buildPremiumWorkspaceToolbarConsoleController,
   });
 
   Object.assign(workspaceApi, {
@@ -1818,6 +2012,9 @@
     buildWorkspaceBreadcrumbTrail: buildWorkspaceBreadcrumbTrail,
     buildWorkspaceActionHref: buildWorkspaceActionHref,
     buildSurfaceWorkspaceShellConfig: buildSurfaceWorkspaceShellConfig,
+    buildPremiumWorkspaceToolbarConsoleMarkup: buildPremiumWorkspaceToolbarConsoleMarkup,
+    buildPremiumWorkspaceListConsoleMarkup: buildPremiumWorkspaceListConsoleMarkup,
+    buildPremiumWorkspaceToolbarConsoleController: buildPremiumWorkspaceToolbarConsoleController,
     cloneManagedFormEnhancers: cloneManagedFormEnhancers,
     registerManagedFormEnhancer: registerManagedFormEnhancer,
     syncManagedFormEnhancers: syncManagedFormEnhancers,

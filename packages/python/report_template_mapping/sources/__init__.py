@@ -13,9 +13,14 @@ from .report_template_mapping import (
     build_odoo_qr_barcode_src,
     build_odoo_qr_img_tag,
     build_qweb_mapping_context,
+    build_report_template_mapping_payload,
     build_report_template_mapping_plan,
+    build_report_template_mapping_summary_html,
+    build_report_template_preview_issues,
+    build_report_template_preview_issues_html,
     extract_jrxml_references,
     format_cfdi_qr_total,
+    mapping_plan_coverage_pct,
 )
 
 __all__ = [
@@ -31,7 +36,12 @@ __all__ = [
     "build_odoo_qr_barcode_src",
     "build_odoo_qr_img_tag",
     "build_qweb_mapping_context",
+    "build_report_template_mapping_payload",
     "build_report_template_mapping_plan",
+    "build_report_template_mapping_summary_html",
+    "build_report_template_preview_issues",
+    "build_report_template_preview_issues_html",
     "extract_jrxml_references",
     "format_cfdi_qr_total",
+    "mapping_plan_coverage_pct",
 ]

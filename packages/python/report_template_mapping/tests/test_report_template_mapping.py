@@ -57,6 +57,49 @@ class ReportTemplateMappingTest(unittest.TestCase):
         self.assertEqual({reference.name for reference in plan.mapped}, {"UUID", "rfcEmisor", "rfcReceptor", "totalCFDi"})
         self.assertEqual([reference.token for reference in plan.missing], ["$P{logo}"])
         self.assertEqual(plan.qweb_context["rfcEmisor"], "o.company_id.vat or ''")
+        self.assertEqual(mapping.mapping_plan_coverage_pct(plan), 80)
+
+        payload = mapping.build_report_template_mapping_payload(plan, schema_version="consumer.v1")
+        self.assertEqual(payload["schema_version"], "consumer.v1")
+        self.assertEqual(payload["missing_count"], 1)
+        self.assertEqual(payload["coverage_pct"], 80)
+
+        html = mapping.build_report_template_mapping_summary_html(plan)
+        self.assertIn("oc_report_mapping", html)
+        self.assertIn("$P{logo}", html)
+        self.assertIn("Pending", html)
+
+    def test_build_preview_issue_summary_is_neutral_and_safe(self):
+        plan = mapping.build_report_template_mapping_plan(
+            {
+                "expression_index": {
+                    "items": [
+                        {
+                            "source": "$P{logo}",
+                            "refs": {"fields": [], "parameters": ["logo"], "variables": []},
+                            "python": {"supported": False},
+                        }
+                    ]
+                },
+                "bands": [
+                    {
+                        "elements": [
+                            {"type": "subreport", "children": []},
+                        ]
+                    }
+                ],
+            },
+            mapping.DEFAULT_CFDI40_JRXML_FIELD_MAPPINGS,
+        )
+
+        issues = mapping.build_report_template_preview_issues({}, plan, sample_xml_paths=())
+        issue_codes = {issue["code"] for issue in issues}
+
+        self.assertIn("missing-sample-data", issue_codes)
+        self.assertIn("missing-field-mapping", issue_codes)
+        html = mapping.build_report_template_preview_issues_html(issues)
+        self.assertIn("oc_report_preview_issues", html)
+        self.assertIn("missing-field-mapping", html)
 
     def test_build_cfdi_qr_url_and_odoo_img_tag(self):
         url = mapping.build_cfdi_qr_verification_url(

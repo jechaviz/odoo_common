@@ -7,7 +7,7 @@ payloads that callers can render through Odoo's barcode controller.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 from html import escape
 import re
@@ -62,6 +62,20 @@ def _normalize_sequence(value: Sequence[Any] | None) -> tuple[Any, ...]:
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         raise TypeError("Report template mapping sequence values must be explicit sequences")
     return tuple(value)
+
+
+def _coerce_sequence(value: Any) -> tuple[Any, ...]:
+    if value is None:
+        return tuple()
+    if isinstance(value, (str, bytes)):
+        return (value,)
+    if isinstance(value, Sequence):
+        return tuple(value)
+    return (value,)
+
+
+def _safe_token(value: Any) -> str:
+    return str(value or "").strip()
 
 
 def _normalize_source_name(value: Any) -> str:
@@ -327,6 +341,225 @@ def build_report_template_mapping_plan(
     )
 
 
+def mapping_plan_coverage_pct(plan: ReportTemplateMappingPlan) -> int:
+    """Return a rounded percentage of JRXML references covered by mappings."""
+    reference_count = len(plan.references)
+    if reference_count <= 0:
+        return 100
+    return int(round((len(plan.mapped) / reference_count) * 100))
+
+
+def _mapping_key(kind: Any, name: Any) -> tuple[str, str]:
+    return _safe_token(kind), _safe_token(name)
+
+
+def build_report_template_mapping_payload(
+    plan: ReportTemplateMappingPlan,
+    *,
+    schema_version: str = "",
+    metadata: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Serialize a mapping plan for Odoo text fields or JSON payloads."""
+    extra_metadata = _normalize_mapping(metadata)
+    return {
+        "schema_version": schema_version or plan.schema_version,
+        "common_schema_version": plan.schema_version,
+        "document_family": plan.document_family,
+        "target_model": plan.target_model,
+        "reference_count": len(plan.references),
+        "mapped_count": len(plan.mapped),
+        "missing_count": len(plan.missing),
+        "coverage_pct": mapping_plan_coverage_pct(plan),
+        "references": [asdict(reference) for reference in plan.references],
+        "mappings": [asdict(mapping) for mapping in plan.mappings],
+        "mapped": [asdict(reference) for reference in plan.mapped],
+        "missing": [asdict(reference) for reference in plan.missing],
+        "qweb_context": dict(plan.qweb_context),
+        "warnings": list(plan.warnings),
+        "metadata": {**dict(plan.metadata), **extra_metadata},
+    }
+
+
+def build_report_template_mapping_summary_html(
+    plan: ReportTemplateMappingPlan,
+    *,
+    row_limit: int = 80,
+) -> str:
+    """Render a compact neutral mapping summary for readonly Odoo HTML fields."""
+    coverage = mapping_plan_coverage_pct(plan)
+    mapping_by_key = {
+        _mapping_key(mapping.source_kind, mapping.source_name): mapping
+        for mapping in plan.mappings
+    }
+    rows: list[str] = []
+    limit = max(int(row_limit or 0), 1)
+    for reference in tuple(plan.references)[:limit]:
+        mapping = mapping_by_key.get(_mapping_key(reference.kind, reference.name))
+        status = "Mapped" if mapping else "Pending"
+        target = mapping.target_path if mapping else ""
+        expression = mapping.qweb_expression if mapping else ""
+        xml_path = mapping.xml_path if mapping else ""
+        rows.append(
+            "<tr>"
+            f"<td><code>{escape(reference.token)}</code></td>"
+            f"<td>{escape(status)}</td>"
+            f"<td>{escape(target)}</td>"
+            f"<td><code>{escape(expression or xml_path)}</code></td>"
+            f"<td>{int(reference.count or 0)}</td>"
+            "</tr>"
+        )
+    if len(plan.references) > limit:
+        rows.append(
+            "<tr>"
+            f'<td colspan="5">Showing {int(limit)} of {len(plan.references)} references.</td>'
+            "</tr>"
+        )
+    empty = (
+        '<tr><td colspan="5">No JRXML references were found for mapping.</td></tr>'
+        if not rows
+        else ""
+    )
+    warnings = "".join(
+        f"<li>{escape(warning)}</li>"
+        for warning in tuple(plan.warnings)[:12]
+    )
+    warning_html = (
+        f'<ul class="oc_report_mapping__warnings">{warnings}</ul>'
+        if warnings
+        else '<p class="oc_report_mapping__ok">No critical mapping warnings.</p>'
+    )
+    return (
+        '<div class="oc_report_mapping" data-oc-report-template-mapping="1">'
+        '<div class="oc_report_mapping__metrics">'
+        f"<span>References: {len(plan.references)}</span>"
+        f"<span>Mapped: {len(plan.mapped)}</span>"
+        f"<span>Pending: {len(plan.missing)}</span>"
+        f"<span>Coverage: {coverage}%</span>"
+        "</div>"
+        '<table class="oc_report_mapping__table">'
+        "<thead><tr><th>JRXML</th><th>Status</th><th>Target</th><th>QWeb/XML</th><th>Use</th></tr></thead>"
+        f"<tbody>{''.join(rows)}{empty}</tbody>"
+        "</table>"
+        f"{warning_html}"
+        "</div>"
+    )
+
+
+def _iter_blueprint_elements(blueprint: Mapping[str, Any]) -> tuple[Mapping[str, Any], ...]:
+    elements: list[Mapping[str, Any]] = []
+
+    def visit(element: Mapping[str, Any]) -> None:
+        elements.append(element)
+        for child in _coerce_sequence(element.get("children") if isinstance(element, Mapping) else ()):
+            if isinstance(child, Mapping):
+                visit(child)
+
+    for band in _coerce_sequence(blueprint.get("bands")):
+        if not isinstance(band, Mapping):
+            continue
+        for element in _coerce_sequence(band.get("elements")):
+            if isinstance(element, Mapping):
+                visit(element)
+    return tuple(elements)
+
+
+def build_report_template_preview_issues(
+    blueprint: Mapping[str, Any],
+    mapping_plan: ReportTemplateMappingPlan,
+    *,
+    sample_xml_paths: Sequence[str] | Sequence[Any] = (),
+) -> tuple[dict[str, Any], ...]:
+    """Summarize safe preview risks without executing JRXML expressions."""
+    issues: list[dict[str, Any]] = []
+    if not tuple(sample_xml_paths or ()):
+        issues.append(
+            {
+                "severity": "info",
+                "code": "missing-sample-data",
+                "message": "No test XML files were attached to this design.",
+                "details": ["Attach at least one XML or translated JSON sample to validate preview data."],
+            }
+        )
+    if mapping_plan.missing:
+        issues.append(
+            {
+                "severity": "warning",
+                "code": "missing-field-mapping",
+                "message": f"{len(mapping_plan.missing)} JRXML references still need explicit mappings.",
+                "details": [reference.token for reference in mapping_plan.missing[:24]],
+            }
+        )
+    unsupported_expressions = [
+        item
+        for item in _iter_expression_items(blueprint)
+        if not bool((item.get("python") if isinstance(item.get("python"), Mapping) else {}).get("supported"))
+    ]
+    if unsupported_expressions:
+        issues.append(
+            {
+                "severity": "warning",
+                "code": "unsupported-expression",
+                "message": f"{len(unsupported_expressions)} JRXML expressions are stored but not executable yet.",
+                "details": [
+                    _safe_token(item.get("source"))[:180]
+                    for item in unsupported_expressions[:12]
+                    if _safe_token(item.get("source"))
+                ],
+            }
+        )
+    preview_unsupported = sorted(
+        {
+            _safe_token(element.get("type"))
+            for element in _iter_blueprint_elements(blueprint)
+            if _safe_token(element.get("type")) in {"subreport", "break"}
+        }
+    )
+    if preview_unsupported:
+        issues.append(
+            {
+                "severity": "info",
+                "code": "preview-element-gap",
+                "message": "Some JRXML element types are indexed but skipped by the safe HTML preview.",
+                "details": preview_unsupported,
+            }
+        )
+    return tuple(issues)
+
+
+def build_report_template_preview_issues_html(issues: Sequence[Mapping[str, Any]]) -> str:
+    """Render preview issues in a compact readonly summary panel."""
+    normalized = [issue for issue in issues if isinstance(issue, Mapping)]
+    if not normalized:
+        return (
+            '<div class="oc_report_preview_issues" data-oc-report-preview-issues="1">'
+            '<p class="oc_report_preview_issues__empty">No critical preview issues.</p>'
+            "</div>"
+        )
+    rows: list[str] = []
+    for issue in normalized:
+        details = "".join(
+            f"<li>{escape(_safe_token(detail))}</li>"
+            for detail in _coerce_sequence(issue.get("details"))[:24]
+            if _safe_token(detail)
+        )
+        details_html = f"<ul>{details}</ul>" if details else ""
+        rows.append(
+            "<tr>"
+            f"<td>{escape(_safe_token(issue.get('severity')))}</td>"
+            f"<td><code>{escape(_safe_token(issue.get('code')))}</code></td>"
+            f"<td>{escape(_safe_token(issue.get('message')))}{details_html}</td>"
+            "</tr>"
+        )
+    return (
+        '<div class="oc_report_preview_issues" data-oc-report-preview-issues="1">'
+        '<table class="oc_report_preview_issues__table">'
+        "<thead><tr><th>Level</th><th>Code</th><th>Detail</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        "</table>"
+        "</div>"
+    )
+
+
 def build_cfdi_qr_verification_url(spec: CfdiQrPayloadSpec | Mapping[str, Any]) -> str:
     """Build the SAT public verification URL to encode in the CFDI QR."""
     normalized = spec if isinstance(spec, CfdiQrPayloadSpec) else CfdiQrPayloadSpec(**dict(spec))
@@ -395,7 +628,12 @@ __all__ = [
     "build_odoo_qr_barcode_src",
     "build_odoo_qr_img_tag",
     "build_qweb_mapping_context",
+    "build_report_template_mapping_payload",
     "build_report_template_mapping_plan",
+    "build_report_template_mapping_summary_html",
+    "build_report_template_preview_issues",
+    "build_report_template_preview_issues_html",
     "extract_jrxml_references",
     "format_cfdi_qr_total",
+    "mapping_plan_coverage_pct",
 ]

@@ -320,4 +320,34 @@ for (const selector of premiumCssHelperHooks) {
   );
 }
 
+const oversizedRadiusMatches = Array.from(surfaceLayerStyles.matchAll(/border-radius:\s*([^;]+);/g))
+  .map((match) => String(match[1] || "").trim())
+  .filter((value) => {
+    if (!/(?:px|rem)\b/.test(value) || value.includes("var(")) {
+      return false;
+    }
+    if (value === "999px") {
+      return false;
+    }
+    const pixelValues = Array.from(value.matchAll(/(\d+(?:\.\d+)?)px/g)).map((pixelMatch) => Number(pixelMatch[1]));
+    const remValues = Array.from(value.matchAll(/(\d+(?:\.\d+)?)rem/g)).map((remMatch) => Number(remMatch[1]) * 16);
+    return pixelValues.concat(remValues).some((pixelValue) => pixelValue > 8);
+  });
+assert.deepEqual(
+  oversizedRadiusMatches,
+  [],
+  "Premium Surface Kit must route non-pill radii through the <=8px design token"
+);
+
+for (const forbiddenDecorativeToken of [
+  "box-shadow: 0 16px",
+  "box-shadow: 0 20px",
+  "background: rgba(15, 23, 42",
+]) {
+  assert.ok(
+    !surfaceLayerStyles.includes(forbiddenDecorativeToken),
+    `surface_layers.css must not reintroduce heavy local decoration token ${forbiddenDecorativeToken}`
+  );
+}
+
 console.log("OK: surface workspace shell contracts passed");

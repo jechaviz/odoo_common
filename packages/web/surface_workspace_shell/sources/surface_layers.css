@@ -1101,10 +1101,10 @@ body.o_surface_workspace_active .o_main_navbar .o_surface_topbar_breadcrumb_host
 
 body.o_surface_workspace_active .o_control_panel .o_surface_breadcrumb_menu,
 body.o_surface_workspace_active .o_main_navbar .o_surface_topbar_breadcrumb_host .o_surface_breadcrumb_menu {
-  background: rgba(31, 36, 48, 0.98);
+  background: var(--o-surface-premium-panel);
   border: 1px solid rgba(164, 174, 197, 0.14);
-  border-radius: 0.85rem;
-  box-shadow: 0 16px 34px rgba(7, 10, 18, 0.24);
+  border-radius: var(--o-surface-premium-radius);
+  box-shadow: var(--o-surface-premium-shadow);
   min-width: 12rem;
   padding: 0.35rem;
 }
@@ -1130,7 +1130,7 @@ body.o_surface_workspace_active .o_main_navbar .o_surface_topbar_breadcrumb_host
 body.o_surface_workspace_active .o_control_panel .o_surface_breadcrumb_menu_link,
 body.o_surface_workspace_active .o_main_navbar .o_surface_topbar_breadcrumb_host .o_surface_breadcrumb_menu_link {
   align-items: center;
-  border-radius: 0.7rem;
+  border-radius: var(--o-surface-premium-radius-sm);
   color: var(--o-surface-theme-ink-soft, #d7deea);
   display: inline-flex;
   font-size: 0.82rem;
@@ -1245,7 +1245,7 @@ body.o_surface_workspace_active .o_control_panel .o_control_panel_navigation {
 body.o_surface_workspace_active .o_control_panel .o_searchview.form-control {
   background: var(--o-surface-theme-input-soft-current);
   border: 1px solid var(--o-surface-theme-border, rgba(164, 174, 197, 0.14));
-  border-radius: 10px 0 0 10px;
+  border-radius: var(--o-surface-premium-radius) 0 0 var(--o-surface-premium-radius);
   box-shadow: none;
   color: var(--o-surface-theme-ink, #f4f6fb);
   min-height: 2.35rem;
@@ -1259,7 +1259,7 @@ body.o_surface_workspace_active .o_control_panel .o_searchview .o_searchview_ico
 body.o_surface_workspace_active .o_control_panel .o_searchview_dropdown_toggler {
   background: var(--o-surface-theme-input-soft-current);
   border-color: var(--o-surface-theme-border, rgba(164, 174, 197, 0.14));
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 var(--o-surface-premium-radius) var(--o-surface-premium-radius) 0;
   box-shadow: none;
   color: var(--o-surface-theme-muted-strong, #c4cbda);
   min-height: 2.35rem;
@@ -1269,7 +1269,7 @@ body.o_surface_workspace_active .o_control_panel .o_pager {
   align-items: center;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--o-surface-theme-border, rgba(164, 174, 197, 0.14));
-  border-radius: 10px;
+  border-radius: var(--o-surface-premium-radius);
   color: var(--o-surface-theme-ink-soft, #d7deea);
   padding: 0.15rem 0.25rem;
 }
@@ -2078,7 +2078,7 @@ body.o_surface_workspace_active .o_surface_workspace_toolbar__console [role="tab
   }
 
   body.o_web_client.o_surface_sidebar_shell_active .o_main_navbar .o_menu_toggle .o_menu_brand_icon {
-    border-radius: 10px;
+    border-radius: var(--o-surface-premium-radius);
     flex: 0 0 auto;
     height: 1.7rem !important;
     margin: 0 !important;
@@ -2102,7 +2102,7 @@ body.o_surface_workspace_active .o_surface_workspace_toolbar__console [role="tab
     align-items: center;
     background: transparent;
     border: 0;
-    border-radius: 9px;
+    border-radius: var(--o-surface-premium-radius);
     color: var(--o-surface-shell-ink-soft);
     cursor: pointer;
     display: inline-flex;
@@ -2215,10 +2215,10 @@ body.o_surface_workspace_active .o_surface_workspace_toolbar__console [role="tab
   body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover {
     --animation-time: 0ms;
     animation: none !important;
-    background: rgba(31, 36, 48, 0.98) !important;
+    background: var(--o-surface-premium-panel) !important;
     border: 1px solid rgba(164, 174, 197, 0.14) !important;
-    border-radius: 0.85rem !important;
-    box-shadow: 0 16px 34px rgba(7, 10, 18, 0.24) !important;
+    border-radius: var(--o-surface-premium-radius) !important;
+    box-shadow: var(--o-surface-premium-shadow) !important;
     left: calc(var(--o-surface-shell-sidebar-width) + 0.35rem) !important;
     min-width: 11.75rem;
     opacity: 0;
@@ -2244,7 +2244,7 @@ body.o_surface_workspace_active .o_surface_workspace_toolbar__console [role="tab
   }
 
   body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover[data-surface-sidebar-depth="2"] {
-    background: rgba(31, 36, 48, 0.98) !important;
+    background: var(--o-surface-premium-panel) !important;
   }
 
   body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover[data-surface-sidebar-synthetic-tree="1"],
@@ -2260,7 +2260,7 @@ body.o_surface_workspace_active .o_surface_workspace_toolbar__console [role="tab
 
   body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover[data-surface-sidebar-depth="3"],
   body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover[data-surface-sidebar-depth="4"] {
-    background: rgba(31, 36, 48, 0.98) !important;
+    background: var(--o-surface-premium-panel) !important;
   }
 
   body.o_web_client.o_surface_sidebar_shell_active .o_popover.o-dropdown--menu.dropdown-menu[role="menu"].o_surface_sidebar_shell_menu_popover[data-surface-sidebar-positioned="1"],
@@ -2289,7 +2289,7 @@ body.o_surface_workspace_active .o_surface_workspace_toolbar__console [role="tab
   body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover .o-dropdown-item {
     align-items: center;
     border: 1px solid transparent;
-    border-radius: 0.7rem;
+    border-radius: var(--o-surface-premium-radius-sm);
     color: var(--o-surface-shell-ink-soft) !important;
     display: flex !important;
     font-size: 0.82rem;
@@ -2636,7 +2636,7 @@ body.o_web_client.o_surface_sidebar_shell_active:not(.o_surface_workspace_form) 
   body.o_web_client.o_surface_sidebar_shell_active .o_main_navbar .o_menu_systray .btn,
   body.o_web_client.o_surface_sidebar_shell_active .o_main_navbar .o_menu_systray .o_nav_entry,
   body.o_web_client.o_surface_sidebar_shell_active .o_main_navbar .o_menu_systray .dropdown-toggle {
-    border-radius: 9px !important;
+    border-radius: var(--o-surface-premium-radius) !important;
     color: var(--o-surface-shell-ink-soft) !important;
   }
 
@@ -2770,7 +2770,7 @@ body.o_surface_workspace_active .o_form_view .o_form_sheet_bg {
 body.o_surface_workspace_active .o_form_view .o_form_sheet {
   background: var(--o-surface-theme-panel, rgba(23, 27, 37, 0.86));
   border: 1px solid rgba(164, 174, 197, 0.08);
-  border-radius: 12px;
+  border-radius: var(--o-surface-premium-radius);
   box-shadow: var(--o-surface-theme-shadow-soft, 0 8px 18px rgba(6, 10, 18, 0.1));
   color: var(--o-surface-theme-ink-soft, #d7deea);
   overflow: hidden;
@@ -2887,7 +2887,7 @@ body.o_surface_workspace_active .o_form_view .oe_button_box .oe_stat_button,
 body.o_surface_workspace_active .o_form_view .oe_button_box .btn.oe_stat_button {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--o-surface-theme-border, rgba(164, 174, 197, 0.14));
-  border-radius: 10px;
+  border-radius: var(--o-surface-premium-radius);
   box-shadow: none;
   color: var(--o-surface-theme-ink-soft, #d7deea);
 }
@@ -2977,8 +2977,8 @@ body.o_surface_workspace_active .o_form_view .o_notebook .o_notebook_page {
 }
 
 body.o_surface_workspace_active .o_form_view .o_field_x2many .o_list_table {
-  background: rgba(18, 22, 31, 0.62);
-  border-radius: 12px;
+  background: transparent;
+  border-radius: var(--o-surface-premium-radius);
   box-shadow: none;
 }
 
@@ -2991,7 +2991,7 @@ body.o_surface_workspace_active .o-mail-Form-chatter,
 body.o_surface_workspace_active .o-mail-ChatterContainer {
   background: var(--o-surface-theme-panel-soft, rgba(25, 30, 40, 0.76));
   border: 1px solid rgba(164, 174, 197, 0.09);
-  border-radius: 14px;
+  border-radius: var(--o-surface-premium-radius);
   box-shadow: none;
   color: var(--o-surface-theme-ink-soft, #d7deea);
 }
@@ -3260,7 +3260,7 @@ body.o_surface_workspace_active .o_form_view .o_surface_record_context_stack {
 body.o_surface_workspace_active .o_form_view .o_surface_record_context_card {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(164, 174, 197, 0.08);
-  border-radius: 12px;
+  border-radius: var(--o-surface-premium-radius);
   box-shadow: none;
   display: grid;
   gap: 0.28rem;

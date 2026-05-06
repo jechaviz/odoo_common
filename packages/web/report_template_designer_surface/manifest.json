@@ -1,0 +1,26 @@
+{
+  "key": "report-template-designer-surface",
+  "title": "Report Template Designer Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_common",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "report_template_designer_surface.js",
+    "report_template_designer_surface.css"
+  ],
+  "publish_order": [
+    "report_template_designer_surface.css",
+    "report_template_designer_surface.js"
+  ],
+  "dependencies": [
+    "surface-workspace-shell"
+  ],
+  "capabilities": [
+    "report-test-data-table",
+    "report-test-data-code-modal",
+    "report-test-data-copy",
+    "report-test-data-pretty-format"
+  ]
+}

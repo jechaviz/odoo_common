@@ -231,6 +231,51 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("left:0px;top:0px;width:250px;height:53px", preview)
         self.assertNotIn("left:0px;top:67px;width:250px;height:53px", preview)
 
+    def test_design_sample_records_expose_original_and_translated_test_data(self):
+        sample_xml = """
+        <Comprobante Total="0.00" Moneda="EUR">
+            <Receptor Rfc="XEXX010101000" UsoCFDI="P01"/>
+            <Complemento><TimbreFiscalDigital UUID="3D696462-B13B-49BA-81ED-1F34FE4C60A0"/></Complemento>
+        </Comprobante>
+        """
+        jrxml = """
+            <jasperReport name="sample" pageWidth="200" pageHeight="120" columnWidth="200">
+                <field name="UUID" class="java.lang.String"><fieldDescription>TimbreFiscalDigital/@UUID</fieldDescription></field>
+                <field name="totalCFDi" class="java.math.BigDecimal"><fieldDescription>@Total</fieldDescription></field>
+                <field name="usoCfdi" class="java.lang.String"><fieldDescription>Receptor/@UsoCFDI</fieldDescription></field>
+                <detail><band height="20"/></detail>
+            </jasperReport>
+        """
+        temp_dir = Path(__file__).resolve().parent
+        jrxml_path = temp_dir / "_sample_report.jrxml"
+        sample_path = temp_dir / "_sample_cfdi.xml"
+        jrxml_path.write_text(jrxml, encoding="utf-8")
+        with self.subTest("sample child records"):
+            records = designer.build_design_sample_record_values(jrxml_path, sample_xml_paths=())
+            self.assertEqual((), records)
+
+        sample_path.write_text(sample_xml, encoding="utf-8")
+        try:
+            records = designer.build_design_sample_record_values(jrxml_path, sample_xml_paths=(sample_path,))
+        finally:
+            sample_path.unlink(missing_ok=True)
+            jrxml_path.unlink(missing_ok=True)
+
+        self.assertEqual(["original_xml", "translated"], [record["x_kind"] for record in records])
+        self.assertEqual("xml", records[0]["x_source_format"])
+        self.assertEqual("json", records[1]["x_source_format"])
+        self.assertIn("<Comprobante", records[0]["x_content"])
+        self.assertIn('"field_values"', records[1]["x_content"])
+        self.assertIn("3D696462-B13B-49BA-81ED-1F34FE4C60A0", records[1]["x_content"])
+
+        html = designer.build_test_data_html(records)
+        self.assertIn("oc_report_test_data__table", html)
+        self.assertIn("data-oc-report-test-open", html)
+        self.assertIn("data-oc-report-test-copy", html)
+        self.assertIn("XML original", html)
+        self.assertIn("Archivo traducido", html)
+        self.assertIn("&lt;Comprobante", html)
+
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
         ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')
         self.assertTrue(ternary["supported"], ternary)

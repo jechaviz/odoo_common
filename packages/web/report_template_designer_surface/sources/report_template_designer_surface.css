@@ -1,0 +1,131 @@
+.oc_report_test_data {
+  max-width: 100%;
+}
+
+.oc_report_test_data__table {
+  border-collapse: collapse;
+  font-size: 13px;
+  width: 100%;
+}
+
+.oc_report_test_data__table th,
+.oc_report_test_data__table td {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.oc_report_test_data__table th {
+  color: inherit;
+  font-weight: 700;
+}
+
+.oc_report_test_data__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.oc_report_test_data__button {
+  background: rgba(148, 163, 184, 0.16);
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-height: 28px;
+  padding: 4px 9px;
+}
+
+.oc_report_test_data__button:hover {
+  background: rgba(14, 165, 233, 0.16);
+  border-color: rgba(14, 165, 233, 0.42);
+}
+
+.oc_report_test_data__drawer-row td {
+  padding-top: 0;
+}
+
+.oc_report_test_data__drawer {
+  margin: 0;
+}
+
+.oc_report_test_data__code {
+  display: none;
+}
+
+.oc_report_test_data__pre,
+.oc_report_test_data_modal__pre {
+  background: rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 8px 0 0;
+  max-height: 360px;
+  overflow: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+  width: 100%;
+  word-break: break-word;
+}
+
+.oc_report_test_data_modal {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.62);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 2147482000;
+}
+
+.oc_report_test_data_modal__dialog {
+  background: var(--body-bg, #fff);
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 8px;
+  box-shadow: 0 20px 70px rgba(15, 23, 42, 0.36);
+  color: inherit;
+  max-height: min(760px, 92vh);
+  max-width: min(1040px, 94vw);
+  overflow: hidden;
+  width: 100%;
+}
+
+.oc_report_test_data_modal__header,
+.oc_report_test_data_modal__footer {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.oc_report_test_data_modal__title {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc_report_test_data_modal__body {
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+  max-height: calc(min(760px, 92vh) - 100px);
+  overflow: auto;
+  padding: 12px;
+}
+
+.oc_report_test_data_modal__footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+  justify-content: flex-end;
+}
+
+.oc_report_test_data_modal__pre {
+  margin: 0;
+  max-height: none;
+}

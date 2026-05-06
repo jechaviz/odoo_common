@@ -1032,6 +1032,25 @@
     ]
   },
   {
+    "key": "report-template-designer-surface",
+    "title": "Report Template Designer Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/report_template_designer_surface",
+    "origins": [
+      {
+        "project": "odoo_common",
+        "path": "packages/web/report_template_designer_surface"
+      }
+    ],
+    "features": [
+      "report test data table",
+      "code detail modal",
+      "copy to clipboard",
+      "json xml pretty format"
+    ]
+  },
+  {
     "key": "report-template-builder",
     "title": "Neutral Report Template Builder",
     "runtime": "python",

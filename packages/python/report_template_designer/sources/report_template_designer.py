@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import base64
+from collections.abc import Mapping as MappingABC
 from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_HALF_UP
 import html
@@ -2470,10 +2471,14 @@ def build_design_record_values(
     blueprint = parse_jrxml_file(path)
     sample_schemas = [flatten_xml_sample_file(Path(sample_path)) for sample_path in sample_xml_paths]
     sample_field_values: dict[str, str] = {}
+    sample_field_values_by_file: dict[str, Any] = {}
     for sample_path in sample_xml_paths:
-        values = build_sample_field_values(blueprint, Path(sample_path))
+        resolved_sample_path = Path(sample_path)
+        values = build_sample_field_values(blueprint, resolved_sample_path)
         if not sample_field_values:
             sample_field_values = values
+        sample_field_values_by_file[resolved_sample_path.name] = values
+    sample_records = _build_design_sample_record_values_from_blueprint(blueprint, sample_xml_paths)
     stats = blueprint.get("stats") or {}
     display_name = name or str((blueprint.get("source") or {}).get("report_name") or path.stem)
     return {
@@ -2492,11 +2497,146 @@ def build_design_record_values(
         "x_expression_count": int(stats.get("expression_count") or 0),
         "x_layout_json": dumps_canonical_json(blueprint),
         "x_expression_json": dumps_canonical_json(blueprint.get("expression_index") or {}),
-        "x_data_schema_json": dumps_canonical_json({"samples": sample_schemas, "field_values": sample_field_values}),
+        "x_data_schema_json": dumps_canonical_json(
+            {
+                "samples": sample_schemas,
+                "field_values": sample_field_values,
+                "translated_files": sample_field_values_by_file,
+            }
+        ),
+        "x_test_data_html": build_test_data_html(sample_records),
         "x_preview_html": build_preview_html(blueprint, asset_base_path=path.parent, sample_values=sample_field_values),
         "x_source_jrxml": path.read_text(encoding="utf-8"),
         "x_notes": "Imported from JRXML. Expressions are indexed for migration and preview but are not executed.",
     }
+
+
+def _human_size(byte_count: int) -> str:
+    value = max(int(byte_count or 0), 0)
+    if value < 1024:
+        return f"{value} B"
+    if value < 1024 * 1024:
+        return f"{value / 1024:.1f} KB"
+    return f"{value / (1024 * 1024):.1f} MB"
+
+
+def _option_label(options: Sequence[tuple[str, str]], value: str) -> str:
+    labels = {str(key): str(label) for key, label in options}
+    return labels.get(str(value or ""), str(value or ""))
+
+
+def _build_design_sample_record_values_from_blueprint(
+    blueprint: Mapping[str, Any],
+    sample_xml_paths: Sequence[str | Path] = (),
+) -> tuple[dict[str, Any], ...]:
+    records: list[dict[str, Any]] = []
+    sequence = 10
+    for sample_xml_path in sample_xml_paths:
+        path = Path(sample_xml_path)
+        if not path.exists():
+            continue
+        raw_xml = path.read_text(encoding="utf-8")
+        schema = flatten_xml_sample_file(path)
+        values = build_sample_field_values(blueprint, path)
+        records.append(
+            {
+                "x_name": f"{path.name} original",
+                "x_sequence": sequence,
+                "x_kind": "original_xml",
+                "x_source_filename": path.name,
+                "x_source_format": "xml",
+                "x_mimetype": "application/xml",
+                "x_content": raw_xml,
+                "x_file_name": path.name,
+                "x_active": True,
+                "x_notes": "XML original disponible para pruebas de preview y mapeo.",
+            }
+        )
+        sequence += 10
+        translated_payload = {
+            "source_filename": path.name,
+            "target": "odoo.report_template_designer.sample_context",
+            "field_values": values,
+            "schema": schema,
+        }
+        translated_name = f"{path.stem}.translated.json"
+        records.append(
+            {
+                "x_name": f"{path.name} traducido",
+                "x_sequence": sequence,
+                "x_kind": "translated",
+                "x_source_filename": translated_name,
+                "x_source_format": "json",
+                "x_mimetype": "application/json",
+                "x_content": dumps_canonical_json(translated_payload),
+                "x_file_name": translated_name,
+                "x_active": True,
+                "x_notes": "Contexto traducido a campos y rutas XML para validar el render Odoo.",
+            }
+        )
+        sequence += 10
+    return tuple(records)
+
+
+def build_design_sample_record_values(
+    jrxml_path: str | Path,
+    *,
+    sample_xml_paths: Sequence[str | Path] = (),
+) -> tuple[dict[str, Any], ...]:
+    """Build editable Odoo child records for original and translated test data."""
+    return _build_design_sample_record_values_from_blueprint(parse_jrxml_file(Path(jrxml_path)), sample_xml_paths)
+
+
+def build_test_data_html(sample_records: Sequence[Mapping[str, Any]]) -> str:
+    """Render a compact test-data table with safe fallback code drawers."""
+    rows: list[str] = []
+    if not sample_records:
+        return (
+            '<div class="oc_report_test_data">'
+            '<table class="oc_report_test_data__table">'
+            "<thead><tr><th>Tipo</th><th>Archivo</th><th>Formato</th><th>Tamano</th><th>Acciones</th></tr></thead>"
+            "<tbody></tbody></table></div>"
+        )
+    for index, raw_record in enumerate(sample_records, start=1):
+        record = raw_record if isinstance(raw_record, MappingABC) else {}
+        code = str(record.get("x_content") or "")
+        kind = str(record.get("x_kind") or "")
+        source_format = str(record.get("x_source_format") or "")
+        filename = str(record.get("x_source_filename") or record.get("x_file_name") or record.get("x_name") or "")
+        kind_label = _option_label(REPORT_TEST_DATA_KIND_OPTIONS, kind)
+        format_label = _option_label(REPORT_TEST_DATA_FORMAT_OPTIONS, source_format)
+        escaped_code = html.escape(code)
+        rows.append(
+            (
+                f'<tr class="oc_report_test_data__row" data-oc-report-test-row="1" data-oc-report-test-index="{index}" '
+                f'data-oc-report-test-format="{html.escape(source_format, quote=True)}">'
+                f"<td>{html.escape(kind_label)}</td>"
+                f"<td>{html.escape(filename)}</td>"
+                f"<td>{html.escape(format_label)}</td>"
+                f"<td>{html.escape(_human_size(len(code.encode('utf-8'))))}</td>"
+                '<td class="oc_report_test_data__actions">'
+                '<button type="button" class="oc_report_test_data__button oc_report_test_data__button--open" data-oc-report-test-open="1">Ver codigo</button>'
+                '<button type="button" class="oc_report_test_data__button oc_report_test_data__button--copy" data-oc-report-test-copy="1">Copiar</button>'
+                "</td>"
+                "</tr>"
+                '<tr class="oc_report_test_data__drawer-row">'
+                '<td colspan="5">'
+                '<details class="oc_report_test_data__drawer">'
+                "<summary>Codigo</summary>"
+                f'<textarea class="oc_report_test_data__code" data-oc-report-test-code="1" readonly="readonly">{escaped_code}</textarea>'
+                f'<pre class="oc_report_test_data__pre">{escaped_code}</pre>'
+                "</details>"
+                "</td>"
+                "</tr>"
+            )
+        )
+    return (
+        '<div class="oc_report_test_data" data-oc-report-test-data="1">'
+        '<table class="oc_report_test_data__table">'
+        "<thead><tr><th>Tipo</th><th>Archivo</th><th>Formato</th><th>Tamano</th><th>Acciones</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        "</table></div>"
+    )
 
 
 @dataclass(frozen=True)
@@ -2513,6 +2653,10 @@ class ReportDesignerFieldSpec:
     field_description: str
     field_type: str
     relation: str | None = None
+    relation_field: str | None = None
+    relation_table: str | None = None
+    column1: str | None = None
+    column2: str | None = None
     help_text: str | None = None
     selection_options: tuple[tuple[str, str], ...] = field(default_factory=tuple)
 
@@ -2539,11 +2683,28 @@ REPORT_TEMPLATE_RENDER_STAGE_OPTIONS: tuple[tuple[str, str], ...] = (
     ("production", "Produccion"),
 )
 
+REPORT_TEST_DATA_KIND_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("original_xml", "XML original"),
+    ("translated", "Archivo traducido"),
+    ("manual", "Manual"),
+)
+
+REPORT_TEST_DATA_FORMAT_OPTIONS: tuple[tuple[str, str], ...] = (
+    ("xml", "XML"),
+    ("json", "JSON"),
+    ("text", "Texto"),
+)
+
 REPORT_DESIGNER_MODELS: tuple[ReportDesignerModelSpec, ...] = (
     ReportDesignerModelSpec(
         model="x_odoo_report_design",
         name="Report Template Design",
         info="Reusable report/template designer records with JRXML import, band blueprint, expression index, sample data schema, and safe preview HTML.",
+    ),
+    ReportDesignerModelSpec(
+        model="x_odoo_report_design_sample",
+        name="Report Template Test Data",
+        info="Original and translated test-data files linked to neutral report/template designer records.",
     ),
 )
 
@@ -2576,9 +2737,48 @@ REPORT_DESIGNER_FIELDS: tuple[ReportDesignerFieldSpec, ...] = (
     ReportDesignerFieldSpec("x_odoo_report_design", "x_layout_json", "Layout normalizado", "text"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_expression_json", "Indice de logica", "text"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_data_schema_json", "Datos de prueba", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_test_data_html", "Visor de datos de prueba", "html"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_preview_html", "Preview", "html"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_source_jrxml", "JRXML original", "text"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_notes", "Notas", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_name", "Nombre", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_sequence", "Secuencia", "integer"),
+    ReportDesignerFieldSpec(
+        "x_odoo_report_design_sample",
+        "x_design_id",
+        "Plantilla",
+        "many2one",
+        relation="x_odoo_report_design",
+    ),
+    ReportDesignerFieldSpec(
+        "x_odoo_report_design_sample",
+        "x_kind",
+        "Tipo",
+        "selection",
+        selection_options=REPORT_TEST_DATA_KIND_OPTIONS,
+    ),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_source_filename", "Archivo", "char"),
+    ReportDesignerFieldSpec(
+        "x_odoo_report_design_sample",
+        "x_source_format",
+        "Formato",
+        "selection",
+        selection_options=REPORT_TEST_DATA_FORMAT_OPTIONS,
+    ),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_mimetype", "MIME", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_file", "Archivo subido", "binary"),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_file_name", "Nombre archivo", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_content", "Codigo", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_active", "Activo", "boolean"),
+    ReportDesignerFieldSpec("x_odoo_report_design_sample", "x_notes", "Notas", "text"),
+    ReportDesignerFieldSpec(
+        "x_odoo_report_design",
+        "x_sample_ids",
+        "Datos de prueba",
+        "one2many",
+        relation="x_odoo_report_design_sample",
+        relation_field="x_design_id",
+    ),
 )
 
 
@@ -2653,7 +2853,46 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
                             <field name="x_expression_json" nolabel="1"/>
                         </page>
                         <page string="Datos de prueba">
-                            <field name="x_data_schema_json" nolabel="1"/>
+                            <field name="x_test_data_html" nolabel="1" readonly="1"/>
+                            <field name="x_sample_ids" nolabel="1" mode="list,form" context="{'default_x_design_id': id}">
+                                <list string="Datos de prueba" create="1" delete="1">
+                                    <field name="x_sequence" widget="handle"/>
+                                    <field name="x_kind"/>
+                                    <field name="x_source_filename"/>
+                                    <field name="x_source_format"/>
+                                    <field name="x_file" filename="x_file_name" optional="show"/>
+                                    <field name="x_file_name" optional="hide"/>
+                                    <field name="x_active" optional="show"/>
+                                </list>
+                                <form string="Dato de prueba">
+                                    <sheet>
+                                        <group>
+                                            <group>
+                                                <field name="x_name"/>
+                                                <field name="x_kind"/>
+                                                <field name="x_source_filename"/>
+                                                <field name="x_source_format"/>
+                                                <field name="x_active"/>
+                                            </group>
+                                            <group>
+                                                <field name="x_file" filename="x_file_name"/>
+                                                <field name="x_file_name"/>
+                                                <field name="x_mimetype"/>
+                                                <field name="x_sequence"/>
+                                            </group>
+                                        </group>
+                                        <notebook>
+                                            <page string="Codigo">
+                                                <field name="x_content" nolabel="1"/>
+                                            </page>
+                                            <page string="Notas">
+                                                <field name="x_notes" nolabel="1"/>
+                                            </page>
+                                        </notebook>
+                                    </sheet>
+                                </form>
+                            </field>
+                            <field name="x_data_schema_json" nolabel="1" groups="base.group_no_one"/>
                         </page>
                         <page string="JRXML original" groups="base.group_no_one">
                             <field name="x_source_jrxml" nolabel="1"/>
@@ -2678,16 +2917,20 @@ __all__ = [
     "REPORT_DESIGNER_VIEW_BLUEPRINTS",
     "REPORT_TEMPLATE_RENDER_STAGE_OPTIONS",
     "REPORT_TEMPLATE_SOURCE_FORMAT_OPTIONS",
+    "REPORT_TEST_DATA_FORMAT_OPTIONS",
+    "REPORT_TEST_DATA_KIND_OPTIONS",
     "ReportDesignerFieldSpec",
     "ReportDesignerExpressionTranslation",
     "ReportDesignerModelSpec",
     "ReportDesignerViewBlueprint",
     "build_design_record_values",
+    "build_design_sample_record_values",
     "build_preview_html",
     "dumps_canonical_json",
     "evaluate_jrxml_python_expression",
     "flatten_xml_sample",
     "flatten_xml_sample_file",
+    "build_test_data_html",
     "parse_jrxml_document",
     "parse_jrxml_file",
     "summarize_design_blueprint",

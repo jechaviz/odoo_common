@@ -48,6 +48,12 @@
       "prune": true
     },
     {
+      "component_key": "report-template-designer-surface",
+      "target_relative": "src/odoo_fiax_migration/web_assets/odoo_surface_layers",
+      "mode": "tree",
+      "prune": true
+    },
+    {
       "component_key": "form-layout-surface",
       "target_relative": "src/odoo_fiax_migration/web_assets/odoo_form_layout_surface",
       "mode": "tree",

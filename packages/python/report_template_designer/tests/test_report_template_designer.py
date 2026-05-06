@@ -135,6 +135,51 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("overflow:visible", preview)
         self.assertNotIn("display:flex;align-items:center", preview)
 
+    def test_stretched_text_pushes_float_frames_down(self):
+        preview = designer.build_preview_html(
+            {
+                "page": {"width": 300, "height": 160},
+                "bands": [
+                    {
+                        "name": "detail",
+                        "height": 80,
+                        "elements": [
+                            {
+                                "type": "frame",
+                                "geometry": {"x": 0, "y": 0, "width": 250, "height": 38},
+                                "children": [
+                                    {
+                                        "type": "textField",
+                                        "stretch_with_overflow": "true",
+                                        "geometry": {"x": 5, "y": 18, "width": 80, "height": 15},
+                                        "text_style": {"font": {"size": "6"}},
+                                        "expression": {"source": "$F{cadenaOriginal}"},
+                                    },
+                                ],
+                            },
+                            {
+                                "type": "frame",
+                                "geometry": {"x": 0, "y": 39, "width": 250, "height": 20},
+                                "report_element": {"positionType": "Float"},
+                                "children": [
+                                    {
+                                        "type": "staticText",
+                                        "geometry": {"x": 0, "y": 0, "width": 100, "height": 10},
+                                        "text": "NEXT",
+                                    },
+                                ],
+                            },
+                        ],
+                    }
+                ],
+            },
+            sample_values={"cadenaOriginal": "X" * 240},
+            scale=1,
+        )
+
+        self.assertIn("height:94px;overflow:visible", preview)
+        self.assertIn("top:94px;width:250px;height:20px", preview)
+
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
         ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')
         self.assertTrue(ternary["supported"], ternary)

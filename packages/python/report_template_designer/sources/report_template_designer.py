@@ -1675,6 +1675,139 @@ def _text_flow_css(element: Mapping[str, Any], preview_text: str, *, scale: floa
     return ";".join(css)
 
 
+def _geometry_int(element: Mapping[str, Any], key: str, default: int = 0) -> int:
+    geometry = element.get("geometry") if isinstance(element.get("geometry"), Mapping) else {}
+    try:
+        return int(float(geometry.get(key) or default))
+    except (TypeError, ValueError):
+        return default
+
+
+def _report_element(element: Mapping[str, Any]) -> Mapping[str, Any]:
+    report_element = element.get("report_element") if isinstance(element.get("report_element"), Mapping) else {}
+    return report_element
+
+
+def _is_float_position(element: Mapping[str, Any]) -> bool:
+    return str(_report_element(element).get("positionType") or "").strip().lower() == "float"
+
+
+def _font_size_points(element: Mapping[str, Any]) -> int:
+    text_style = element.get("text_style") if isinstance(element.get("text_style"), Mapping) else {}
+    font = text_style.get("font") if isinstance(text_style.get("font"), Mapping) else {}
+    size = str(font.get("size") or "").strip()
+    return int(size) if size.isdigit() else 8
+
+
+def _horizontal_padding_points(element: Mapping[str, Any], styles: Mapping[str, Any] | None) -> int:
+    box = element.get("box") if isinstance(element.get("box"), Mapping) else {}
+    named_box = _effective_named_box(element, styles)
+    merged: dict[str, Any] = {}
+    if isinstance(named_box, Mapping):
+        merged.update(named_box)
+    if isinstance(box, Mapping):
+        merged.update(box)
+    total = 0
+    for key in ("padding", "leftPadding", "rightPadding"):
+        value = str(merged.get(key) or "").strip()
+        if value.lstrip("-").isdigit():
+            total += int(value)
+    return max(total, 0)
+
+
+def _preview_text_for_element(element: Mapping[str, Any], sample_values: Mapping[str, Any] | None) -> str:
+    kind = str(element.get("type") or "")
+    if kind == "staticText":
+        return str(element.get("text") or "")
+    if kind == "textField":
+        expression = (element.get("expression") or {}).get("source") if isinstance(element.get("expression"), Mapping) else ""
+        return _preview_expression_text(str(expression or ""), sample_values)
+    return ""
+
+
+def _estimate_wrapped_text_height_points(
+    element: Mapping[str, Any],
+    preview_text: str,
+    *,
+    styles: Mapping[str, Any] | None,
+) -> int:
+    base_height = max(_geometry_int(element, "height", 1), 1)
+    if not (_truthy_text(element.get("stretch_with_overflow")) and _text_needs_free_flow(preview_text)):
+        return base_height
+    width = max(_geometry_int(element, "width", 1) - _horizontal_padding_points(element, styles), 1)
+    font_size = max(_font_size_points(element), 1)
+    average_char_width = max(font_size * 0.62, 1)
+    chars_per_line = max(int(width / average_char_width), 1)
+    logical_lines = str(preview_text or "").splitlines() or [""]
+    line_count = 0
+    for line in logical_lines:
+        clean_line = line.rstrip()
+        line_count += max(1, (len(clean_line) + chars_per_line - 1) // chars_per_line)
+    estimated = int((line_count * font_size * 1.05) + 0.999)
+    return max(base_height, estimated)
+
+
+def _element_effective_height(
+    element: Mapping[str, Any],
+    *,
+    sample_values: Mapping[str, Any] | None,
+    styles: Mapping[str, Any] | None,
+) -> int:
+    if not _print_when_allows(element, sample_values):
+        return 0
+    kind = str(element.get("type") or "")
+    base_height = max(_geometry_int(element, "height", 1), 1)
+    if kind in {"staticText", "textField"}:
+        return _estimate_wrapped_text_height_points(
+            element,
+            _preview_text_for_element(element, sample_values),
+            styles=styles,
+        )
+    if kind == "frame":
+        children = [child for child in element.get("children") or [] if isinstance(child, Mapping)]
+        _, content_height = _flowed_child_layout(children, sample_values=sample_values, styles=styles)
+        return max(base_height, content_height)
+    if kind == "componentElement":
+        dataset_run = element.get("dataset_run") if isinstance(element.get("dataset_run"), Mapping) else {}
+        dataset_name = str(dataset_run.get("sub_dataset") or "").strip()
+        rows = _sample_dataset_values(sample_values, dataset_name)
+        list_contents = element.get("list_contents") if isinstance(element.get("list_contents"), Mapping) else {}
+        row_height = int(list_contents.get("height") or base_height or 1)
+        content_elements = [child for child in list_contents.get("elements") or [] if isinstance(child, Mapping)]
+        if not rows or not content_elements:
+            return base_height
+        rendered_height = 0
+        for row_values in rows[:20]:
+            row_sample_values = _merged_sample_values(sample_values, row_values)
+            _, row_content_height = _flowed_child_layout(content_elements, sample_values=row_sample_values, styles=styles)
+            rendered_height += max(row_height, row_content_height or row_height)
+        return max(base_height, rendered_height)
+    return base_height
+
+
+def _flowed_child_layout(
+    children: Sequence[Mapping[str, Any]],
+    *,
+    sample_values: Mapping[str, Any] | None,
+    styles: Mapping[str, Any] | None,
+) -> tuple[list[tuple[Mapping[str, Any], int, int]], int]:
+    layout: list[tuple[Mapping[str, Any], int, int]] = []
+    growth_bottom = 0
+    content_bottom = 0
+    for child in children:
+        if not isinstance(child, Mapping) or not _print_when_allows(child, sample_values):
+            continue
+        original_y = _geometry_int(child, "y", 0)
+        base_height = max(_geometry_int(child, "height", 1), 1)
+        adjusted_y = max(original_y, growth_bottom) if _is_float_position(child) else original_y
+        effective_height = _element_effective_height(child, sample_values=sample_values, styles=styles)
+        content_bottom = max(content_bottom, adjusted_y + effective_height)
+        if adjusted_y > original_y or effective_height > base_height:
+            growth_bottom = max(growth_bottom, adjusted_y + effective_height)
+        layout.append((child, adjusted_y, effective_height))
+    return layout, content_bottom
+
+
 def _sample_value(sample_values: Mapping[str, Any] | None, field_name: str) -> str:
     if not sample_values:
         return ""
@@ -2075,21 +2208,29 @@ def _component_list_html(
         return ""
     row_height = int(list_contents.get("height") or (element.get("geometry") or {}).get("height") or 1)
     rendered_rows: list[str] = []
-    for row_index, row_values in enumerate(rows[:20]):
+    current_row_y = 0
+    for row_values in rows[:20]:
         row_sample_values = _merged_sample_values(sample_values, row_values)
-        row_offset_y = row_height * row_index
-        rendered_rows.extend(
-            _preview_element_html(
-                child,
-                asset_base_path=asset_base_path,
-                offset_x=0,
-                offset_y=row_offset_y,
-                sample_values=row_sample_values,
-                scale=scale,
-                styles=styles,
-            )
-            for child in content_elements
+        row_layout, row_content_height = _flowed_child_layout(
+            content_elements,
+            sample_values=row_sample_values,
+            styles=styles,
         )
+        row_effective_height = max(row_height, row_content_height or row_height)
+        for child, adjusted_y, _effective_height in row_layout:
+            rendered_rows.append(
+                _preview_element_html(
+                    child,
+                    asset_base_path=asset_base_path,
+                    offset_x=0,
+                    offset_y=current_row_y + adjusted_y - _geometry_int(child, "y", 0),
+                    container_height=row_effective_height,
+                    sample_values=row_sample_values,
+                    scale=scale,
+                    styles=styles,
+                )
+            )
+        current_row_y += row_effective_height
     return "".join(rendered_rows)
 
 
@@ -2102,6 +2243,7 @@ def _preview_element_html(
     sample_values: Mapping[str, Any] | None = None,
     scale: float = 1.0,
     styles: Mapping[str, Any] | None = None,
+    container_height: int | None = None,
 ) -> str:
     if not _print_when_allows(element, sample_values):
         return ""
@@ -2178,6 +2320,10 @@ def _preview_element_html(
         color = _css_color(report_element.get("forecolor"), "#8E8E8E")
         radius = str(element.get("radius") or "").strip()
         radius_css = f"border-radius:{radius}px" if radius.isdigit() else ""
+        relative_height_css = ""
+        if container_height and "RelativeToBandHeight" in str(report_element.get("stretchType") or ""):
+            stretch_height = max(_geometry_int(element, "height", 1), int(container_height) - _geometry_int(element, "y", 0))
+            relative_height_css = f"height:{_css_px(_scaled(stretch_height, scale))}"
         base_style = _join_inline_style(
             _base_element_css(
                 element,
@@ -2187,34 +2333,39 @@ def _preview_element_html(
                 scale=scale,
             ),
             radius_css,
+            relative_height_css,
             "pointer-events:none",
         )
     elif kind == "frame":
+        children = [child for child in element.get("children") or [] if isinstance(child, Mapping)]
+        child_layout, content_height = _flowed_child_layout(children, sample_values=sample_values, styles=styles)
+        effective_height = max(_geometry_int(element, "height", 1), content_height)
         base_style = _join_inline_style(
             _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             "padding:0",
+            f"height:{_css_px(_scaled(effective_height, scale))}",
+            "overflow:visible",
         )
         child_html = "".join(
             _preview_element_html(
                 child,
                 asset_base_path=asset_base_path,
                 offset_x=0,
-                offset_y=0,
+                offset_y=adjusted_y - _geometry_int(child, "y", 0),
+                container_height=effective_height,
                 sample_values=sample_values,
                 scale=scale,
                 styles=styles,
             )
-            for child in element.get("children") or []
-            if isinstance(child, Mapping)
+            for child, adjusted_y, _effective_height in child_layout
         )
         content = child_html
         classes += " oc_report_designer_preview__frame"
     elif kind == "componentElement":
         dataset_run = element.get("dataset_run") if isinstance(element.get("dataset_run"), Mapping) else {}
         dataset_name = str(dataset_run.get("sub_dataset") or "").strip()
-        row_count = len(_sample_dataset_values(sample_values, dataset_name))
         list_contents = element.get("list_contents") if isinstance(element.get("list_contents"), Mapping) else {}
-        row_height = int(list_contents.get("height") or (element.get("geometry") or {}).get("height") or 1)
+        effective_height = _element_effective_height(element, sample_values=sample_values, styles=styles)
         content = _component_list_html(
             element,
             asset_base_path=asset_base_path,
@@ -2227,7 +2378,8 @@ def _preview_element_html(
         base_style = _join_inline_style(
             _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             "padding:0",
-            f"height:{_css_px(_scaled(max(row_count, 1) * row_height, scale))}",
+            f"height:{_css_px(_scaled(effective_height, scale))}",
+            "overflow:visible",
         )
     elif kind in {"subreport", "break", "printWhenExpression"}:
         return ""
@@ -2259,20 +2411,27 @@ def build_preview_html(
     for band in bands:
         if not isinstance(band, Mapping):
             continue
-        height = max(int(band.get("height") or 1), 1)
-        for element in band.get("elements") or []:
-            if isinstance(element, Mapping):
-                element_html.append(
-                    _preview_element_html(
-                        element,
-                        asset_base_path=asset_base_path,
-                        offset_x=margin_left,
-                        offset_y=margin_top + current_y,
-                        sample_values=sample_values,
-                        scale=scale,
-                        styles=styles,
-                    )
+        band_elements = [element for element in band.get("elements") or [] if isinstance(element, Mapping)]
+        fixed_height = max(int(band.get("height") or 1), 1)
+        band_layout, content_height = _flowed_child_layout(
+            band_elements,
+            sample_values=sample_values,
+            styles=styles,
+        )
+        height = max(fixed_height, content_height)
+        for element, adjusted_y, _effective_height in band_layout:
+            element_html.append(
+                _preview_element_html(
+                    element,
+                    asset_base_path=asset_base_path,
+                    offset_x=margin_left,
+                    offset_y=margin_top + current_y + adjusted_y - _geometry_int(element, "y", 0),
+                    container_height=height,
+                    sample_values=sample_values,
+                    scale=scale,
+                    styles=styles,
                 )
+            )
         current_y += height
     height = max(margin_top + current_y + margin_bottom, int(page.get("height") or 792))
     page_width = _css_px(_scaled(width, scale))

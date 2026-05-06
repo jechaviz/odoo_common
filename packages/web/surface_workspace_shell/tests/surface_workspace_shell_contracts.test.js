@@ -317,6 +317,19 @@ for (const expectedToken of [
     `workspace toolbar nav must expose accessible tab token ${expectedToken}`
   );
 }
+for (const expectedToken of [
+  "function normalizePremiumWorkspaceToolbarConfig(commandBar, toolbar)",
+  "delete normalized.commandBar.tabs",
+  "delete normalized.commandBar.filters",
+  'normalized.toolbar.tabs = commandBar.tabs',
+  'normalized.toolbar.filters = commandBar.filters',
+  "surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(toolbarConfig.toolbar)",
+]) {
+  assert.ok(
+    workspaceSource.includes(expectedToken),
+    `premium workspace console must route command-bar navigation through toolbar console token ${expectedToken}`
+  );
+}
 
 assert.ok(
   markupSource.includes('<strong class="o_surface_premium_metric__value">'),

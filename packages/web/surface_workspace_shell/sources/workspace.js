@@ -827,6 +827,34 @@
     return "";
   }
 
+  function normalizePremiumWorkspaceToolbarConfig(commandBar, toolbar) {
+    var normalized = {
+      commandBar: commandBar,
+      toolbar: toolbar,
+    };
+    if (!(commandBar && typeof commandBar === "object") || typeof commandBar === "string") {
+      return normalized;
+    }
+    var hasTabs = Object.prototype.hasOwnProperty.call(commandBar, "tabs");
+    var hasFilters = Object.prototype.hasOwnProperty.call(commandBar, "filters");
+    if (!hasTabs && !hasFilters) {
+      return normalized;
+    }
+    normalized.commandBar = Object.assign({}, commandBar);
+    delete normalized.commandBar.tabs;
+    delete normalized.commandBar.filters;
+    normalized.toolbar = toolbar && typeof toolbar === "object"
+      ? Object.assign({}, toolbar)
+      : {};
+    if (hasTabs && !Object.prototype.hasOwnProperty.call(normalized.toolbar, "tabs")) {
+      normalized.toolbar.tabs = commandBar.tabs;
+    }
+    if (hasFilters && !Object.prototype.hasOwnProperty.call(normalized.toolbar, "filters")) {
+      normalized.toolbar.filters = commandBar.filters;
+    }
+    return normalized;
+  }
+
   function buildPremiumWorkspaceToolbarConsoleMarkup(config, state, handle) {
     var settings = config && typeof config === "object" ? config : {};
     var commandBar = typeof settings.buildCommandBar === "function"
@@ -844,6 +872,8 @@
     var smartTable = typeof settings.buildSmartTable === "function"
       ? settings.buildSmartTable(state, handle, workspaceApi)
       : settings.smartTable;
+    var toolbarConfig = normalizePremiumWorkspaceToolbarConfig(commandBar, settings.toolbar);
+    commandBar = toolbarConfig.commandBar;
     var toolbarMarkup = "";
     var sections = [];
 
@@ -851,8 +881,8 @@
       toolbarMarkup = String(settings.buildToolbarMarkup(state, handle, workspaceApi) || "");
     } else if (settings.toolbarMarkup != null) {
       toolbarMarkup = String(settings.toolbarMarkup || "");
-    } else if (settings.toolbar && typeof surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup === "function") {
-      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(settings.toolbar) || "");
+    } else if (toolbarConfig.toolbar && typeof surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup === "function") {
+      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(toolbarConfig.toolbar) || "");
     }
 
     if (commandBar) {

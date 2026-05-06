@@ -564,12 +564,16 @@
 
   function ensureManagedPreviewActionColumn(config) {
     var settings = config && typeof config === "object" ? config : {};
-    return surfaceLayerApi.ensureManagedActionColumn({
+    var ownerKey = String(settings.ownerKey || settings.bridgeKey || settings.key || "").trim();
+    var headerClassName = String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim();
+    var cellClassName = String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim();
+    var cellClassToken = getPrimaryClassToken(cellClassName);
+    var result = surfaceLayerApi.ensureManagedActionColumn({
       table: settings.table,
       rows: settings.rows,
       headerLabel: String(settings.headerLabel || "Vistas").trim(),
-      headerClassName: String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim(),
-      cellClassName: String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim(),
+      headerClassName: headerClassName,
+      cellClassName: cellClassName,
       renderCell: function (row, index) {
         var actionResolver = typeof settings.buildActions === "function"
           ? settings.buildActions
@@ -577,20 +581,57 @@
         var actions = actionResolver ? actionResolver(row, index, settings) : settings.actions;
         return buildManagedPreviewActionsMarkup({
           actions: actions,
-          ownerKey: String(settings.ownerKey || settings.bridgeKey || settings.key || "").trim(),
+          ownerKey: ownerKey,
           className: String(settings.actionsClassName || DEFAULT_PREVIEW_ACTIONS_CLASS_NAME).trim(),
           buttonClassName: String(settings.buttonClassName || DEFAULT_PREVIEW_BUTTON_CLASS_NAME).trim(),
         });
       },
     });
+    if (result && ownerKey) {
+      if (result.header instanceof HTMLElement) {
+        result.header.dataset.surfacePreviewOwner = ownerKey;
+      }
+      if (cellClassToken) {
+        (Array.isArray(result.rows) ? result.rows : []).forEach(function (row) {
+          var cell = row instanceof HTMLElement ? row.querySelector("td." + cellClassToken) : null;
+          if (cell instanceof HTMLElement) {
+            cell.dataset.surfacePreviewOwner = ownerKey;
+          }
+        });
+      }
+    }
+    return result;
   }
 
   function clearManagedPreviewActionColumn(config) {
     var settings = config && typeof config === "object" ? config : {};
+    var table = settings.table instanceof HTMLTableElement ? settings.table : null;
+    var ownerKey = String(settings.ownerKey || settings.bridgeKey || settings.key || "").trim();
+    var headerClassName = String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim();
+    var cellClassName = String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim();
+    var headerClassToken = getPrimaryClassToken(headerClassName);
+    var cellClassToken = getPrimaryClassToken(cellClassName);
+    if (table instanceof HTMLTableElement && ownerKey) {
+      if (headerClassToken) {
+        Array.prototype.slice.call(table.querySelectorAll("th." + headerClassToken)).forEach(function (node) {
+          if (node instanceof HTMLElement && node.dataset.surfacePreviewOwner === ownerKey) {
+            node.remove();
+          }
+        });
+      }
+      if (cellClassToken) {
+        Array.prototype.slice.call(table.querySelectorAll("td." + cellClassToken)).forEach(function (node) {
+          if (node instanceof HTMLElement && node.dataset.surfacePreviewOwner === ownerKey) {
+            node.remove();
+          }
+        });
+      }
+      return;
+    }
     surfaceLayerApi.clearManagedActionColumn({
-      table: settings.table,
-      headerClassName: String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim(),
-      cellClassName: String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim(),
+      table: table,
+      headerClassName: headerClassName,
+      cellClassName: cellClassName,
     });
   }
 
@@ -716,6 +757,7 @@
             table: table,
             headerClassName: headerClassName,
             cellClassName: cellClassName,
+            ownerKey: bridgeKey,
           });
         }
       });

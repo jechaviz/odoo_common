@@ -253,11 +253,48 @@
         return "";
       }
       var tabAttributes = Object.assign({}, entry.attributes);
+      var tabData = Object.assign({}, entry.data);
+      var tabKey = String(
+        tabData.surfaceTabKey ||
+        tabData.key ||
+        entry.key ||
+        entry.value ||
+        entry.name ||
+        entry.id ||
+        ""
+      ).trim();
       if (!Object.prototype.hasOwnProperty.call(tabAttributes, "type")) {
         tabAttributes.type = "button";
       }
+      if (!Object.prototype.hasOwnProperty.call(tabAttributes, "role")) {
+        tabAttributes.role = "tab";
+      }
       if (!Object.prototype.hasOwnProperty.call(tabAttributes, "aria-selected")) {
         tabAttributes["aria-selected"] = entry.active === true ? "true" : "false";
+      }
+      if (entry.active === true && !Object.prototype.hasOwnProperty.call(tabAttributes, "aria-current")) {
+        tabAttributes["aria-current"] = "page";
+      }
+      if (!Object.prototype.hasOwnProperty.call(tabAttributes, "tabindex")) {
+        tabAttributes.tabindex = entry.active === true ? "0" : "-1";
+      }
+      if (!Object.prototype.hasOwnProperty.call(tabData, "surfaceTab")) {
+        tabData.surfaceTab = "1";
+      }
+      if (tabKey && !Object.prototype.hasOwnProperty.call(tabData, "surfaceTabKey")) {
+        tabData.surfaceTabKey = tabKey;
+      }
+      if (!Object.prototype.hasOwnProperty.call(tabData, "surfaceTabState")) {
+        tabData.surfaceTabState = entry.active === true ? "active" : "inactive";
+      }
+      if (!Object.prototype.hasOwnProperty.call(tabData, "surfaceToolbarControl")) {
+        tabData.surfaceToolbarControl = "tab";
+      }
+      if (!Object.prototype.hasOwnProperty.call(tabData, "surfaceIntent")) {
+        tabData.surfaceIntent = "tab";
+      }
+      if (!Object.prototype.hasOwnProperty.call(tabData, "surfaceNav")) {
+        tabData.surfaceNav = "tab";
       }
       return (
         '<button class="' +
@@ -268,7 +305,7 @@
         ])) +
         '"' +
         buildAttributeMarkup(tabAttributes) +
-        buildDataAttributes(entry.data) +
+        buildDataAttributes(tabData) +
         ">" +
         escapeHtml(entry.label || entry.text || "") +
         "</button>"

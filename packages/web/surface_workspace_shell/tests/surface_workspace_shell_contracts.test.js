@@ -293,6 +293,7 @@ const workspaceSurfaceExports = extractObjectAssignExports("workspace.js", "surf
 const workspaceRuntimeExports = extractObjectAssignExports("workspace.js", "workspaceApi");
 const workspaceSource = fs.readFileSync(path.join(sourcesRoot, "workspace.js"), "utf8");
 const markupSource = fs.readFileSync(path.join(sourcesRoot, "markup.js"), "utf8");
+const tableSource = fs.readFileSync(path.join(sourcesRoot, "table.js"), "utf8");
 for (const exportName of dualWorkspaceRuntimeExports) {
   assert.ok(
     workspaceSurfaceExports.has(exportName),
@@ -321,6 +322,32 @@ assert.ok(
   markupSource.includes('<strong class="o_surface_premium_metric__value">'),
   "premium metric values must use semantic strong elements for live auditability"
 );
+for (const expectedToken of [
+  'tabAttributes.role = "tab"',
+  'tabAttributes.tabindex = entry.active === true ? "0" : "-1"',
+  "tabData.surfaceTab = \"1\"",
+  "tabData.surfaceTabKey = tabKey",
+  'tabData.surfaceTabState = entry.active === true ? "active" : "inactive"',
+  'tabData.surfaceToolbarControl = "tab"',
+  'tabData.surfaceIntent = "tab"',
+  'tabData.surfaceNav = "tab"',
+]) {
+  assert.ok(
+    markupSource.includes(expectedToken),
+    `premium command-bar tabs must expose accessible tab token ${expectedToken}`
+  );
+}
+for (const expectedToken of [
+  "result.header.dataset.surfacePreviewOwner = ownerKey",
+  "cell.dataset.surfacePreviewOwner = ownerKey",
+  "node.dataset.surfacePreviewOwner === ownerKey",
+  "ownerKey: bridgeKey",
+]) {
+  assert.ok(
+    tableSource.includes(expectedToken),
+    `managed preview columns must be scoped by owner token ${expectedToken}`
+  );
+}
 
 const surfaceLayerStyles = fs.readFileSync(path.join(sourcesRoot, "surface_layers.css"), "utf8");
 assert.ok(

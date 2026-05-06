@@ -5,57 +5,76 @@
     return value instanceof Element ? value.closest(selector) : null;
   }
 
-  function findCodeNode(row) {
-    var drawerRow = row && row.nextElementSibling;
-    if (!(drawerRow instanceof HTMLElement)) {
-      return null;
-    }
-    return drawerRow.querySelector(".oc_report_test_data__code, .oc_report_test_data__pre");
+  function normalizeText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
   }
 
-  function readCode(row) {
-    var node = findCodeNode(row);
-    if (node instanceof HTMLTextAreaElement) {
-      return node.value || "";
-    }
-    return node ? node.textContent || "" : "";
+  function formatKey(kind, filename, format) {
+    return [
+      normalizeText(kind).toLowerCase(),
+      normalizeText(filename).toLowerCase(),
+      normalizeText(format).toLowerCase()
+    ].join("|");
   }
 
-  function readFormat(row) {
-    var explicitFormat = String(row && row.getAttribute("data-oc-report-test-format") || "").toLowerCase();
-    var formatCellText;
-    if (explicitFormat) {
-      return explicitFormat;
-    }
-    formatCellText = row && row.querySelector("td:nth-child(3)")
-      ? String(row.querySelector("td:nth-child(3)").textContent || "").toLowerCase()
-      : "";
-    if (formatCellText.indexOf("json") >= 0) {
+  function readFormatFromText(value) {
+    var normalized = normalizeText(value).toLowerCase();
+    if (normalized.indexOf("json") >= 0) {
       return "json";
     }
-    if (formatCellText.indexOf("xml") >= 0) {
+    if (normalized.indexOf("xml") >= 0) {
       return "xml";
     }
     return "";
   }
 
-  function buildActionButton(action, label) {
-    var button = document.createElement("button");
-    button.type = "button";
-    button.className = "oc_report_test_data__button oc_report_test_data__button--" + action;
-    button.setAttribute("data-oc-report-test-" + action, "1");
-    button.textContent = label;
-    return button;
-  }
-
-  function hydrateActionCells(root) {
-    Array.from((root || document).querySelectorAll(".oc_report_test_data__actions")).forEach(function (cell) {
-      if (!(cell instanceof HTMLElement) || cell.querySelector(".oc_report_test_data__button")) {
+  function buildSourceIndex() {
+    var index = Object.create(null);
+    Array.from(document.querySelectorAll(".oc_report_test_data__row")).forEach(function (row) {
+      var cells = row.querySelectorAll("td");
+      var drawerRow = row.nextElementSibling;
+      var pre = drawerRow instanceof HTMLElement ? drawerRow.querySelector(".oc_report_test_data__pre") : null;
+      var record;
+      if (cells.length < 4 || !pre) {
         return;
       }
-      cell.appendChild(buildActionButton("open", "Ver codigo"));
-      cell.appendChild(buildActionButton("copy", "Copiar"));
+      record = {
+        kind: normalizeText(cells[0].textContent),
+        filename: normalizeText(cells[1].textContent),
+        formatLabel: normalizeText(cells[2].textContent),
+        size: normalizeText(cells[3].textContent),
+        code: pre.textContent || ""
+      };
+      record.format = readFormatFromText(record.formatLabel);
+      index[formatKey(record.kind, record.filename, record.formatLabel)] = record;
+      index[formatKey(record.kind, record.filename, record.format)] = record;
     });
+    return index;
+  }
+
+  function nativeCell(row, fieldName) {
+    return row instanceof HTMLElement ? row.querySelector('td[name="' + fieldName + '"]') : null;
+  }
+
+  function readNativeRowInfo(row) {
+    var kindCell = nativeCell(row, "x_kind");
+    var filenameCell = nativeCell(row, "x_source_filename");
+    var formatCell = nativeCell(row, "x_source_format");
+    var formatLabel = normalizeText(formatCell ? formatCell.textContent : "");
+    return {
+      kind: normalizeText(kindCell ? kindCell.textContent : ""),
+      filename: normalizeText(filenameCell ? filenameCell.textContent : ""),
+      formatLabel: formatLabel,
+      format: readFormatFromText(formatLabel)
+    };
+  }
+
+  function lookupNativeRecord(row) {
+    var info = readNativeRowInfo(row);
+    var index = buildSourceIndex();
+    return index[formatKey(info.kind, info.filename, info.formatLabel)] ||
+      index[formatKey(info.kind, info.filename, info.format)] ||
+      null;
   }
 
   function prettyXml(source) {
@@ -64,8 +83,7 @@
     if (parsed.querySelector("parsererror")) {
       return source;
     }
-    var serialized = new XMLSerializer().serializeToString(parsed);
-    return serialized
+    return new XMLSerializer().serializeToString(parsed)
       .replace(/>\s*</g, ">\n<")
       .split("\n")
       .reduce(function (lines, line) {
@@ -124,12 +142,9 @@
     }
   }
 
-  function openModal(row) {
-    var code = readCode(row);
-    var format = readFormat(row);
-    var filenameCell = row.querySelector("td:nth-child(2)");
-    var title = filenameCell ? filenameCell.textContent.trim() : "Codigo";
+  function openCodeModal(record) {
     var modal = document.createElement("div");
+    var title = record && record.filename ? record.filename : "Codigo";
     modal.className = "oc_report_test_data_modal";
     modal.setAttribute("role", "dialog");
     modal.setAttribute("aria-modal", "true");
@@ -147,34 +162,130 @@
       "</div>"
     ].join("");
     modal.querySelector(".oc_report_test_data_modal__title").textContent = title;
-    modal.querySelector(".oc_report_test_data_modal__pre").textContent = code;
-    modal.__ocReportTestDataFormat = format;
+    modal.querySelector(".oc_report_test_data_modal__pre").textContent = record && record.code ? record.code : "";
+    modal.__ocReportTestDataFormat = record && record.format ? record.format : "";
     document.body.appendChild(modal);
+  }
+
+  function buildButton(action, label) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.className = "oc_report_test_data__button oc_report_test_data__button--" + action;
+    button.setAttribute("data-oc-report-test-" + action, "1");
+    button.textContent = label;
+    return button;
+  }
+
+  function findSampleTables(root) {
+    return Array.from((root || document).querySelectorAll("table.o_list_table")).filter(function (table) {
+      return table.querySelector('th[data-name="x_kind"]') &&
+        table.querySelector('th[data-name="x_source_filename"]') &&
+        table.querySelector('th[data-name="x_source_format"]');
+    });
+  }
+
+  function ensureHeader(table, beforeHeader) {
+    var headerRow = table.querySelector("thead tr");
+    var sizeHeader;
+    var actionHeader;
+    if (!headerRow || headerRow.querySelector(".oc_report_test_data_native_actions_header")) {
+      return;
+    }
+    sizeHeader = document.createElement("th");
+    sizeHeader.className = "oc_report_test_data_native_size_header align-middle";
+    sizeHeader.style.width = "86px";
+    sizeHeader.textContent = "Tamano";
+    actionHeader = document.createElement("th");
+    actionHeader.className = "oc_report_test_data_native_actions_header align-middle";
+    actionHeader.style.width = "270px";
+    actionHeader.textContent = "Acciones";
+    headerRow.insertBefore(sizeHeader, beforeHeader || null);
+    headerRow.insertBefore(actionHeader, beforeHeader || null);
+  }
+
+  function openNativeEditor(row) {
+    var target = nativeCell(row, "x_source_filename") || nativeCell(row, "x_kind") || row.querySelector("td.o_data_cell");
+    if (target instanceof HTMLElement) {
+      target.click();
+    }
+  }
+
+  function enhanceNativeRow(row, beforeCell) {
+    var record = lookupNativeRecord(row);
+    var sizeCell;
+    var actionCell;
+    var actionWrap;
+    if (!(row instanceof HTMLElement) || row.querySelector(".oc_report_test_data_native_actions")) {
+      return;
+    }
+    sizeCell = document.createElement("td");
+    sizeCell.className = "oc_report_test_data_native_size";
+    sizeCell.style.width = "86px";
+    sizeCell.textContent = record && record.size ? record.size : "";
+    actionCell = document.createElement("td");
+    actionCell.className = "oc_report_test_data_native_actions";
+    actionCell.style.width = "270px";
+    actionWrap = document.createElement("div");
+    actionWrap.className = "oc_report_test_data_native_actions__wrap";
+    if (record && record.code) {
+      actionWrap.appendChild(buildButton("open", "Ver codigo"));
+      actionWrap.appendChild(buildButton("copy", "Copiar"));
+    }
+    actionWrap.appendChild(buildButton("edit", "Editar/subir"));
+    actionCell.appendChild(actionWrap);
+    row.insertBefore(sizeCell, beforeCell || null);
+    row.insertBefore(actionCell, beforeCell || null);
+  }
+
+  function enhanceNativeTables(root) {
+    findSampleTables(root || document).forEach(function (table) {
+      var beforeHeader = table.querySelector("th.o_list_actions_header");
+      table.style.tableLayout = "auto";
+      ensureHeader(table, beforeHeader);
+      Array.from(table.querySelectorAll("tbody tr.o_data_row")).forEach(function (row) {
+        enhanceNativeRow(row, row.querySelector("td.o_list_record_remove"));
+      });
+    });
   }
 
   document.addEventListener("click", function (event) {
     var openButton = closestElement(event.target, "[data-oc-report-test-open], .oc_report_test_data__button--open");
     var copyButton = closestElement(event.target, "[data-oc-report-test-copy], .oc_report_test_data__button--copy");
+    var editButton = closestElement(event.target, "[data-oc-report-test-edit], .oc_report_test_data__button--edit");
     var modal = closestElement(event.target, ".oc_report_test_data_modal");
     var closeButton = closestElement(event.target, "[data-oc-report-test-close]");
     var modalCopyButton = closestElement(event.target, "[data-oc-report-test-copy-modal]");
     var modalFormatButton = closestElement(event.target, "[data-oc-report-test-format-modal]");
     var row;
+    var record;
     var pre;
 
     if (openButton) {
-      row = closestElement(openButton, ".oc_report_test_data__row");
-      if (row) {
+      row = closestElement(openButton, "tr.o_data_row");
+      record = row ? lookupNativeRecord(row) : null;
+      if (record) {
         event.preventDefault();
-        openModal(row);
+        event.stopPropagation();
+        openCodeModal(record);
       }
       return;
     }
     if (copyButton) {
-      row = closestElement(copyButton, ".oc_report_test_data__row");
+      row = closestElement(copyButton, "tr.o_data_row");
+      record = row ? lookupNativeRecord(row) : null;
+      if (record) {
+        event.preventDefault();
+        event.stopPropagation();
+        copyText(record.code || "");
+      }
+      return;
+    }
+    if (editButton) {
+      row = closestElement(editButton, "tr.o_data_row");
       if (row) {
         event.preventDefault();
-        copyText(readCode(row));
+        event.stopPropagation();
+        openNativeEditor(row);
       }
       return;
     }
@@ -199,23 +310,27 @@
   });
 
   document.addEventListener("keydown", function (event) {
-    if (event.key !== "Escape") {
-      return;
+    if (event.key === "Escape") {
+      closeModal(document.querySelector(".oc_report_test_data_modal"));
     }
-    closeModal(document.querySelector(".oc_report_test_data_modal"));
   });
 
-  hydrateActionCells(document);
+  function hydrate(root) {
+    enhanceNativeTables(root || document);
+  }
+
+  hydrate(document);
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
-      hydrateActionCells(document);
+      hydrate(document);
     });
   }
   new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
       Array.from(mutation.addedNodes || []).forEach(function (node) {
         if (node instanceof HTMLElement) {
-          hydrateActionCells(node);
+          hydrate(node);
+          hydrate(document);
         }
       });
     });

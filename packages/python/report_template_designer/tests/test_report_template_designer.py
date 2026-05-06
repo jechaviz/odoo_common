@@ -275,6 +275,8 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("XML original", html)
         self.assertIn("Archivo traducido", html)
         self.assertIn("&lt;Comprobante", html)
+        self.assertNotIn("<summary>Codigo</summary>", html)
+        self.assertIn('style="display:none;"', html)
 
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
         ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')

@@ -1,4 +1,5 @@
 .oc_report_test_data {
+  display: none;
   max-width: 100%;
 }
 
@@ -45,6 +46,10 @@
 
 .oc_report_test_data__drawer-row td {
   padding-top: 0;
+}
+
+.oc_report_test_data__drawer-row {
+  display: none;
 }
 
 .oc_report_test_data__drawer {
@@ -128,4 +133,47 @@
 .oc_report_test_data_modal__pre {
   margin: 0;
   max-height: none;
+}
+
+.oc_report_test_data_native_size,
+.oc_report_test_data_native_actions {
+  position: relative;
+  vertical-align: middle;
+  z-index: 3;
+}
+
+.oc_report_test_data_native_size,
+.oc_report_test_data_native_size_header {
+  min-width: 86px;
+  width: 86px;
+}
+
+.oc_report_test_data_native_actions {
+  min-width: 270px;
+  width: 270px;
+}
+
+.oc_report_test_data_native_actions_header {
+  min-width: 270px;
+  width: 270px;
+}
+
+.oc_report_test_data_native_actions__wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.oc_report_test_file_form .o_field_widget[name="x_content"] textarea,
+.oc_report_test_file_form textarea[name="x_content"],
+.oc_report_test_file_form__code textarea,
+.modal .o_field_widget[name="x_content"] textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  max-height: 48vh;
+  min-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }

@@ -2619,13 +2619,10 @@ def build_test_data_html(sample_records: Sequence[Mapping[str, Any]]) -> str:
                 '<button type="button" class="oc_report_test_data__button oc_report_test_data__button--copy" data-oc-report-test-copy="1">Copiar</button>'
                 "</td>"
                 "</tr>"
-                '<tr class="oc_report_test_data__drawer-row">'
+                '<tr class="oc_report_test_data__drawer-row" style="display:none;">'
                 '<td colspan="5">'
-                '<details class="oc_report_test_data__drawer">'
-                "<summary>Codigo</summary>"
                 f'<textarea class="oc_report_test_data__code" data-oc-report-test-code="1" readonly="readonly">{escaped_code}</textarea>'
                 f'<pre class="oc_report_test_data__pre">{escaped_code}</pre>'
-                "</details>"
                 "</td>"
                 "</tr>"
             )
@@ -2854,6 +2851,7 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
                         </page>
                         <page string="Datos de prueba">
                             <field name="x_test_data_html" nolabel="1" readonly="1"/>
+                            <field name="x_data_schema_json" nolabel="1" groups="base.group_no_one"/>
                             <field name="x_sample_ids" nolabel="1" mode="list,form" context="{'default_x_design_id': id}">
                                 <list string="Datos de prueba" create="1" delete="1">
                                     <field name="x_sequence" widget="handle"/>
@@ -2864,26 +2862,26 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
                                     <field name="x_file_name" optional="hide"/>
                                     <field name="x_active" optional="show"/>
                                 </list>
-                                <form string="Dato de prueba">
+                                <form string="Archivo de prueba" class="oc_report_test_file_form">
                                     <sheet>
                                         <group>
-                                            <group>
+                                            <group string="Identificacion">
                                                 <field name="x_name"/>
                                                 <field name="x_kind"/>
-                                                <field name="x_source_filename"/>
-                                                <field name="x_source_format"/>
                                                 <field name="x_active"/>
                                             </group>
-                                            <group>
+                                            <group string="Archivo">
                                                 <field name="x_file" filename="x_file_name"/>
                                                 <field name="x_file_name"/>
+                                                <field name="x_source_filename"/>
+                                                <field name="x_source_format"/>
                                                 <field name="x_mimetype"/>
                                                 <field name="x_sequence"/>
                                             </group>
                                         </group>
                                         <notebook>
                                             <page string="Codigo">
-                                                <field name="x_content" nolabel="1"/>
+                                                <field name="x_content" nolabel="1" class="oc_report_test_file_form__code"/>
                                             </page>
                                             <page string="Notas">
                                                 <field name="x_notes" nolabel="1"/>
@@ -2892,7 +2890,6 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
                                     </sheet>
                                 </form>
                             </field>
-                            <field name="x_data_schema_json" nolabel="1" groups="base.group_no_one"/>
                         </page>
                         <page string="JRXML original" groups="base.group_no_one">
                             <field name="x_source_jrxml" nolabel="1"/>

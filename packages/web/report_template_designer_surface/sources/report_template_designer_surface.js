@@ -32,10 +32,9 @@
     var index = Object.create(null);
     Array.from(document.querySelectorAll(".oc_report_test_data__row")).forEach(function (row) {
       var cells = row.querySelectorAll("td");
-      var drawerRow = row.nextElementSibling;
-      var pre = drawerRow instanceof HTMLElement ? drawerRow.querySelector(".oc_report_test_data__pre") : null;
+      var payload = row.querySelector("[data-oc-report-test-code]");
       var record;
-      if (cells.length < 4 || !pre) {
+      if (cells.length < 4 || !payload) {
         return;
       }
       record = {
@@ -43,7 +42,7 @@
         filename: normalizeText(cells[1].textContent),
         formatLabel: normalizeText(cells[2].textContent),
         size: normalizeText(cells[3].textContent),
-        code: pre.textContent || ""
+        code: payload.value || payload.textContent || ""
       };
       record.format = readFormatFromText(record.formatLabel);
       index[formatKey(record.kind, record.filename, record.formatLabel)] = record;
@@ -240,6 +239,11 @@
   function enhanceNativeTables(root) {
     findSampleTables(root || document).forEach(function (table) {
       var beforeHeader = table.querySelector("th.o_list_actions_header");
+      var fieldShell = table.closest(".o_field_x2many, .o_field_widget");
+      if (fieldShell instanceof HTMLElement) {
+        fieldShell.classList.add("oc_report_test_data_native_list");
+      }
+      table.classList.add("oc_report_test_data_native_table");
       table.style.tableLayout = "auto";
       ensureHeader(table, beforeHeader);
       Array.from(table.querySelectorAll("tbody tr.o_data_row")).forEach(function (row) {

@@ -276,6 +276,11 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("Archivo traducido", html)
         self.assertIn("&lt;Comprobante", html)
         self.assertNotIn("<summary>Codigo</summary>", html)
+        self.assertNotIn("oc_report_test_data__drawer", html)
+        self.assertNotIn("oc_report_test_data__pre", html)
+        self.assertEqual(2, html.count('class="oc_report_test_data__row"'))
+        self.assertEqual(2, html.count('data-oc-report-test-code="1"'))
+        self.assertIn('hidden="hidden"', html)
         self.assertIn('style="display:none;"', html)
 
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):

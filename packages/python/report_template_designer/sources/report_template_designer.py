@@ -2588,11 +2588,11 @@ def build_design_sample_record_values(
 
 
 def build_test_data_html(sample_records: Sequence[Mapping[str, Any]]) -> str:
-    """Render a compact test-data table with safe fallback code drawers."""
+    """Render a hidden test-data index consumed by the native list enhancer."""
     rows: list[str] = []
     if not sample_records:
         return (
-            '<div class="oc_report_test_data">'
+            '<div class="oc_report_test_data" style="display:none;">'
             '<table class="oc_report_test_data__table">'
             "<thead><tr><th>Tipo</th><th>Archivo</th><th>Formato</th><th>Tamano</th><th>Acciones</th></tr></thead>"
             "<tbody></tbody></table></div>"
@@ -2605,7 +2605,6 @@ def build_test_data_html(sample_records: Sequence[Mapping[str, Any]]) -> str:
         filename = str(record.get("x_source_filename") or record.get("x_file_name") or record.get("x_name") or "")
         kind_label = _option_label(REPORT_TEST_DATA_KIND_OPTIONS, kind)
         format_label = _option_label(REPORT_TEST_DATA_FORMAT_OPTIONS, source_format)
-        escaped_code = html.escape(code)
         rows.append(
             (
                 f'<tr class="oc_report_test_data__row" data-oc-report-test-row="1" data-oc-report-test-index="{index}" '
@@ -2617,18 +2616,13 @@ def build_test_data_html(sample_records: Sequence[Mapping[str, Any]]) -> str:
                 '<td class="oc_report_test_data__actions">'
                 '<button type="button" class="oc_report_test_data__button oc_report_test_data__button--open" data-oc-report-test-open="1">Ver codigo</button>'
                 '<button type="button" class="oc_report_test_data__button oc_report_test_data__button--copy" data-oc-report-test-copy="1">Copiar</button>'
-                "</td>"
-                "</tr>"
-                '<tr class="oc_report_test_data__drawer-row" style="display:none;">'
-                '<td colspan="5">'
-                f'<textarea class="oc_report_test_data__code" data-oc-report-test-code="1" readonly="readonly">{escaped_code}</textarea>'
-                f'<pre class="oc_report_test_data__pre">{escaped_code}</pre>'
+                f'<textarea class="oc_report_test_data__payload" data-oc-report-test-code="1" hidden="hidden" readonly="readonly">{html.escape(code)}</textarea>'
                 "</td>"
                 "</tr>"
             )
         )
     return (
-        '<div class="oc_report_test_data" data-oc-report-test-data="1">'
+        '<div class="oc_report_test_data" data-oc-report-test-data="1" style="display:none;">'
         '<table class="oc_report_test_data__table">'
         "<thead><tr><th>Tipo</th><th>Archivo</th><th>Formato</th><th>Tamano</th><th>Acciones</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody>"

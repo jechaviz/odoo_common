@@ -1689,6 +1689,9 @@ def _report_element(element: Mapping[str, Any]) -> Mapping[str, Any]:
 
 
 def _is_float_position(element: Mapping[str, Any]) -> bool:
+    kind = str(element.get("type") or "")
+    if kind in {"line", "rectangle"} and "RelativeToBandHeight" in str(_report_element(element).get("stretchType") or ""):
+        return False
     return str(_report_element(element).get("positionType") or "").strip().lower() == "float"
 
 
@@ -2307,11 +2310,16 @@ def _preview_element_html(
         color = _css_color(report_element.get("forecolor"), "#000000")
         line_style = "dotted" if "Dotted" in str(element.get("graphic") or "") else "solid"
         border_css = f"border-left:1px {line_style} {color}" if int(geometry.get("width") or 0) <= 1 else f"border-top:1px {line_style} {color}"
+        relative_height_css = ""
+        if container_height and "RelativeToBandHeight" in str(report_element.get("stretchType") or ""):
+            stretch_height = max(_geometry_int(element, "height", 1), int(container_height) - _geometry_int(element, "y", 0))
+            relative_height_css = f"height:{_css_px(_scaled(stretch_height, scale))}"
         base_style = _join_inline_style(
             _base_element_css(element, offset_x=offset_x, offset_y=offset_y, scale=scale),
             "background:transparent;padding:0",
             "border:0",
             border_css,
+            relative_height_css,
         )
     elif kind == "rectangle":
         content = ""

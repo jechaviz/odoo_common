@@ -180,6 +180,57 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         self.assertIn("height:94px;overflow:visible", preview)
         self.assertIn("top:94px;width:250px;height:20px", preview)
 
+    def test_relative_band_decoration_does_not_float_into_empty_gap(self):
+        preview = designer.build_preview_html(
+            {
+                "page": {"width": 300, "height": 160},
+                "bands": [
+                    {
+                        "name": "detail",
+                        "height": 56,
+                        "elements": [
+                            {
+                                "type": "frame",
+                                "geometry": {"x": 0, "y": 0, "width": 250, "height": 56},
+                                "children": [
+                                    {
+                                        "type": "textField",
+                                        "stretch_with_overflow": "true",
+                                        "geometry": {"x": 5, "y": 16, "width": 90, "height": 23},
+                                        "text_style": {"font": {"size": "7"}},
+                                        "expression": {"source": "$F{paymentBlock}"},
+                                    },
+                                    {
+                                        "type": "textField",
+                                        "geometry": {"x": 5, "y": 39, "width": 160, "height": 11},
+                                        "report_element": {"positionType": "Float"},
+                                        "expression": {"source": "$F{amountLetters}"},
+                                    },
+                                    {
+                                        "type": "rectangle",
+                                        "geometry": {"x": 0, "y": 0, "width": 250, "height": 53},
+                                        "report_element": {
+                                            "positionType": "Float",
+                                            "stretchType": "RelativeToBandHeight",
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    }
+                ],
+            },
+            sample_values={
+                "paymentBlock": "Metodo de Pago:\nForma de pago:\nUso CFDI: P01\nTipo de Comprobante: T - Traslado",
+                "amountLetters": "Importe con letra: CERO EUROS 00/100 EUR",
+            },
+            scale=1,
+        )
+
+        self.assertIn("oc_report_designer_preview__rectangle", preview)
+        self.assertIn("left:0px;top:0px;width:250px;height:53px", preview)
+        self.assertNotIn("left:0px;top:67px;width:250px;height:53px", preview)
+
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
         ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')
         self.assertTrue(ternary["supported"], ternary)

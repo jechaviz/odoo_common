@@ -31,7 +31,9 @@
     ".dropdown-menu_group.dropdown-header";
   var SIDEBAR_SHELL_OPEN_DELAY_MS = 30;
   var SIDEBAR_SHELL_CLOSE_DELAY_MS = 180;
-  var SIDEBAR_SHELL_MENU_GAP_PX = 6;
+  var SIDEBAR_SHELL_MENU_GAP_PX = 4;
+  var SIDEBAR_SHELL_VIEWPORT_MARGIN_PX = 8;
+  var SIDEBAR_SHELL_POPOVER_Z_INDEX_BASE = 44;
   var readSessionValue = surfaceLayerApi.readSessionValue;
   var writeSessionValue = surfaceLayerApi.writeSessionValue;
   var normalizePathname = surfaceLayerApi.normalizePathname;
@@ -520,6 +522,11 @@
     return current === popoverNode;
   }
 
+  function isSidebarShellHiddenMenuItem(itemNode) {
+    return itemNode instanceof HTMLElement &&
+      itemNode.dataset.surfaceSidebarOwnerDuplicateHidden === "1";
+  }
+
   function getSidebarShellMenuItems(popoverNode) {
     if (!(popoverNode instanceof HTMLElement)) {
       return [];
@@ -527,7 +534,46 @@
     return Array.prototype.slice.call(
       popoverNode.querySelectorAll(SIDEBAR_SHELL_MENU_ITEM_SELECTOR)
     ).filter(function (itemNode) {
+      return isSidebarShellDirectMenuItem(popoverNode, itemNode) &&
+        !isSidebarShellHiddenMenuItem(itemNode);
+    });
+  }
+
+  function suppressSidebarShellOwnerDuplicateItems(popoverNode, ownerLabel) {
+    if (!(popoverNode instanceof HTMLElement)) {
+      return;
+    }
+    var ownerKey = normalizeSidebarShellKey(ownerLabel || "");
+    var directItems = Array.prototype.slice.call(
+      popoverNode.querySelectorAll(SIDEBAR_SHELL_MENU_ITEM_SELECTOR)
+    ).filter(function (itemNode) {
       return isSidebarShellDirectMenuItem(popoverNode, itemNode);
+    });
+    directItems.forEach(function (itemNode) {
+      if (!(itemNode instanceof HTMLElement) || itemNode.dataset.surfaceSidebarOwnerDuplicateHidden !== "1") {
+        return;
+      }
+      itemNode.hidden = false;
+      itemNode.style.removeProperty("display");
+      itemNode.removeAttribute("aria-hidden");
+      delete itemNode.dataset.surfaceSidebarOwnerDuplicateHidden;
+      delete itemNode.dataset.surfaceSidebarItemKind;
+    });
+    if (!ownerKey || directItems.length <= 1) {
+      return;
+    }
+    directItems.forEach(function (itemNode) {
+      if (!(itemNode instanceof HTMLElement)) {
+        return;
+      }
+      if (normalizeSidebarShellKey(itemNode.textContent || "") !== ownerKey) {
+        return;
+      }
+      itemNode.dataset.surfaceSidebarOwnerDuplicateHidden = "1";
+      itemNode.dataset.surfaceSidebarItemKind = "redundant-owner";
+      itemNode.setAttribute("aria-hidden", "true");
+      itemNode.hidden = true;
+      itemNode.style.setProperty("display", "none", "important");
     });
   }
 
@@ -965,6 +1011,7 @@
       delete popoverNode.dataset.surfaceSidebarOwnerLabel;
     }
     ensureSidebarShellPopoverHeader(popoverNode, ownerLabel, depth);
+    suppressSidebarShellOwnerDuplicateItems(popoverNode, ownerLabel);
     var items = getSidebarShellMenuItems(popoverNode);
     if (!items.length) {
       delete popoverNode.dataset.surfaceSidebarHierarchy;
@@ -1228,19 +1275,26 @@
     var popoverWidth = Math.max(popover.offsetWidth || 0, 0);
     var popoverHeight = Math.max(popover.offsetHeight || 0, 0);
     var depth = Math.max(Number(popover.dataset.surfaceSidebarLevel || 1) || 1, 1);
-    var top = Math.max(8, Math.round(triggerRect.top));
+    var viewportMargin = SIDEBAR_SHELL_VIEWPORT_MARGIN_PX;
+    var top = Math.max(viewportMargin, Math.round(triggerRect.top));
     if (viewportHeight > 0 && popoverHeight > 0) {
-      top = Math.min(top, Math.max(8, viewportHeight - popoverHeight - 8));
+      top = Math.min(top, Math.max(viewportMargin, viewportHeight - popoverHeight - viewportMargin));
     }
-    var left = Math.round(Math.max(containerRect.right, triggerRect.right) + SIDEBAR_SHELL_MENU_GAP_PX);
+    var anchorRight = depth > 1
+      ? containerRect.right
+      : Math.max(containerRect.right, triggerRect.right);
+    var anchorLeft = depth > 1
+      ? containerRect.left
+      : Math.min(containerRect.left, triggerRect.left);
+    var left = Math.round(anchorRight + SIDEBAR_SHELL_MENU_GAP_PX);
     var side = "right";
     if (viewportWidth > 0 && popoverWidth > 0) {
-      var minViewportLeft = 8;
-      var maxViewportLeft = Math.max(minViewportLeft, viewportWidth - popoverWidth - 8);
+      var minViewportLeft = viewportMargin;
+      var maxViewportLeft = Math.max(minViewportLeft, viewportWidth - popoverWidth - viewportMargin);
       var preferredRightLeft = left;
-      var overflowsRight = preferredRightLeft + popoverWidth > viewportWidth - 8;
+      var overflowsRight = preferredRightLeft + popoverWidth > viewportWidth - viewportMargin;
       if (depth > 1 && overflowsRight) {
-        var preferredLeftLeft = Math.round(Math.min(containerRect.left, triggerRect.left) - popoverWidth - SIDEBAR_SHELL_MENU_GAP_PX);
+        var preferredLeftLeft = Math.round(anchorLeft - popoverWidth - SIDEBAR_SHELL_MENU_GAP_PX);
         if (preferredLeftLeft >= minViewportLeft) {
           left = preferredLeftLeft;
           side = "left";
@@ -1265,11 +1319,13 @@
     }
     popover.style.setProperty(
       "z-index",
-      String(44 + depth),
+      String(SIDEBAR_SHELL_POPOVER_Z_INDEX_BASE + depth),
       "important"
     );
     popover.dataset.surfaceSidebarDepth = String(depth);
     popover.dataset.surfaceSidebarSide = side;
+    popover.dataset.surfaceSidebarAnchor = depth > 1 ? "trigger-popover" : "sidebar";
+    popover.dataset.surfaceSidebarAnchorGap = String(SIDEBAR_SHELL_MENU_GAP_PX);
     popover.dataset.surfaceSidebarPositioned = "1";
     return true;
   }

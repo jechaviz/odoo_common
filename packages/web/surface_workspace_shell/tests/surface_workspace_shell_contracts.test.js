@@ -92,6 +92,16 @@ const premiumPrimitiveExports = {
     "buildInlineTextDataUrl",
     "hydrateBinaryAttachmentUrls",
   ],
+  "debug.js": [
+    "getSurfaceDesignAuditPrinciples",
+    "normalizeSurfaceAuditText",
+    "auditSurfaceCommandBarRedundancy",
+    "auditSurfaceOverlayLegibility",
+    "auditSurfaceBreadcrumbGhostState",
+    "auditSurfaceMenuDuplicateLabels",
+    "auditSurfaceMetricSignal",
+    "auditSurfaceWorkspaceDesign",
+  ],
   "filters.js": [
     "normalizeScopedFilterState",
     "areNormalizedStatesEqual",
@@ -319,6 +329,162 @@ function loadWorkspaceRuntimeForMarkupTest(source) {
   return sandbox.window.OdooSurfaceLayers;
 }
 
+function createSurfaceAuditTestDocument() {
+  class MiniElement {
+    constructor(tagName) {
+      this.tagName = String(tagName || "div").toUpperCase();
+      this.children = [];
+      this.dataset = {};
+      this.parentNode = null;
+      this.attributes = {};
+      this.className = "";
+      this._textContent = "";
+      this.style = {};
+      this.classList = {
+        contains: (className) => this.hasClass(className),
+      };
+    }
+
+    appendChild(child) {
+      child.parentNode = this;
+      this.children.push(child);
+      return child;
+    }
+
+    setAttribute(name, value) {
+      this.attributes[String(name)] = String(value);
+    }
+
+    getAttribute(name) {
+      return this.attributes[String(name)] || "";
+    }
+
+    hasClass(className) {
+      return String(this.className || "").split(/\s+/).includes(className);
+    }
+
+    get textContent() {
+      return [
+        this._textContent,
+        ...this.children.map((child) => child.textContent),
+      ].join("");
+    }
+
+    set textContent(value) {
+      this._textContent = String(value || "");
+    }
+
+    getBoundingClientRect() {
+      return { width: 160, height: 32 };
+    }
+
+    matches(selector) {
+      return selector.split(",").some((part) => this.matchesSimpleSelector(part.trim()));
+    }
+
+    matchesSimpleSelector(selector) {
+      if (!selector) {
+        return false;
+      }
+      if (selector.startsWith(".")) {
+        return this.hasClass(selector.slice(1));
+      }
+      const roleMatch = selector.match(/^\[role=['"]?([^'"\]]+)['"]?\]$/);
+      return roleMatch ? this.getAttribute("role") === roleMatch[1] : false;
+    }
+
+    querySelectorAll(selector) {
+      if (selector.includes(":scope >")) {
+        return this.children.filter((child) => selector.split(",").some((part) => {
+          const scopedSelector = part.trim().replace(/^:scope\s*>\s*/, "");
+          return child.matchesSimpleSelector(scopedSelector);
+        }));
+      }
+      const results = [];
+      const visit = (node) => {
+        node.children.forEach((child) => {
+          if (child.matches(selector)) {
+            results.push(child);
+          }
+          visit(child);
+        });
+      };
+      visit(this);
+      return results;
+    }
+
+    querySelector(selector) {
+      return this.querySelectorAll(selector)[0] || null;
+    }
+
+    closest(selector) {
+      let node = this;
+      while (node) {
+        if (node.matches(selector)) {
+          return node;
+        }
+        node = node.parentNode;
+      }
+      return null;
+    }
+
+    remove() {
+      if (!this.parentNode) {
+        return;
+      }
+      this.parentNode.children = this.parentNode.children.filter((child) => child !== this);
+      this.parentNode = null;
+    }
+  }
+
+  class MiniDocument extends MiniElement {
+    constructor() {
+      super("#document");
+      this.documentElement = new MiniElement("html");
+      this.body = new MiniElement("body");
+      this.appendChild(this.documentElement);
+      this.documentElement.appendChild(this.body);
+    }
+
+    createElement(tagName) {
+      return new MiniElement(tagName);
+    }
+  }
+
+  return { MiniDocument, MiniElement, document: new MiniDocument() };
+}
+
+function loadDebugRuntimeForAuditTest(source) {
+  const { MiniDocument, MiniElement, document } = createSurfaceAuditTestDocument();
+  const surfaceLayerApi = { _shared: {} };
+  const sandbox = {
+    Element: MiniElement,
+    HTMLElement: MiniElement,
+    Document: MiniDocument,
+    MutationObserver: class {
+      observe() {}
+    },
+    document,
+    window: {
+      OdooSurfaceLayers: surfaceLayerApi,
+      getComputedStyle() {
+        return {
+          display: "block",
+          visibility: "visible",
+          backgroundColor: "rgb(255, 255, 255)",
+          boxShadow: "none",
+          borderColor: "transparent",
+        };
+      },
+      setTimeout() {
+        return 0;
+      },
+    },
+  };
+  vm.runInNewContext(source, sandbox, { filename: "debug.js" });
+  return { api: sandbox.window.OdooSurfaceLayers, document };
+}
+
 function assertSameMembers(actual, expected, label) {
   assert.deepEqual(
     unique(actual).sort(),
@@ -368,7 +534,10 @@ for (const [fileName, expectedExports] of Object.entries(premiumPrimitiveExports
 const workspaceSurfaceExports = extractObjectAssignExports("workspace.js", "surfaceLayers");
 const workspaceRuntimeExports = extractObjectAssignExports("workspace.js", "workspaceApi");
 const chromeSource = fs.readFileSync(path.join(sourcesRoot, "chrome.js"), "utf8");
+const debugSource = fs.readFileSync(path.join(sourcesRoot, "debug.js"), "utf8");
 const listWorkspaceSource = fs.readFileSync(path.join(sourcesRoot, "list_workspace.js"), "utf8");
+const routeSource = fs.readFileSync(path.join(sourcesRoot, "route.js"), "utf8");
+const sidebarSource = fs.readFileSync(path.join(sourcesRoot, "sidebar_shell.js"), "utf8");
 const workspaceSource = fs.readFileSync(path.join(sourcesRoot, "workspace.js"), "utf8");
 const markupSource = fs.readFileSync(path.join(sourcesRoot, "markup.js"), "utf8");
 const tableSource = fs.readFileSync(path.join(sourcesRoot, "table.js"), "utf8");
@@ -380,6 +549,31 @@ for (const exportName of dualWorkspaceRuntimeExports) {
   assert.ok(
     workspaceRuntimeExports.has(exportName),
     `workspace.js must expose ${exportName} on workspaceRuntime`
+  );
+}
+
+for (const expectedToken of [
+  "var SIDEBAR_SHELL_MENU_GAP_PX = 4;",
+  "var SIDEBAR_SHELL_VIEWPORT_MARGIN_PX = 8;",
+  "var SIDEBAR_SHELL_POPOVER_Z_INDEX_BASE = 44;",
+  "var anchorRight = depth > 1",
+  "? containerRect.right",
+  ": Math.max(containerRect.right, triggerRect.right)",
+  "var anchorLeft = depth > 1",
+  "? containerRect.left",
+  ": Math.min(containerRect.left, triggerRect.left)",
+  "String(SIDEBAR_SHELL_POPOVER_Z_INDEX_BASE + depth)",
+  "popover.dataset.surfaceSidebarAnchor = depth > 1 ? \"trigger-popover\" : \"sidebar\";",
+  "popover.dataset.surfaceSidebarAnchorGap = String(SIDEBAR_SHELL_MENU_GAP_PX);",
+  "function suppressSidebarShellOwnerDuplicateItems(popoverNode, ownerLabel)",
+  "surfaceSidebarOwnerDuplicateHidden",
+  "itemNode.dataset.surfaceSidebarItemKind = \"redundant-owner\";",
+  "directItems.length <= 1",
+  "suppressSidebarShellOwnerDuplicateItems(popoverNode, ownerLabel);",
+]) {
+  assert.ok(
+    sidebarSource.includes(expectedToken),
+    `sidebar_shell.js must keep cascaded popovers anchored with compact depth geometry token ${expectedToken}`
   );
 }
 
@@ -396,6 +590,23 @@ for (const expectedToken of [
   );
 }
 for (const expectedToken of [
+  "var hasCurrentActionIdMismatch",
+  "routeOwnership.configuredActionIds.length",
+  "!hasCurrentActionIdMismatch &&",
+  "!hasCurrentActionIdMismatch && visibleListTable instanceof HTMLElement",
+]) {
+  assert.ok(
+    workspaceSource.includes(expectedToken),
+    `workspace ownership must not activate shared surfaces over mismatched native actions through token ${expectedToken}`
+  );
+}
+for (const expectedToken of [
+  "function formMatchesStrictMarker(formRoot, config)",
+  "var strictFormMarkerMatched = formMatchesStrictMarker(strictFormRoot, config);",
+  "if (hasCurrentActionIdMismatch && !strictFormMarkerMatched)",
+  "hasCurrentActionModelMismatch &&",
+  "!strictFormMarkerMatched",
+  "var strictListTable = !hasCurrentActionIdMismatch && visibleListTable instanceof HTMLElement",
   "function normalizePremiumWorkspaceToolbarConfig(commandBar, toolbar)",
   "delete normalized.commandBar.tabs",
   "delete normalized.commandBar.filters",
@@ -425,9 +636,89 @@ for (const expectedToken of [
   );
 }
 for (const expectedToken of [
+  "function isSurfaceBackendRootNodeVisible(node)",
+  "function isSurfaceBackendRootVisible()",
+  "function isSurfaceWorkspaceActive()",
+  "function shouldCanonicalizeSurfaceRouteActionBase(targetUrl, settings)",
+  "preferCurrentActionBase",
+  "requireWorkspaceActive",
+  'document.querySelectorAll(".o_home_menu, .o_home_menu_background, .o_apps_menu")',
+  "some(isSurfaceBackendRootNodeVisible)",
+  "if (isSurfaceBackendRootVisible())",
+  "settings.requireWorkspaceActive && !isSurfaceWorkspaceActive()",
+  'targetUrl.pathname = "/odoo/action-" + String(serviceActionId)',
+  "stripSurfaceRouteTail(window.location.pathname || \"/odoo\", settings)",
+  "replaceSurfaceCurrentHistoryUrl(rootNextHref)",
+  "function mutationTouchesSurfaceBackendRoot(mutations)",
+  "mutationTouchesSurfaceBreadcrumb(mutations) || mutationTouchesSurfaceBackendRoot(mutations)",
+]) {
+  assert.ok(
+    routeSource.includes(expectedToken),
+    `route presentation must clear stale workspace state at backend root through token ${expectedToken}`
+  );
+}
+for (const expectedToken of [
+  "SURFACE_DESIGN_AUDIT_PRINCIPLES",
+  "prefer-what-matters",
+  "obvious-easy-possible",
+  "usable-for-edge-benefits-all",
+  "evidence-over-assumption",
+  "function getSurfaceDesignAuditPrinciples()",
+  "function isSurfaceAuditNodeVisible(node)",
+  "function auditSurfaceWorkspaceDesign(rootNode, options)",
+  "function auditSurfaceCommandBarRedundancy(rootNode, options)",
+  "function auditSurfaceOverlayLegibility(rootNode)",
+  "function auditSurfaceBreadcrumbGhostState(rootNode)",
+  "function auditSurfaceMenuDuplicateLabels(rootNode)",
+  "function auditSurfaceMetricSignal(rootNode)",
+  "command-bar-redundant-title",
+  "command-bar-redundant-description",
+  "overlay-legibility-weak-separation",
+  "breadcrumb-ghost-after-workspace-exit",
+  "duplicate-menu-label",
+  "redundant-menu-owner-label",
+  "zero-value-metric-alert",
+  "Use compact: true, showHeader: false, or hideTitle: true",
+  "Use distinct action labels, keep group headers visible, or nest repeated labels under separate branches.",
+  "Rename the grouping label, flatten the action, or move the repeated child to the parent level.",
+  "Hide the trend chip for neutral zero values",
+  "Call restoreCanonicalBreadcrumb on inactive workspace transitions",
+]) {
+  assert.ok(
+    debugSource.includes(expectedToken),
+    `debug design audit helper must expose actionable rule token ${expectedToken}`
+  );
+}
+const debugRuntime = loadDebugRuntimeForAuditTest(debugSource);
+const ownerFlyout = debugRuntime.document.createElement("div");
+ownerFlyout.className = "o_surface_sidebar_shell_menu_popover";
+ownerFlyout.dataset.surfaceSidebarOwnerLabel = "Facturas";
+const repeatedOwnerItem = debugRuntime.document.createElement("button");
+repeatedOwnerItem.className = "dropdown-item";
+repeatedOwnerItem.textContent = " Facturas ";
+ownerFlyout.appendChild(repeatedOwnerItem);
+const siblingItem = debugRuntime.document.createElement("button");
+siblingItem.className = "dropdown-item";
+siblingItem.textContent = "Crear";
+ownerFlyout.appendChild(siblingItem);
+debugRuntime.document.body.appendChild(ownerFlyout);
+const ownerLabelFindings = debugRuntime.api.auditSurfaceMenuDuplicateLabels(debugRuntime.document);
+assert.ok(
+  ownerLabelFindings.some((finding) => finding.rule === "redundant-menu-owner-label"),
+  "menu audit must flag a visible flyout whose direct child repeats data-surface-sidebar-owner-label"
+);
+assert.ok(
+  debugRuntime.api.auditSurfaceWorkspaceDesign(debugRuntime.document)
+    .some((finding) => finding.rule === "redundant-menu-owner-label"),
+  "workspace design audit must include the reusable redundant-menu-owner-label rule"
+);
+for (const expectedToken of [
   "function buildActionBackedListWorkspace(config)",
   "function buildTabbedMonthWorkspaceChrome(config)",
   "var workspaceScaffold = settings.workspaceScaffold",
+  "settings.showToolbarHeader !== true",
+  "return null;",
+  "showDescription: false",
   "buildCommonPremiumWorkspaceToolbarConsoleMarkup({",
   "buildActionBackedToolbarSelectionController({",
   "buildTabbedMonthListStateController({",
@@ -498,6 +789,13 @@ assert.ok(
   "premium metric values must use semantic strong elements for live auditability"
 );
 for (const expectedToken of [
+  "settings.showHeader !== false",
+  "settings.hideDescription === true",
+  'mode === "compact"',
+  "var meta = String(settings.meta || \"\").trim();",
+  "(meta ? '<span>' + escapeHtml(meta) + \"</span>\" : \"\")",
+  "o_surface_premium_command_bar--compact",
+  "o_surface_premium_command_bar--no-header",
   'tabAttributes.role = "tab"',
   'tabAttributes.tabindex = entry.active === true ? "0" : "-1"',
   "tabData.surfaceTab = \"1\"",
@@ -559,10 +857,26 @@ for (const expectedToken of [
   "min-height: var(--o-surface-tab-min-height-current)",
   ".o_surface_workspace_toolbar__nav::-webkit-scrollbar",
   "body.o_surface_workspace_active :where(.o_surface_premium_metric_strip--right)",
-  "grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), max-content));",
+  "grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));",
   "justify-content: end",
   "width: fit-content",
   "justify-content: flex-end",
+  "body.o_surface_workspace_active :where(.o_surface_premium_command_bar--compact, .o_surface_premium_command_bar--no-header)",
+  "body.o_surface_workspace_active :where(.o_surface_premium_command_bar--compact .o_surface_premium_command_bar__context, .o_surface_premium_command_bar--no-header .o_surface_premium_command_bar__context)",
+  "body.o_surface_workspace_active :where(.o_surface_premium_command_bar--compact .o_surface_premium_cluster, .o_surface_premium_command_bar--no-header .o_surface_premium_cluster)",
+  "body.o_surface_workspace_active :where(.o_surface_premium_metric__trend--danger)",
+  "body.o_surface_workspace_active :where(.o_surface_premium_metric__trend--warning)",
+  "body.o_surface_workspace_active :where(.o_surface_premium_metric__trend--success)",
+  "body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover",
+  "body.o_web_client.o_surface_workspace_active .o_popover.popover:not(.o_surface_sidebar_shell_menu_popover)",
+  "background: rgb(21, 25, 35) !important",
+  "-webkit-backdrop-filter: blur(12px) saturate(1.08)",
+  "outline: 1px solid rgba(7, 10, 18, 0.74)",
+  "isolation: isolate",
+  "color: rgba(244, 246, 251, 0.94) !important",
+  "background: rgba(255, 255, 255, 0.115) !important",
+  "flex: 1 1 8.5rem",
+  "min-width: 8.5rem",
   'grid-template-areas:',
   '"main metrics"',
   "grid-area: metrics",

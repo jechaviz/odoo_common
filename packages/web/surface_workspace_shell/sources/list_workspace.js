@@ -197,8 +197,13 @@
       if (typeof settings.buildToolbarCommandBar === "function") {
         return settings.buildToolbarCommandBar(api, state, handle, runtimeApi);
       }
+      if (settings.showToolbarHeader !== true) {
+        return null;
+      }
       var entry = readResolvedEntry();
       return {
+        compact: true,
+        showDescription: false,
         eyebrow: settings.chipLabel || settings.title || "",
         title: settings.title || entry.label || "",
         description: settings.description || "",
@@ -541,8 +546,13 @@
       if (typeof settings.buildToolbarCommandBar === "function") {
         return settings.buildToolbarCommandBar(readState(), state, handle, runtimeApi);
       }
+      if (settings.showToolbarHeader !== true) {
+        return null;
+      }
       var listState = readState();
       return {
+        compact: true,
+        showDescription: false,
         eyebrow: settings.chipLabel || settings.title || "",
         title: settings.title || "",
         description: settings.description || "",

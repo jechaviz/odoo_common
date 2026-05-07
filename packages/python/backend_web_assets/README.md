@@ -10,11 +10,16 @@ El modulo expone:
 - `BackendWebAssetPublisherSpec`
 - `BackendWebAssetPublishResult`
 - `BackendWebAssetPublication`
+- `BackendWebAssetDesignAuditFinding`
 - `BackendWebAssetConnection`
 - `DEFAULT_BACKEND_WEB_ASSET_PUBLISHER_SPEC`
+- `DEFAULT_DESIGN_AUDIT_RUNTIME_PATH_SUFFIX`
+- `DEFAULT_DESIGN_AUDIT_RUNTIME_TOKENS`
 - `build_backend_web_asset_attachment_name(spec, checksum, publisher_spec=...)`
 - `build_backend_web_asset_content_path(attachment_id, checksum, publisher_spec=...)`
 - `build_backend_web_asset_specs_from_common_bindings(bindings, start_sequence=..., target_prefix_to_strip=...)`
+- `audit_backend_web_asset_design_contracts(asset_root, specs, ...)`
+- `validate_backend_web_asset_design_contracts(asset_root, specs, ...)`
 - `guess_backend_web_asset_mimetype(relative_path)`
 - `dedupe_backend_web_asset_specs(specs)`
 - `compute_backend_web_asset_fingerprint(asset_root, specs, content_transform=None)`
@@ -53,6 +58,7 @@ No depende de mixins externos, introspeccion de campos ni wrappers de compatibil
 - limpiar assets/attachments stale solo cuando el caller declara prefijos gestionados
 - aplicar transformaciones de contenido declaradas por el caller
 - derivar specs de backend web assets desde bindings comunes ya validados
+- bloquear despliegues que no publican el runtime compartido de auditoria de diseno
 
 ## No Incluye
 
@@ -62,3 +68,9 @@ No depende de mixins externos, introspeccion de campos ni wrappers de compatibil
 - manifest builders acoplados a proyectos
 - resolucion de action ids o tokens de negocio
 - recorte implicito de prefijos como `src`
+
+## Gate de auditoria de diseno
+
+`validate_backend_web_asset_design_contracts(...)` revisa la tanda de assets antes de publicar y exige que el runtime comun de auditoria (`odoo_surface_layers/debug.js`) este presente con reglas accionables. El gate sigue los principios operativos del surface shell: preferir lo que importa, resolver el equilibrio entre obvio/facil/posible, tratar legibilidad y accesibilidad como requisitos, y publicar evidencia medible en vez de opiniones.
+
+Este gate es estatico y deliberadamente temprano: no reemplaza la auditoria live DOM, pero evita publicar un tenant sin las reglas que detectan menus redundantes, overlays ilegibles, breadcrumb fantasma, command bars duplicadas y metricas con senales falsas.

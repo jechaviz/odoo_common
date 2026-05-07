@@ -3,11 +3,15 @@
 from .backend_web_assets import (
     BackendWebAssetConnection,
     BackendWebAssetContentTransform,
+    BackendWebAssetDesignAuditFinding,
     BackendWebAssetPublication,
     BackendWebAssetPublisherSpec,
     BackendWebAssetPublishResult,
     BackendWebAssetSpec,
+    DEFAULT_DESIGN_AUDIT_RUNTIME_PATH_SUFFIX,
+    DEFAULT_DESIGN_AUDIT_RUNTIME_TOKENS,
     DEFAULT_BACKEND_WEB_ASSET_PUBLISHER_SPEC,
+    audit_backend_web_asset_design_contracts,
     build_backend_web_asset_attachment_name,
     build_backend_web_asset_content_path,
     build_backend_web_asset_specs_from_common_bindings,
@@ -20,16 +24,21 @@ from .backend_web_assets import (
     replace_backend_web_asset_tokens,
     upsert_backend_ir_asset,
     upsert_backend_web_asset_attachment,
+    validate_backend_web_asset_design_contracts,
 )
 
 __all__ = [
     "BackendWebAssetConnection",
     "BackendWebAssetContentTransform",
+    "BackendWebAssetDesignAuditFinding",
     "BackendWebAssetPublication",
     "BackendWebAssetPublisherSpec",
     "BackendWebAssetPublishResult",
     "BackendWebAssetSpec",
+    "DEFAULT_DESIGN_AUDIT_RUNTIME_PATH_SUFFIX",
+    "DEFAULT_DESIGN_AUDIT_RUNTIME_TOKENS",
     "DEFAULT_BACKEND_WEB_ASSET_PUBLISHER_SPEC",
+    "audit_backend_web_asset_design_contracts",
     "build_backend_web_asset_attachment_name",
     "build_backend_web_asset_content_path",
     "build_backend_web_asset_specs_from_common_bindings",
@@ -42,4 +51,5 @@ __all__ = [
     "replace_backend_web_asset_tokens",
     "upsert_backend_ir_asset",
     "upsert_backend_web_asset_attachment",
+    "validate_backend_web_asset_design_contracts",
 ]

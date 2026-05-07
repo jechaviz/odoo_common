@@ -33,3 +33,14 @@ Primary classes:
 - `o_surface_premium_empty_state`: dense empty/loading guidance for list and inspector surfaces.
 
 The workspace runtime exposes `buildPremiumWorkspaceToolbarConsoleMarkup`, `buildPremiumWorkspaceListConsoleMarkup`, and `buildPremiumWorkspaceToolbarConsoleController` on both `window.OdooSurfaceLayers` and `window.OdooSurfaceLayers.workspaceRuntime` where consumers need shell-level composition. `buildPremiumWorkspaceListConsoleMarkup` is the preferred list bootstrap helper: pass `commandBar`, `toolbar`/`toolbarMarkup`, `metrics`, `smartTable`, `validationRail`, `emptyState`, and optional `bodyMarkup` to compose dense list workspaces without duplicating console plumbing.
+
+## Design Audit Rules
+
+The shared debug runtime exposes `getSurfaceDesignAuditPrinciples()` and `auditSurfaceWorkspaceDesign(root, options)`. These are not brand slogans; each principle resolves a UI trade-off and maps to measurable findings that consumers can fail in live QA:
+
+- `prefer-what-matters`: when clarity conflicts with completeness, remove redundant titles, descriptions, and neutral zero-value alerts.
+- `obvious-easy-possible`: make primary work obvious, repeated work fast, and advanced flows available through progressive depth; duplicate menu labels without context fail this rule.
+- `usable-for-edge-benefits-all`: contrast, focus, density, and opaque readable overlays are requirements for every workspace.
+- `evidence-over-assumption`: every principle must leave DOM evidence; ghost breadcrumbs after leaving a workspace are treated as product bugs.
+
+Consumers should sync these rules instead of rebuilding local visual heuristics. If a finding appears, the `action` field tells the consumer whether to hide a duplicate command-bar header, add menu context, use an opaque overlay token, or clear managed breadcrumb state.

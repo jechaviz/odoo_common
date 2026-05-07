@@ -364,6 +364,15 @@
     }), options);
   }
 
+  function formMatchesStrictMarker(formRoot, config) {
+    var markerSelector = String(config && config.formMarkerSelector || "").trim();
+    return !!(
+      markerSelector &&
+      formRoot instanceof HTMLElement &&
+      formRoot.querySelector(markerSelector) instanceof HTMLElement
+    );
+  }
+
   function hasFormOwnershipHints(config) {
     return Array.isArray(config && config.formFieldHints) && config.formFieldHints.length > 0;
   }
@@ -1663,9 +1672,19 @@
     var href = routeOwnership.href;
     var currentActionId = routeOwnership.currentActionId;
     var actionScoped = routeOwnership.owned;
+    var hasCurrentActionIdMismatch = !!(
+      currentActionId > 0 &&
+      routeOwnership.configuredActionIds.length &&
+      !routeOwnership.matchesAction
+    );
     var strictFormRoot = findVisibleForm(config, { allowFallback: false });
+    var strictFormMarkerMatched = formMatchesStrictMarker(strictFormRoot, config);
+    if (hasCurrentActionIdMismatch && !strictFormMarkerMatched) {
+      strictFormRoot = null;
+    }
     if (
       !(strictFormRoot instanceof HTMLElement) &&
+      !hasCurrentActionIdMismatch &&
       routeOwnership.matchesAction &&
       hasFormOwnershipHints(config)
     ) {
@@ -1674,7 +1693,8 @@
     var hasCurrentActionModelMismatch = !currentActionModelMatchesWorkspace(config);
     var hasActionModelMismatchedForm = !!(
       strictFormRoot instanceof HTMLElement &&
-      hasCurrentActionModelMismatch
+      hasCurrentActionModelMismatch &&
+      !strictFormMarkerMatched
     );
     if (hasActionModelMismatchedForm) {
       strictFormRoot = null;
@@ -1696,7 +1716,7 @@
       ? null
       : findVisibleForm(config, { allowFallback: actionScoped });
     var visibleListTable = findVisibleListTable();
-    var strictListTable = visibleListTable instanceof HTMLElement && hasListOwnershipHints(config) && matchesListFieldHints(visibleListTable, config)
+    var strictListTable = !hasCurrentActionIdMismatch && visibleListTable instanceof HTMLElement && hasListOwnershipHints(config) && matchesListFieldHints(visibleListTable, config)
       ? visibleListTable
       : null;
     var hasVisibleMismatchedList = !!(

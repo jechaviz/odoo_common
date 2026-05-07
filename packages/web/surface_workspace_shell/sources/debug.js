@@ -17,6 +17,36 @@
   var suppressedNotificationServiceInstalled = false;
   var suppressedNotificationServiceRetryTimer = 0;
   var suppressedNotificationServiceInstallAttempts = 0;
+  var SURFACE_DESIGN_AUDIT_PRINCIPLES = Object.freeze([
+    {
+      key: "prefer-what-matters",
+      decision: "When clarity conflicts with completeness, keep the highest-signal control visible and remove redundant copy.",
+      audits: ["command-bar-redundant-title", "command-bar-redundant-description", "zero-value-metric-alert"],
+    },
+    {
+      key: "obvious-easy-possible",
+      decision: "Make the primary task obvious, make repeated work fast, and keep advanced work possible through progressive depth.",
+      audits: ["duplicate-menu-label", "redundant-menu-owner-label"],
+    },
+    {
+      key: "usable-for-edge-benefits-all",
+      decision: "Treat contrast, focus, density, and readable overlays as product requirements, not polish.",
+      audits: ["overlay-legibility-weak-separation"],
+    },
+    {
+      key: "evidence-over-assumption",
+      decision: "A design principle must resolve a trade-off and leave a measurable trace in live UI evidence.",
+      audits: ["breadcrumb-ghost-after-workspace-exit"],
+    },
+  ]);
+
+  function getSurfaceDesignAuditPrinciples() {
+    return SURFACE_DESIGN_AUDIT_PRINCIPLES.map(function (entry) {
+      return Object.assign({}, entry, {
+        audits: Array.isArray(entry.audits) ? entry.audits.slice() : [],
+      });
+    });
+  }
 
   function normalizeSuppressedNotificationText(value) {
     return String(value || "")
@@ -224,6 +254,243 @@
     delete cachedActionPromisesByKey[normalizedKey];
   }
 
+  function normalizeSurfaceAuditText(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  function readSurfaceAuditText(rootNode, selector) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var node = selector ? root.querySelector(selector) : root;
+    return node instanceof HTMLElement ? String(node.textContent || "").replace(/\s+/g, " ").trim() : "";
+  }
+
+  function isSurfaceAuditNodeVisible(node) {
+    if (!(node instanceof HTMLElement)) {
+      return false;
+    }
+    var rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+    var style = window.getComputedStyle ? window.getComputedStyle(node) : null;
+    return !!(
+      rect &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      (!style || (style.display !== "none" && style.visibility !== "hidden"))
+    );
+  }
+
+  function buildSurfaceDesignAuditFinding(rule, message, node, details) {
+    return {
+      rule: String(rule || "").trim(),
+      severity: details && details.severity ? String(details.severity) : "warning",
+      message: String(message || "").trim(),
+      node: node instanceof HTMLElement ? node : null,
+      selector: details && details.selector ? String(details.selector) : "",
+      action: details && details.action ? String(details.action) : "",
+    };
+  }
+
+  function auditSurfaceCommandBarRedundancy(rootNode, options) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var settings = options && typeof options === "object" ? options : {};
+    var findings = [];
+    var pageTitle = normalizeSurfaceAuditText(
+      settings.pageTitle ||
+      readSurfaceAuditText(root, ".o_control_panel .breadcrumb .active, .o_control_panel .o_last_breadcrumb_item, .o_main_navbar .breadcrumb .active, .o_main_navbar .o_last_breadcrumb_item")
+    );
+    Array.prototype.slice.call(root.querySelectorAll(".o_surface_premium_command_bar")).forEach(function (commandBar) {
+      if (!(commandBar instanceof HTMLElement)) {
+        return;
+      }
+      var titleNode = commandBar.querySelector(".o_surface_premium_command_bar__title");
+      var descriptionNode = commandBar.querySelector(".o_surface_premium_command_bar__description, .o_surface_premium_command_bar__subtitle");
+      var title = normalizeSurfaceAuditText(titleNode && titleNode.textContent);
+      var description = normalizeSurfaceAuditText(descriptionNode && descriptionNode.textContent);
+      if (title && pageTitle && title === pageTitle && !commandBar.classList.contains("o_surface_premium_command_bar--compact")) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "command-bar-redundant-title",
+          "Command bar repeats the active Odoo page title.",
+          commandBar,
+          {
+            selector: ".o_surface_premium_command_bar__title",
+            action: "Use compact: true, showHeader: false, or hideTitle: true when the Odoo page title is already visible.",
+          }
+        ));
+      }
+      if (description && title && (description === title || description.indexOf(title) === 0)) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "command-bar-redundant-description",
+          "Command bar description repeats the title instead of adding actionable context.",
+          commandBar,
+          {
+            selector: ".o_surface_premium_command_bar__description",
+            action: "Remove the description, pass hideDescription: true, or replace it with task-specific context.",
+          }
+        ));
+      }
+    });
+    return findings;
+  }
+
+  function auditSurfaceOverlayLegibility(rootNode) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var findings = [];
+    Array.prototype.slice.call(root.querySelectorAll(
+      ".o_surface_premium_inspector__drawer, .o_surface_premium_code_modal__dialog, .o_surface_premium_panel, .o_surface_sidebar_shell_menu_popover, [data-surface-overlay='1']"
+    )).forEach(function (node) {
+      if (!isSurfaceAuditNodeVisible(node) || !window.getComputedStyle) {
+        return;
+      }
+      var style = window.getComputedStyle(node);
+      var background = String(style.backgroundColor || "");
+      var boxShadow = String(style.boxShadow || "");
+      var backdropFilter = String(style.backdropFilter || style.webkitBackdropFilter || "");
+      var borderColor = String(style.borderColor || "");
+      var translucent = /rgba\([^)]*,\s*(0(?:\.\d+)?|1?\.0*)\)/i.test(background) &&
+        !/rgba\([^)]*,\s*1(?:\.0*)?\)/i.test(background);
+      if (translucent && boxShadow === "none" && !backdropFilter && (!borderColor || borderColor === "transparent")) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "overlay-legibility-weak-separation",
+          "Overlay uses translucent paint without enough separation from content behind it.",
+          node,
+          {
+            selector: ".o_surface_premium_panel, [data-surface-overlay='1']",
+            action: "Add an opaque panel token, border, backdrop-filter, or shadow token before placing text over busy content.",
+          }
+        ));
+      }
+    });
+    return findings;
+  }
+
+  function auditSurfaceMenuDuplicateLabels(rootNode) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var findings = [];
+    Array.prototype.slice.call(root.querySelectorAll(".o_surface_sidebar_shell_menu_popover")).forEach(function (popoverNode) {
+      if (!isSurfaceAuditNodeVisible(popoverNode)) {
+        return;
+      }
+      var counts = Object.create(null);
+      Array.prototype.slice.call(popoverNode.querySelectorAll(
+        ":scope > .dropdown-item, :scope > .o-dropdown-item, :scope > [role='menuitem']"
+      )).forEach(function (itemNode) {
+        if (!isSurfaceAuditNodeVisible(itemNode)) {
+          return;
+        }
+        var label = normalizeSurfaceAuditText(itemNode.textContent);
+        if (!label) {
+          return;
+        }
+        counts[label] = (counts[label] || 0) + 1;
+      });
+      Object.keys(counts).forEach(function (label) {
+        if (counts[label] <= 1) {
+          return;
+        }
+        findings.push(buildSurfaceDesignAuditFinding(
+          "duplicate-menu-label",
+          "Visible menu flyout repeats the same label without enough context.",
+          popoverNode,
+          {
+            selector: ".o_surface_sidebar_shell_menu_popover",
+            action: "Use distinct action labels, keep group headers visible, or nest repeated labels under separate branches.",
+          }
+        ));
+      });
+      var ownerLabel = normalizeSurfaceAuditText(popoverNode.dataset.surfaceSidebarOwnerLabel || "");
+      if (ownerLabel && counts[ownerLabel]) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "redundant-menu-owner-label",
+          "Visible menu flyout repeats its owner label as a direct child action.",
+          popoverNode,
+          {
+            selector: ".o_surface_sidebar_shell_menu_popover",
+            action: "Rename the grouping label, flatten the action, or move the repeated child to the parent level.",
+          }
+        ));
+      }
+    });
+    return findings;
+  }
+
+  function isSurfaceMetricZeroValue(value) {
+    var normalized = String(value || "")
+      .replace(/[^\d.,-]/g, "")
+      .replace(/,/g, ".");
+    var numeric = Number.parseFloat(normalized || "0");
+    return Number.isFinite(numeric) && Math.abs(numeric) < 0.00001;
+  }
+
+  function auditSurfaceMetricSignal(rootNode) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var findings = [];
+    Array.prototype.slice.call(root.querySelectorAll(".o_surface_premium_metric")).forEach(function (metricNode) {
+      if (!isSurfaceAuditNodeVisible(metricNode)) {
+        return;
+      }
+      var valueNode = metricNode.querySelector(".o_surface_premium_metric__value");
+      var trendNode = metricNode.querySelector(".o_surface_premium_metric__trend");
+      var value = valueNode instanceof HTMLElement ? valueNode.textContent : "";
+      var trend = trendNode instanceof HTMLElement ? String(trendNode.textContent || "").trim() : "";
+      if (trend && isSurfaceMetricZeroValue(value)) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "zero-value-metric-alert",
+          "Metric with a zero value still shows an alert or status chip.",
+          metricNode,
+          {
+            selector: ".o_surface_premium_metric__trend",
+            action: "Hide the trend chip for neutral zero values or convert it to a truly informative state.",
+          }
+        ));
+      }
+    });
+    return findings;
+  }
+
+  function auditSurfaceBreadcrumbGhostState(rootNode) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var body = document.body;
+    if (body && body.classList && body.classList.contains("o_surface_workspace_active")) {
+      return [];
+    }
+    var managedBreadcrumb = root.querySelector(
+      "[data-surface-breadcrumb-managed='1'], [data-surface-breadcrumb-root='1'], [data-surface-breadcrumb-synthetic='1']"
+    );
+    if (!(managedBreadcrumb instanceof HTMLElement)) {
+      return [];
+    }
+    return [buildSurfaceDesignAuditFinding(
+      "breadcrumb-ghost-after-workspace-exit",
+      "Managed surface breadcrumb is still present after the workspace body state is inactive.",
+      managedBreadcrumb,
+      {
+        selector: "[data-surface-breadcrumb-managed='1'], [data-surface-breadcrumb-root='1'], [data-surface-breadcrumb-synthetic='1']",
+        action: "Call restoreCanonicalBreadcrumb on inactive workspace transitions and clear synthetic breadcrumb nodes.",
+      }
+    )];
+  }
+
+  function auditSurfaceWorkspaceDesign(rootNode, options) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var findings = [];
+    [
+      auditSurfaceCommandBarRedundancy,
+      auditSurfaceOverlayLegibility,
+      auditSurfaceBreadcrumbGhostState,
+      auditSurfaceMenuDuplicateLabels,
+      auditSurfaceMetricSignal,
+    ].forEach(function (auditRule) {
+      findings = findings.concat(auditRule(root, options));
+    });
+    return findings.filter(function (finding) {
+      return finding && finding.rule && finding.message;
+    });
+  }
+
   function installSuppressedNotificationObserver() {
     if (suppressedNotificationObserver || !(document.documentElement instanceof HTMLElement)) {
       return;
@@ -313,6 +580,14 @@
     clearDebugServiceResolver: clearDebugServiceResolver,
     loadCachedAction: loadCachedAction,
     clearCachedAction: clearCachedAction,
+    getSurfaceDesignAuditPrinciples: getSurfaceDesignAuditPrinciples,
+    normalizeSurfaceAuditText: normalizeSurfaceAuditText,
+    auditSurfaceCommandBarRedundancy: auditSurfaceCommandBarRedundancy,
+    auditSurfaceOverlayLegibility: auditSurfaceOverlayLegibility,
+    auditSurfaceBreadcrumbGhostState: auditSurfaceBreadcrumbGhostState,
+    auditSurfaceMenuDuplicateLabels: auditSurfaceMenuDuplicateLabels,
+    auditSurfaceMetricSignal: auditSurfaceMetricSignal,
+    auditSurfaceWorkspaceDesign: auditSurfaceWorkspaceDesign,
     isSuppressedEmailLimitNotification: isSuppressedEmailLimitNotification,
     suppressRenderedEmailLimitNotifications: suppressRenderedEmailLimitNotifications,
     installSuppressedNotificationService: installSuppressedNotificationService,

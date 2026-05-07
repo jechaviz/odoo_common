@@ -64,12 +64,18 @@
   }
 
   function readCurrentSurfaceActionServiceActionId() {
+    if (isSurfaceBackendRootVisible()) {
+      return 0;
+    }
     var currentAction = readCurrentSurfaceActionServiceAction();
     var actionId = Number.parseInt(String(currentAction && currentAction.id || 0), 10) || 0;
     return actionId > 0 ? actionId : 0;
   }
 
   function readCurrentSurfaceActionModel() {
+    if (isSurfaceBackendRootVisible()) {
+      return "";
+    }
     try {
       var root = window.odoo && window.odoo.__WOWL_DEBUG__ && window.odoo.__WOWL_DEBUG__.root;
       var actionService = root && root.env && root.env.services ? root.env.services.action : null;
@@ -99,6 +105,26 @@
     } catch (_error) {
       return false;
     }
+  }
+
+  function isSurfaceBackendRootNodeVisible(node) {
+    if (!(node instanceof HTMLElement)) {
+      return false;
+    }
+    var style = window.getComputedStyle ? window.getComputedStyle(node) : null;
+    var rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+    return !!(
+      rect &&
+      rect.width > 0 &&
+      rect.height > 0 &&
+      (!style || (style.display !== "none" && style.visibility !== "hidden"))
+    );
+  }
+
+  function isSurfaceBackendRootVisible() {
+    return Array.prototype.slice.call(
+      document.querySelectorAll(".o_home_menu, .o_home_menu_background, .o_apps_menu")
+    ).some(isSurfaceBackendRootNodeVisible);
   }
 
   function isSurfaceActionSegment(value) {
@@ -303,6 +329,8 @@
       maxSegments: maxSegments > 0 ? maxSegments : 6,
       includeHome: source.includeHome === true,
       dedupe: source.dedupe !== false,
+      preferCurrentActionBase: source.preferCurrentActionBase !== false,
+      requireWorkspaceActive: source.requireWorkspaceActive === true,
       syncCurrentLocation: source.syncCurrentLocation !== false,
       transformHistory: source.transformHistory !== false,
       persist: source.persist !== false,
@@ -328,6 +356,8 @@
       maxSegments: settings.maxSegments,
       includeHome: settings.includeHome,
       dedupe: settings.dedupe,
+      preferCurrentActionBase: settings.preferCurrentActionBase,
+      requireWorkspaceActive: settings.requireWorkspaceActive,
       syncCurrentLocation: settings.syncCurrentLocation,
       transformHistory: settings.transformHistory,
       persist: settings.persist,
@@ -549,6 +579,24 @@
     return segments.length ? "/" + segments.join("/") : "/";
   }
 
+  function isSurfaceWorkspaceActive() {
+    return !!(
+      document.body &&
+      document.body.classList &&
+      document.body.classList.contains("o_surface_workspace_active")
+    );
+  }
+
+  function shouldCanonicalizeSurfaceRouteActionBase(targetUrl, settings) {
+    return !!(
+      targetUrl instanceof URL &&
+      settings &&
+      settings.mode === "path-tail" &&
+      settings.preferCurrentActionBase !== false &&
+      !resolveLastActionIdFromPathname(targetUrl.pathname)
+    );
+  }
+
   function buildSurfaceRouteTailPath(pathname, slugPath, config) {
     var settings = normalizeSurfaceRoutePresentationConfig(config);
     var basePath = stripSurfaceRouteTail(pathname, settings).replace(/\/+$/, "") || "/";
@@ -574,6 +622,12 @@
             targetUrl.pathname = canonicalPath.charAt(0) === "/" ? canonicalPath : "/" + canonicalPath;
           }
         } catch (_error) {}
+      }
+      if (shouldCanonicalizeSurfaceRouteActionBase(targetUrl, settings)) {
+        var serviceActionId = readCurrentSurfaceActionServiceActionId();
+        if (serviceActionId > 0) {
+          targetUrl.pathname = "/odoo/action-" + String(serviceActionId);
+        }
       }
       targetUrl.searchParams.delete(settings.queryKey);
       var hashParams = parseSearchParams(String(targetUrl.hash || "").replace(/^#/, ""));
@@ -628,6 +682,32 @@
     }
     try {
       var currentHref = readCurrentSurfaceHistoryHref();
+      if (isSurfaceBackendRootVisible()) {
+        var rootHref = stripSurfaceRouteTail(window.location.pathname || "/odoo", settings);
+        if (!rootHref || rootHref === "/") {
+          rootHref = "/odoo";
+        }
+        var rootUrl = new URL(rootHref, window.location.origin);
+        rootUrl.search = window.location.search || "";
+        var rootNextHref = rootUrl.pathname + rootUrl.search + window.location.hash;
+        if (rootNextHref && rootNextHref !== currentHref) {
+          replaceSurfaceCurrentHistoryUrl(rootNextHref);
+        }
+        return settings;
+      }
+      if (settings.requireWorkspaceActive && !isSurfaceWorkspaceActive()) {
+        var inactiveHref = stripSurfaceRouteTail(window.location.pathname || "/odoo", settings);
+        if (!inactiveHref || inactiveHref === "/") {
+          inactiveHref = "/odoo";
+        }
+        var inactiveUrl = new URL(inactiveHref, window.location.origin);
+        inactiveUrl.search = window.location.search || "";
+        var inactiveNextHref = inactiveUrl.pathname + inactiveUrl.search + window.location.hash;
+        if (inactiveNextHref && inactiveNextHref !== currentHref) {
+          replaceSurfaceCurrentHistoryUrl(inactiveNextHref);
+        }
+        return settings;
+      }
       var sourceHref = settings.sourceHref
         ? normalizeSurfaceHistoryUrl(settings.sourceHref)
         : currentHref;
@@ -667,6 +747,20 @@
     });
   }
 
+  function mutationTouchesSurfaceBackendRoot(mutations) {
+    return (Array.isArray(mutations) ? mutations : []).some(function (mutation) {
+      var target = mutation && mutation.target instanceof Element ? mutation.target : null;
+      if (target && target.closest(".o_home_menu, .o_home_menu_background, .o_apps_menu")) {
+        return true;
+      }
+      return Array.prototype.slice.call(mutation && mutation.addedNodes || []).some(function (node) {
+        return node instanceof Element &&
+          (node.matches(".o_home_menu, .o_home_menu_background, .o_apps_menu") ||
+            !!node.closest(".o_home_menu, .o_home_menu_background, .o_apps_menu"));
+      });
+    });
+  }
+
   function installSurfaceRoutePresentationObserver(config) {
     var settings = normalizeSurfaceRoutePresentationConfig(config);
     if (shared.surfaceRoutePresentationObserver && typeof shared.surfaceRoutePresentationObserver.disconnect === "function") {
@@ -677,7 +771,7 @@
       return null;
     }
     shared.surfaceRoutePresentationObserver = new MutationObserver(function (mutations) {
-      if (mutationTouchesSurfaceBreadcrumb(mutations)) {
+      if (mutationTouchesSurfaceBreadcrumb(mutations) || mutationTouchesSurfaceBackendRoot(mutations)) {
         scheduleSurfaceRoutePresentationSync(settings);
       }
     });

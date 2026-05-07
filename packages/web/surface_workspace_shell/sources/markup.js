@@ -225,13 +225,24 @@
 
   function buildPremiumCommandBarMarkup(config) {
     var settings = config && typeof config === "object" ? config : {};
+    var mode = String(settings.mode || settings.variant || "").trim();
+    var isCompact = settings.compact === true || mode === "compact";
+    var showHeader = settings.showHeader !== false;
+    var hideEyebrow = !showHeader || settings.hideEyebrow === true || settings.showEyebrow === false;
+    var hideTitle = !showHeader || settings.hideTitle === true || settings.showTitle === false;
+    var hideDescription = !showHeader ||
+      settings.hideDescription === true ||
+      settings.showDescription === false ||
+      (isCompact && settings.hideDescription !== false);
     var className = joinClassNames([
       "o_surface_premium_command_bar",
+      isCompact ? "o_surface_premium_command_bar--compact" : "",
+      !showHeader ? "o_surface_premium_command_bar--no-header" : "",
       settings.className,
     ]);
-    var title = String(settings.title || "").trim();
-    var eyebrow = String(settings.eyebrow || "").trim();
-    var description = String(settings.description || settings.subtitle || "").trim();
+    var title = hideTitle ? "" : String(settings.title || "").trim();
+    var eyebrow = hideEyebrow ? "" : String(settings.eyebrow || "").trim();
+    var description = hideDescription ? "" : String(settings.description || settings.subtitle || "").trim();
     var contextMarkup = String(settings.contextMarkup || "").trim();
     var actionsMarkup = renderMarkupList(settings.actions, function (entry) {
       return entry && typeof entry === "object"
@@ -345,6 +356,7 @@
     if (!label && !value) {
       return "";
     }
+    var meta = String(settings.meta || "").trim();
     var trendTone = normalizeStatusTone(settings.trendTone || settings.trend || settings.deltaTone);
     var trendLabel = String(settings.trendLabel || settings.deltaLabel || "").trim();
     return (
@@ -360,9 +372,9 @@
       ">" +
       (label ? '<div class="o_surface_premium_metric__label">' + escapeHtml(label) + "</div>" : "") +
       (value ? '<strong class="o_surface_premium_metric__value">' + escapeHtml(value) + "</strong>" : "") +
-      ((settings.meta || trendLabel)
+      ((meta || trendLabel)
         ? '<div class="o_surface_premium_metric__meta">' +
-          '<span>' + escapeHtml(settings.meta || "") + "</span>" +
+          (meta ? '<span>' + escapeHtml(meta) + "</span>" : "") +
           (trendLabel
             ? '<span class="' + escapeHtml(joinClassNames([
                 "o_surface_premium_metric__trend",

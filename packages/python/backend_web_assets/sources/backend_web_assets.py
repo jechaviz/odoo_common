@@ -11,6 +11,28 @@ from typing import Any, Callable, Mapping, Protocol, Sequence, runtime_checkable
 
 DIRECTIVES_WITH_TARGET = frozenset({"before", "after", "replace"})
 ALLOWED_BACKEND_WEB_ASSET_DIRECTIVES = frozenset({"append", "prepend", "before", "after", "replace"})
+DEFAULT_DESIGN_AUDIT_RUNTIME_PATH_SUFFIX = "odoo_surface_layers/debug.js"
+DEFAULT_DESIGN_AUDIT_RUNTIME_TOKENS = frozenset(
+    {
+        "SURFACE_DESIGN_AUDIT_PRINCIPLES",
+        "getSurfaceDesignAuditPrinciples",
+        "auditSurfaceWorkspaceDesign",
+        "auditSurfaceCommandBarRedundancy",
+        "auditSurfaceOverlayLegibility",
+        "auditSurfaceBreadcrumbGhostState",
+        "auditSurfaceMenuDuplicateLabels",
+        "auditSurfaceMetricSignal",
+        "prefer-what-matters",
+        "obvious-easy-possible",
+        "usable-for-edge-benefits-all",
+        "evidence-over-assumption",
+        "duplicate-menu-label",
+        "redundant-menu-owner-label",
+        "overlay-legibility-weak-separation",
+        "breadcrumb-ghost-after-workspace-exit",
+        "zero-value-metric-alert",
+    }
+)
 
 
 def guess_backend_web_asset_mimetype(relative_path: str | Path) -> str:
@@ -147,6 +169,16 @@ class BackendWebAssetPublication:
     stale_attachments_removed: int = 0
 
 
+@dataclass(frozen=True)
+class BackendWebAssetDesignAuditFinding:
+    """Describe a blocking design-audit issue in a backend asset publication set."""
+
+    rule: str
+    relative_path: str
+    detail: str
+    action: str
+
+
 @runtime_checkable
 class BackendWebAssetConnection(Protocol):
     """Minimal Odoo RPC contract required by backend web asset publication."""
@@ -281,6 +313,87 @@ def replace_backend_web_asset_tokens(
         value = raw_value if isinstance(raw_value, bytes) else str(raw_value).encode("utf-8")
         updated = updated.replace(token, value)
     return updated
+
+
+def audit_backend_web_asset_design_contracts(
+    asset_root: str | Path,
+    specs: Sequence[Any],
+    *,
+    runtime_path_suffix: str = DEFAULT_DESIGN_AUDIT_RUNTIME_PATH_SUFFIX,
+    required_tokens: Sequence[str] | None = None,
+) -> tuple[BackendWebAssetDesignAuditFinding, ...]:
+    """Return deployment-blocking findings for the shared design audit runtime."""
+    root = Path(asset_root)
+    suffix = str(runtime_path_suffix or "").strip().replace("\\", "/").lstrip("/")
+    tokens = tuple(required_tokens) if required_tokens is not None else tuple(sorted(DEFAULT_DESIGN_AUDIT_RUNTIME_TOKENS))
+    candidate_payloads: list[tuple[Path, str]] = []
+
+    for spec in specs:
+        relative_path = _normalize_relative_path(_common_binding_value(spec, "relative_path"))
+        if relative_path.suffix.lower() != ".js":
+            continue
+        absolute_path = root / relative_path
+        if not absolute_path.exists() or not absolute_path.is_file():
+            continue
+        try:
+            source = absolute_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            source = absolute_path.read_text(encoding="utf-8", errors="replace")
+        normalized_relative = relative_path.as_posix()
+        if (
+            (suffix and normalized_relative.endswith(suffix))
+            or "auditSurfaceWorkspaceDesign" in source
+            or "SURFACE_DESIGN_AUDIT_PRINCIPLES" in source
+        ):
+            candidate_payloads.append((relative_path, source))
+
+    if not candidate_payloads:
+        return (
+            BackendWebAssetDesignAuditFinding(
+                rule="missing-design-audit-runtime",
+                relative_path=suffix or DEFAULT_DESIGN_AUDIT_RUNTIME_PATH_SUFFIX,
+                detail="No published JavaScript asset exposes the shared surface design audit runtime.",
+                action="Publish surface-workspace-shell debug.js before project assets and keep it in the common sync manifest.",
+            ),
+        )
+
+    findings: list[BackendWebAssetDesignAuditFinding] = []
+    for relative_path, source in candidate_payloads:
+        missing_tokens = [token for token in tokens if token and token not in source]
+        if not missing_tokens:
+            return tuple()
+        findings.append(
+            BackendWebAssetDesignAuditFinding(
+                rule="incomplete-design-audit-runtime",
+                relative_path=relative_path.as_posix(),
+                detail="Missing design audit tokens: " + ", ".join(missing_tokens),
+                action="Keep design principles actionable in odoo_common and sync the complete debug runtime before deployment.",
+            )
+        )
+    return tuple(findings)
+
+
+def validate_backend_web_asset_design_contracts(
+    asset_root: str | Path,
+    specs: Sequence[Any],
+    *,
+    runtime_path_suffix: str = DEFAULT_DESIGN_AUDIT_RUNTIME_PATH_SUFFIX,
+    required_tokens: Sequence[str] | None = None,
+) -> None:
+    """Fail deployment when the shared design audit runtime is absent or incomplete."""
+    findings = audit_backend_web_asset_design_contracts(
+        asset_root,
+        specs,
+        runtime_path_suffix=runtime_path_suffix,
+        required_tokens=required_tokens,
+    )
+    if not findings:
+        return
+    summary = "; ".join(
+        f"{finding.rule} at {finding.relative_path}: {finding.detail} Action: {finding.action}"
+        for finding in findings
+    )
+    raise ValueError(f"Backend web asset design audit failed: {summary}")
 
 
 def compute_backend_web_asset_fingerprint(

@@ -99,6 +99,7 @@ const premiumPrimitiveExports = {
     "auditSurfaceOverlayLegibility",
     "auditSurfaceBreadcrumbGhostState",
     "auditSurfaceMenuDuplicateLabels",
+    "auditSurfaceSidebarFlyoutGeometry",
     "auditSurfaceMetricSignal",
     "auditSurfaceWorkspaceDesign",
   ],
@@ -375,7 +376,7 @@ function createSurfaceAuditTestDocument() {
     }
 
     getBoundingClientRect() {
-      return { width: 160, height: 32 };
+      return this._rect || { left: 0, right: 160, top: 0, bottom: 32, width: 160, height: 32 };
     }
 
     matches(selector) {
@@ -696,6 +697,7 @@ for (const expectedToken of [
   "function auditSurfaceOverlayLegibility(rootNode)",
   "function auditSurfaceBreadcrumbGhostState(rootNode)",
   "function auditSurfaceMenuDuplicateLabels(rootNode)",
+  "function auditSurfaceSidebarFlyoutGeometry(rootNode)",
   "function auditSurfaceMetricSignal(rootNode)",
   "command-bar-redundant-title",
   "command-bar-redundant-description",
@@ -703,10 +705,12 @@ for (const expectedToken of [
   "breadcrumb-ghost-after-workspace-exit",
   "duplicate-menu-label",
   "redundant-menu-owner-label",
+  "sidebar-flyout-geometry-drift",
   "zero-value-metric-alert",
   "Use compact: true, showHeader: false, or hideTitle: true",
   "Use distinct action labels, keep group headers visible, or nest repeated labels under separate branches.",
   "Rename the grouping label, flatten the action, or move the repeated child to the parent level.",
+  "Anchor nested flyouts to the parent popover edge and convert viewport coordinates to local containing-block offsets",
   "Hide the trend chip for neutral zero values",
   "Call restoreCanonicalBreadcrumb on inactive workspace transitions",
 ]) {
@@ -737,6 +741,23 @@ assert.ok(
   debugRuntime.api.auditSurfaceWorkspaceDesign(debugRuntime.document)
     .some((finding) => finding.rule === "redundant-menu-owner-label"),
   "workspace design audit must include the reusable redundant-menu-owner-label rule"
+);
+const parentFlyout = debugRuntime.document.createElement("div");
+parentFlyout.className = "o_surface_sidebar_shell_menu_popover";
+parentFlyout.dataset.surfaceSidebarLevel = "1";
+parentFlyout._rect = { left: 100, right: 292, top: 20, bottom: 180, width: 192, height: 160 };
+const driftingFlyout = debugRuntime.document.createElement("div");
+driftingFlyout.className = "o_surface_sidebar_shell_menu_popover";
+driftingFlyout.dataset.surfaceSidebarLevel = "2";
+driftingFlyout.dataset.surfaceSidebarSide = "right";
+driftingFlyout.dataset.surfaceSidebarMaxNestedGap = "8";
+driftingFlyout._rect = { left: 360, right: 540, top: 52, bottom: 180, width: 180, height: 128 };
+parentFlyout.appendChild(driftingFlyout);
+debugRuntime.document.body.appendChild(parentFlyout);
+assert.ok(
+  debugRuntime.api.auditSurfaceSidebarFlyoutGeometry(debugRuntime.document)
+    .some((finding) => finding.rule === "sidebar-flyout-geometry-drift"),
+  "menu geometry audit must flag nested flyouts that drift away from the parent popover"
 );
 for (const expectedToken of [
   "function buildActionBackedListWorkspace(config)",

@@ -26,7 +26,7 @@
     {
       key: "obvious-easy-possible",
       decision: "Make the primary task obvious, make repeated work fast, and keep advanced work possible through progressive depth.",
-      audits: ["duplicate-menu-label", "redundant-menu-owner-label"],
+      audits: ["duplicate-menu-label", "redundant-menu-owner-label", "sidebar-flyout-geometry-drift"],
     },
     {
       key: "usable-for-edge-benefits-all",
@@ -417,6 +417,78 @@
     return findings;
   }
 
+  function resolveSurfaceAuditParentMenuPopover(rootNode, popoverNode, allPopovers) {
+    if (!(popoverNode instanceof HTMLElement)) {
+      return null;
+    }
+    var parentNode = popoverNode.parentElement || popoverNode.parentNode;
+    while (parentNode && parentNode !== rootNode) {
+      if (
+        parentNode instanceof HTMLElement &&
+        parentNode.classList.contains("o_surface_sidebar_shell_menu_popover")
+      ) {
+        return parentNode;
+      }
+      parentNode = parentNode.parentElement || parentNode.parentNode;
+    }
+    var ownerTriggerId = String(popoverNode.dataset.surfaceSidebarOwnerTriggerId || "").trim();
+    if (ownerTriggerId && rootNode && typeof rootNode.querySelector === "function") {
+      var ownerTrigger = rootNode.querySelector('[data-surface-sidebar-trigger-id="' + ownerTriggerId + '"]');
+      var ownerPopover = ownerTrigger instanceof HTMLElement
+        ? ownerTrigger.closest(".o_surface_sidebar_shell_menu_popover")
+        : null;
+      if (ownerPopover instanceof HTMLElement) {
+        return ownerPopover;
+      }
+    }
+    var level = Math.max(Number(popoverNode.dataset.surfaceSidebarLevel || 0) || 0, 0);
+    if (level <= 1) {
+      return null;
+    }
+    return (Array.isArray(allPopovers) ? allPopovers : []).find(function (candidateNode) {
+      return candidateNode instanceof HTMLElement &&
+        candidateNode !== popoverNode &&
+        Math.max(Number(candidateNode.dataset.surfaceSidebarLevel || 0) || 0, 0) === level - 1;
+    }) || null;
+  }
+
+  function auditSurfaceSidebarFlyoutGeometry(rootNode) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var findings = [];
+    var popovers = Array.prototype.slice.call(root.querySelectorAll(".o_surface_sidebar_shell_menu_popover")).filter(function (popoverNode) {
+      return isSurfaceAuditNodeVisible(popoverNode) &&
+        Math.max(Number(popoverNode.dataset.surfaceSidebarLevel || 1) || 1, 1) > 1;
+    });
+    popovers.forEach(function (popoverNode) {
+      var parentPopover = resolveSurfaceAuditParentMenuPopover(root, popoverNode, popovers);
+      if (!(parentPopover instanceof HTMLElement) || !isSurfaceAuditNodeVisible(parentPopover)) {
+        return;
+      }
+      var popoverRect = popoverNode.getBoundingClientRect();
+      var parentRect = parentPopover.getBoundingClientRect();
+      var side = String(popoverNode.dataset.surfaceSidebarSide || "right").trim() || "right";
+      var gap = side === "left"
+        ? parentRect.left - popoverRect.right
+        : popoverRect.left - parentRect.right;
+      var maxGap = Math.max(Number(popoverNode.dataset.surfaceSidebarMaxNestedGap || 8) || 8, 4) + 4;
+      if (gap >= 2 && gap <= maxGap) {
+        return;
+      }
+      findings.push(buildSurfaceDesignAuditFinding(
+        "sidebar-flyout-geometry-drift",
+        "Nested sidebar flyout is not visually attached to its parent menu.",
+        popoverNode,
+        {
+          selector: ".o_surface_sidebar_shell_menu_popover",
+          action: "Anchor nested flyouts to the parent popover edge and convert viewport coordinates to local containing-block offsets when the submenu is rendered inside its parent.",
+          gap: Math.round(gap),
+          side: side,
+        }
+      ));
+    });
+    return findings;
+  }
+
   function isSurfaceMetricZeroValue(value) {
     var normalized = String(value || "")
       .replace(/[^\d.,-]/g, "")
@@ -482,6 +554,7 @@
       auditSurfaceOverlayLegibility,
       auditSurfaceBreadcrumbGhostState,
       auditSurfaceMenuDuplicateLabels,
+      auditSurfaceSidebarFlyoutGeometry,
       auditSurfaceMetricSignal,
     ].forEach(function (auditRule) {
       findings = findings.concat(auditRule(root, options));
@@ -586,6 +659,7 @@
     auditSurfaceOverlayLegibility: auditSurfaceOverlayLegibility,
     auditSurfaceBreadcrumbGhostState: auditSurfaceBreadcrumbGhostState,
     auditSurfaceMenuDuplicateLabels: auditSurfaceMenuDuplicateLabels,
+    auditSurfaceSidebarFlyoutGeometry: auditSurfaceSidebarFlyoutGeometry,
     auditSurfaceMetricSignal: auditSurfaceMetricSignal,
     auditSurfaceWorkspaceDesign: auditSurfaceWorkspaceDesign,
     isSuppressedEmailLimitNotification: isSuppressedEmailLimitNotification,

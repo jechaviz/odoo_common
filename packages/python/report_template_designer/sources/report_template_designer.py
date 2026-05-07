@@ -2456,6 +2456,93 @@ def _slug_code(value: str) -> str:
     return slug[:48] or "REPORT-DESIGN"
 
 
+def _truthy(value: Any, *, default: bool = True) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return str(value).strip().lower() not in {"", "0", "false", "no", "off"}
+
+
+def _infer_design_sample_format(filename: str = "", mimetype: str = "", content: str = "") -> str:
+    filename_lower = str(filename or "").strip().lower()
+    mimetype_lower = str(mimetype or "").strip().lower()
+    content_start = str(content or "").lstrip()[:1]
+    if "json" in mimetype_lower or filename_lower.endswith(".json") or content_start in {"{", "["}:
+        return "json"
+    if (
+        "xml" in mimetype_lower
+        or filename_lower.endswith((".xml", ".jrxml", ".xsd"))
+        or content_start == "<"
+    ):
+        return "xml"
+    return "text"
+
+
+def _default_design_sample_mimetype(source_format: str) -> str:
+    if source_format == "json":
+        return "application/json"
+    if source_format == "xml":
+        return "application/xml"
+    return "text/plain"
+
+
+def _decode_design_sample_file(value: Any) -> str:
+    if value in (None, False, ""):
+        return ""
+    raw_value = value if isinstance(value, bytes) else str(value).encode("utf-8")
+    try:
+        decoded = base64.b64decode(raw_value, validate=True)
+    except Exception:
+        try:
+            decoded = base64.b64decode(raw_value)
+        except Exception:
+            decoded = raw_value
+    return decoded.decode("utf-8", errors="replace")
+
+
+def normalize_design_sample_upload_values(
+    filename: str,
+    *,
+    content_bytes: bytes | None = None,
+    content_text: str | None = None,
+    mimetype: str = "",
+    kind: str = "",
+    active: bool = True,
+    sequence: int = 10,
+    name: str = "",
+    notes: str = "",
+) -> dict[str, Any]:
+    """Build child-record values for one uploaded test-data file.
+
+    The helper is intentionally storage-oriented: it fills both the binary
+    upload field and the text payload used by previews, copy actions, and
+    recomputation.
+    """
+    resolved_filename = str(filename or "").strip() or "sample.txt"
+    if content_text is None and content_bytes is not None:
+        content_text = content_bytes.decode("utf-8", errors="replace")
+    content_text = str(content_text or "")
+    encoded_payload = base64.b64encode(content_text.encode("utf-8")).decode("ascii") if content_text else ""
+    source_format = _infer_design_sample_format(resolved_filename, mimetype, content_text)
+    resolved_kind = kind or ("original_xml" if source_format == "xml" else "translated" if source_format == "json" else "manual")
+    return {
+        "x_name": name or f"{resolved_filename} {REPORT_TEST_DATA_KIND_LABELS.get(resolved_kind, resolved_kind)}",
+        "x_sequence": int(sequence or 10),
+        "x_kind": resolved_kind,
+        "x_source_filename": resolved_filename,
+        "x_source_format": source_format,
+        "x_mimetype": mimetype or _default_design_sample_mimetype(source_format),
+        "x_file": encoded_payload,
+        "x_file_name": resolved_filename,
+        "x_content": content_text,
+        "x_active": bool(active),
+        "x_notes": notes,
+    }
+
+
 def build_design_record_values(
     jrxml_path: str | Path,
     *,
@@ -2468,18 +2555,15 @@ def build_design_record_values(
     """Build Odoo custom-model values for an imported report design."""
     path = Path(jrxml_path)
     blueprint = parse_jrxml_file(path)
-    sample_schemas = [flatten_xml_sample_file(Path(sample_path)) for sample_path in sample_xml_paths]
-    sample_field_values: dict[str, str] = {}
-    sample_field_values_by_file: dict[str, Any] = {}
-    for sample_path in sample_xml_paths:
-        resolved_sample_path = Path(sample_path)
-        values = build_sample_field_values(blueprint, resolved_sample_path)
-        if not sample_field_values:
-            sample_field_values = values
-        sample_field_values_by_file[resolved_sample_path.name] = values
+    sample_records = _build_design_sample_record_values_from_blueprint(blueprint, sample_xml_paths)
+    runtime_values = build_design_runtime_values_from_samples(
+        blueprint,
+        sample_records,
+        asset_base_path=path.parent,
+    )
     stats = blueprint.get("stats") or {}
     display_name = name or str((blueprint.get("source") or {}).get("report_name") or path.stem)
-    return {
+    values = {
         "x_name": display_name,
         "x_code": code or _slug_code(path.stem),
         "x_active": bool(active),
@@ -2495,17 +2579,11 @@ def build_design_record_values(
         "x_expression_count": int(stats.get("expression_count") or 0),
         "x_layout_json": dumps_canonical_json(blueprint),
         "x_expression_json": dumps_canonical_json(blueprint.get("expression_index") or {}),
-        "x_data_schema_json": dumps_canonical_json(
-            {
-                "samples": sample_schemas,
-                "field_values": sample_field_values,
-                "translated_files": sample_field_values_by_file,
-            }
-        ),
-        "x_preview_html": build_preview_html(blueprint, asset_base_path=path.parent, sample_values=sample_field_values),
         "x_source_jrxml": path.read_text(encoding="utf-8"),
         "x_notes": "Imported from JRXML. Expressions are indexed for migration and preview but are not executed.",
     }
+    values.update(runtime_values)
+    return values
 
 
 def _build_design_sample_record_values_from_blueprint(
@@ -2570,6 +2648,187 @@ def build_design_sample_record_values(
     return _build_design_sample_record_values_from_blueprint(parse_jrxml_file(Path(jrxml_path)), sample_xml_paths)
 
 
+def build_design_sample_create_commands(
+    jrxml_path: str | Path,
+    *,
+    sample_xml_paths: Sequence[str | Path] = (),
+) -> list[tuple[Any, ...]]:
+    """Build Odoo one2many commands for replacing designer test-data rows."""
+    return [(5, 0, 0)] + [
+        (0, 0, dict(values))
+        for values in build_design_sample_record_values(jrxml_path, sample_xml_paths=sample_xml_paths)
+    ]
+
+
+def _iter_design_sample_record_values(records: Sequence[Any]) -> tuple[Mapping[str, Any], ...]:
+    values: list[Mapping[str, Any]] = []
+    for record in records:
+        if isinstance(record, Mapping):
+            values.append(record)
+            continue
+        if (
+            isinstance(record, (list, tuple))
+            and not isinstance(record, (str, bytes, bytearray))
+            and len(record) >= 3
+            and isinstance(record[2], Mapping)
+        ):
+            values.append(record[2])
+    return tuple(values)
+
+
+def normalize_design_sample_records(records: Sequence[Any]) -> tuple[dict[str, Any], ...]:
+    """Normalize uploaded/generated child records before recomputing preview data."""
+    normalized: list[dict[str, Any]] = []
+    for index, record in enumerate(_iter_design_sample_record_values(records), start=1):
+        filename = str(
+            record.get("x_source_filename")
+            or record.get("x_file_name")
+            or record.get("x_name")
+            or f"sample-{index}.txt"
+        ).strip()
+        mimetype = str(record.get("x_mimetype") or "").strip()
+        content = str(record.get("x_content") or "")
+        if not content and record.get("x_file"):
+            content = _decode_design_sample_file(record.get("x_file"))
+        source_format = str(record.get("x_source_format") or "").strip().lower()
+        if source_format not in {"xml", "json", "text"}:
+            source_format = _infer_design_sample_format(filename, mimetype, content)
+        try:
+            sequence = int(record.get("x_sequence") or index * 10)
+        except (TypeError, ValueError):
+            sequence = index * 10
+        normalized.append(
+            {
+                "x_name": str(record.get("x_name") or filename).strip() or filename,
+                "x_sequence": sequence,
+                "x_kind": str(record.get("x_kind") or "").strip() or ("original_xml" if source_format == "xml" else "translated"),
+                "x_source_filename": filename,
+                "x_source_format": source_format,
+                "x_mimetype": mimetype or _default_design_sample_mimetype(source_format),
+                "x_file_name": str(record.get("x_file_name") or filename).strip() or filename,
+                "x_content": content,
+                "x_active": _truthy(record.get("x_active"), default=True),
+                "x_notes": str(record.get("x_notes") or ""),
+            }
+        )
+    return tuple(sorted(normalized, key=lambda item: (int(item["x_sequence"]), str(item["x_source_filename"]))))
+
+
+def _json_sample_field_values(payload: Any) -> dict[str, Any]:
+    if not isinstance(payload, Mapping):
+        return {}
+    field_values = payload.get("field_values")
+    if isinstance(field_values, Mapping):
+        return dict(field_values)
+    if all(isinstance(key, str) for key in payload.keys()):
+        return dict(payload)
+    return {}
+
+
+def build_design_sample_data_payload(
+    blueprint: Mapping[str, Any],
+    records: Sequence[Any],
+) -> dict[str, Any]:
+    """Build the canonical data-schema payload from active test-data rows."""
+    samples: list[Mapping[str, Any]] = []
+    translated_files: dict[str, Any] = {}
+    field_values: dict[str, Any] = {}
+    normalized_records = normalize_design_sample_records(records)
+    active_records = [record for record in normalized_records if record.get("x_active")]
+    issues: list[dict[str, str]] = []
+    preview_sample_name = ""
+    for record in active_records:
+        filename = str(record.get("x_source_filename") or record.get("x_file_name") or record.get("x_name") or "")
+        source_format = str(record.get("x_source_format") or "text")
+        content = str(record.get("x_content") or "")
+        if not preview_sample_name:
+            preview_sample_name = filename
+        if not content.strip():
+            issues.append(
+                {
+                    "level": "warning",
+                    "code": "empty-upload-content",
+                    "file": filename,
+                    "message": "The active test-data row has no content.",
+                }
+            )
+            continue
+        try:
+            if source_format == "xml":
+                schema = flatten_xml_sample(content, source_name=filename)
+                values = build_sample_field_values(blueprint, content)
+                samples.append(schema)
+                translated_files[filename] = values
+                if values and not field_values:
+                    field_values = values
+            elif source_format == "json":
+                json_payload = json.loads(content)
+                values = _json_sample_field_values(json_payload)
+                schema = json_payload.get("schema") if isinstance(json_payload, Mapping) else None
+                if isinstance(schema, Mapping):
+                    samples.append(schema)
+                translated_files[filename] = values or json_payload
+                if values and not field_values:
+                    field_values = values
+            else:
+                translated_files[filename] = {"text": content}
+        except Exception as exc:
+            issues.append(
+                {
+                    "level": "error",
+                    "code": "sample-parse-error",
+                    "file": filename,
+                    "message": str(exc),
+                }
+            )
+    return {
+        "schema_version": REPORT_DESIGNER_SCHEMA_VERSION,
+        "samples": samples,
+        "field_values": field_values,
+        "translated_files": translated_files,
+        "records": [
+            {
+                "name": record["x_name"],
+                "filename": record["x_source_filename"],
+                "format": record["x_source_format"],
+                "kind": record["x_kind"],
+                "active": bool(record["x_active"]),
+                "size": len(str(record.get("x_content") or "").encode("utf-8")),
+            }
+            for record in normalized_records
+        ],
+        "active_sample_count": len(active_records),
+        "preview_sample_name": preview_sample_name,
+        "issues": issues,
+    }
+
+
+def build_design_runtime_values_from_samples(
+    blueprint: Mapping[str, Any],
+    records: Sequence[Any],
+    *,
+    asset_base_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """Recompute Odoo parent fields from editable test-data child rows."""
+    payload = build_design_sample_data_payload(blueprint, records)
+    issue_messages = [
+        f"{issue.get('code')}: {issue.get('file')}: {issue.get('message')}"
+        for issue in payload.get("issues", ())
+        if isinstance(issue, Mapping)
+    ]
+    return {
+        "x_data_schema_json": dumps_canonical_json(payload),
+        "x_preview_html": build_preview_html(
+            blueprint,
+            asset_base_path=Path(asset_base_path) if asset_base_path else None,
+            sample_values=payload.get("field_values") or {},
+        ),
+        "x_active_sample_count": int(payload.get("active_sample_count") or 0),
+        "x_preview_sample_name": str(payload.get("preview_sample_name") or ""),
+        "x_data_recompute_error": "\n".join(issue_messages),
+    }
+
+
 @dataclass(frozen=True)
 class ReportDesignerModelSpec:
     model: str
@@ -2619,6 +2878,7 @@ REPORT_TEST_DATA_KIND_OPTIONS: tuple[tuple[str, str], ...] = (
     ("translated", "Archivo traducido"),
     ("manual", "Manual"),
 )
+REPORT_TEST_DATA_KIND_LABELS: dict[str, str] = dict(REPORT_TEST_DATA_KIND_OPTIONS)
 
 REPORT_TEST_DATA_FORMAT_OPTIONS: tuple[tuple[str, str], ...] = (
     ("xml", "XML"),
@@ -2668,6 +2928,10 @@ REPORT_DESIGNER_FIELDS: tuple[ReportDesignerFieldSpec, ...] = (
     ReportDesignerFieldSpec("x_odoo_report_design", "x_layout_json", "Layout normalizado", "text"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_expression_json", "Indice de logica", "text"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_data_schema_json", "Datos de prueba", "text"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_active_sample_count", "Datos activos", "integer"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_preview_sample_name", "Muestra en preview", "char"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_data_recomputed_at", "Datos recalculados", "datetime"),
+    ReportDesignerFieldSpec("x_odoo_report_design", "x_data_recompute_error", "Error al recalcular datos", "text"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_preview_html", "Preview", "html"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_source_jrxml", "JRXML original", "text"),
     ReportDesignerFieldSpec("x_odoo_report_design", "x_notes", "Notas", "text"),
@@ -2733,6 +2997,8 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
                 <field name="x_element_count" optional="show"/>
                 <field name="x_dataset_count" optional="show"/>
                 <field name="x_expression_count" optional="show"/>
+                <field name="x_active_sample_count" optional="show"/>
+                <field name="x_preview_sample_name" optional="hide"/>
                 <field name="x_active" optional="show"/>
             </list>
             """
@@ -2773,6 +3039,8 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
                                     <field name="x_element_count"/>
                                     <field name="x_dataset_count"/>
                                     <field name="x_expression_count"/>
+                                    <field name="x_active_sample_count" readonly="1"/>
+                                    <field name="x_preview_sample_name" readonly="1"/>
                                 </group>
                             </group>
                         </page>
@@ -2783,6 +3051,12 @@ REPORT_DESIGNER_VIEW_BLUEPRINTS: tuple[ReportDesignerViewBlueprint, ...] = (
                             <field name="x_expression_json" nolabel="1"/>
                         </page>
                         <page string="Datos de prueba">
+                            <group>
+                                <field name="x_active_sample_count" readonly="1"/>
+                                <field name="x_preview_sample_name" readonly="1"/>
+                                <field name="x_data_recomputed_at" readonly="1"/>
+                                <field name="x_data_recompute_error" readonly="1"/>
+                            </group>
                             <field name="x_data_schema_json" nolabel="1" groups="base.group_no_one"/>
                             <field name="x_sample_ids" nolabel="1" mode="list,form" context="{'default_x_design_id': id}">
                                 <list string="Datos de prueba" create="1" delete="1">
@@ -2854,12 +3128,17 @@ __all__ = [
     "ReportDesignerModelSpec",
     "ReportDesignerViewBlueprint",
     "build_design_record_values",
+    "build_design_runtime_values_from_samples",
+    "build_design_sample_create_commands",
+    "build_design_sample_data_payload",
     "build_design_sample_record_values",
     "build_preview_html",
     "dumps_canonical_json",
     "evaluate_jrxml_python_expression",
     "flatten_xml_sample",
     "flatten_xml_sample_file",
+    "normalize_design_sample_records",
+    "normalize_design_sample_upload_values",
     "parse_jrxml_document",
     "parse_jrxml_file",
     "summarize_design_blueprint",

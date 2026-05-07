@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -257,20 +258,91 @@ class ReportTemplateDesignerPreviewTest(unittest.TestCase):
         sample_path.write_text(sample_xml, encoding="utf-8")
         try:
             records = designer.build_design_sample_record_values(jrxml_path, sample_xml_paths=(sample_path,))
+            commands = designer.build_design_sample_create_commands(jrxml_path, sample_xml_paths=(sample_path,))
+            parent_values = designer.build_design_record_values(jrxml_path, sample_xml_paths=(sample_path,))
         finally:
             sample_path.unlink(missing_ok=True)
             jrxml_path.unlink(missing_ok=True)
 
         self.assertEqual(["original_xml", "translated"], [record["x_kind"] for record in records])
+        self.assertTrue(all(record["x_active"] is True for record in records))
         self.assertEqual("xml", records[0]["x_source_format"])
         self.assertEqual("json", records[1]["x_source_format"])
         self.assertIn("<Comprobante", records[0]["x_content"])
         self.assertIn('"field_values"', records[1]["x_content"])
         self.assertIn("3D696462-B13B-49BA-81ED-1F34FE4C60A0", records[1]["x_content"])
+        self.assertEqual((5, 0, 0), commands[0])
+        self.assertEqual((0, 0), commands[1][:2])
+        self.assertEqual("original_xml", commands[1][2]["x_kind"])
+        self.assertEqual(2, parent_values["x_active_sample_count"])
+        self.assertEqual("_sample_cfdi.xml", parent_values["x_preview_sample_name"])
+        payload = json.loads(parent_values["x_data_schema_json"])
+        self.assertEqual(2, payload["active_sample_count"])
+        self.assertIn("field_values", payload)
         self.assertFalse(
             hasattr(designer, "build_test_data_html"),
             "test data must stay in native child records; hidden HTML indexes are not supported",
         )
+
+    def test_uploaded_test_data_can_recompute_preview_runtime_values(self):
+        sample_xml = """
+        <Comprobante Total="0.00" Moneda="EUR">
+            <Complemento><TimbreFiscalDigital UUID="XML-UUID"/></Complemento>
+        </Comprobante>
+        """
+        blueprint = designer.parse_jrxml_document(
+            """
+            <jasperReport name="sample" pageWidth="200" pageHeight="120" columnWidth="200">
+                <field name="UUID" class="java.lang.String"><fieldDescription>TimbreFiscalDigital/@UUID</fieldDescription></field>
+                <detail><band height="20">
+                    <textField><reportElement x="0" y="0" width="100" height="20"/><textFieldExpression>$F{UUID}</textFieldExpression></textField>
+                </band></detail>
+            </jasperReport>
+            """,
+            source_name="sample.jrxml",
+        )
+        xml_upload = designer.normalize_design_sample_upload_values(
+            "uploaded.xml",
+            content_bytes=sample_xml.encode("utf-8"),
+            mimetype="application/xml",
+            active=False,
+        )
+        json_upload = designer.normalize_design_sample_upload_values(
+            "uploaded.translated.json",
+            content_text=json.dumps({"field_values": {"UUID": "JSON-UUID"}}),
+            mimetype="application/json",
+            sequence=20,
+        )
+
+        self.assertEqual("xml", xml_upload["x_source_format"])
+        self.assertEqual("uploaded.xml", xml_upload["x_file_name"])
+        self.assertIn("<Comprobante", xml_upload["x_content"])
+        self.assertTrue(xml_upload["x_file"])
+
+        normalized = designer.normalize_design_sample_records([xml_upload, json_upload])
+        self.assertEqual(["uploaded.xml", "uploaded.translated.json"], [record["x_source_filename"] for record in normalized])
+        payload = designer.build_design_sample_data_payload(blueprint, normalized)
+        self.assertEqual(1, payload["active_sample_count"])
+        self.assertEqual("uploaded.translated.json", payload["preview_sample_name"])
+        self.assertEqual("JSON-UUID", payload["field_values"]["UUID"])
+        runtime = designer.build_design_runtime_values_from_samples(blueprint, normalized)
+        self.assertEqual(1, runtime["x_active_sample_count"])
+        self.assertIn("JSON-UUID", runtime["x_preview_html"])
+
+    def test_designer_view_exposes_native_upload_and_lifecycle_fields(self):
+        field_names = {(field.model, field.name) for field in designer.REPORT_DESIGNER_FIELDS}
+        self.assertIn(("x_odoo_report_design", "x_active_sample_count"), field_names)
+        self.assertIn(("x_odoo_report_design", "x_preview_sample_name"), field_names)
+        self.assertIn(("x_odoo_report_design", "x_data_recomputed_at"), field_names)
+        self.assertIn(("x_odoo_report_design", "x_data_recompute_error"), field_names)
+        self.assertIn(("x_odoo_report_design_sample", "x_file"), field_names)
+        self.assertIn(("x_odoo_report_design_sample", "x_file_name"), field_names)
+        self.assertIn(("x_odoo_report_design_sample", "x_active"), field_names)
+        form_arch = next(view.arch_db for view in designer.REPORT_DESIGNER_VIEW_BLUEPRINTS if view.view_type == "form")
+        self.assertIn('<field name="x_sample_ids" nolabel="1" mode="list,form"', form_arch)
+        self.assertIn('create="1" delete="1"', form_arch)
+        self.assertIn('<field name="x_file" filename="x_file_name"', form_arch)
+        self.assertIn('<field name="x_active"', form_arch)
 
     def test_jrxml_expressions_translate_to_a_safe_python_subset(self):
         ternary = designer.translate_jrxml_expression_to_python('$F{NumPosicion}!=null?$F{NumPosicion}:"-"')

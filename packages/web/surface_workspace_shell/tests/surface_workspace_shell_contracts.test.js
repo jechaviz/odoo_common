@@ -23,6 +23,7 @@ const expectedPublishOrder = [
   "route.js",
   "workspace.js",
   "state.js",
+  "list_workspace.js",
   "rows.js",
   "data.js",
   "filters.js",
@@ -153,6 +154,12 @@ const premiumPrimitiveExports = {
     "saveTimedSessionPayload",
     "readTimedSessionPayload",
     "captureInitialQueryState",
+  ],
+  "list_workspace.js": [
+    "buildActionBackedListWorkspace",
+    "registerActionBackedListWorkspace",
+    "buildCanonicalToolbarInteractionHandler",
+    "buildTabbedMonthWorkspaceChrome",
   ],
   "table.js": [
     "ensureManagedActionColumn",
@@ -361,6 +368,7 @@ for (const [fileName, expectedExports] of Object.entries(premiumPrimitiveExports
 const workspaceSurfaceExports = extractObjectAssignExports("workspace.js", "surfaceLayers");
 const workspaceRuntimeExports = extractObjectAssignExports("workspace.js", "workspaceApi");
 const chromeSource = fs.readFileSync(path.join(sourcesRoot, "chrome.js"), "utf8");
+const listWorkspaceSource = fs.readFileSync(path.join(sourcesRoot, "list_workspace.js"), "utf8");
 const workspaceSource = fs.readFileSync(path.join(sourcesRoot, "workspace.js"), "utf8");
 const markupSource = fs.readFileSync(path.join(sourcesRoot, "markup.js"), "utf8");
 const tableSource = fs.readFileSync(path.join(sourcesRoot, "table.js"), "utf8");
@@ -414,6 +422,43 @@ for (const expectedToken of [
   assert.ok(
     chromeSource.includes(expectedToken),
     `workspace chrome must stamp declarative console regions through token ${expectedToken}`
+  );
+}
+for (const expectedToken of [
+  "function buildActionBackedListWorkspace(config)",
+  "function buildTabbedMonthWorkspaceChrome(config)",
+  "var workspaceScaffold = settings.workspaceScaffold",
+  "buildCommonPremiumWorkspaceToolbarConsoleMarkup({",
+  "buildActionBackedToolbarSelectionController({",
+  "buildTabbedMonthListStateController({",
+  "buildWorkspaceToolbarInteractionHandler({",
+  "workspaceApi.buildManagedPreviewWorkspaceHooks({",
+  "registerWorkspace(buildWorkspaceConfig())",
+  "buildActionBackedListWorkspace: buildActionBackedListWorkspace",
+  "registerActionBackedListWorkspace: registerActionBackedListWorkspace",
+  "buildTabbedMonthWorkspaceChrome: buildTabbedMonthWorkspaceChrome",
+]) {
+  assert.ok(
+    listWorkspaceSource.includes(expectedToken),
+    `common list workspace must own reusable action-backed workspace token ${expectedToken}`
+  );
+}
+for (const forbiddenToken of [
+  '"CFDI"',
+  '"Facturas"',
+  '"Catalogo"',
+  '"Configuracion"',
+  '"Diseñador"',
+  '"Fecha"',
+  '"Todo periodo"',
+  "settings.coreWorkspace",
+  "coreWorkspace",
+  "Fiax",
+  "fiax_",
+]) {
+  assert.ok(
+    !listWorkspaceSource.includes(forbiddenToken),
+    `common list workspace must stay business-neutral and not include ${forbiddenToken}`
   );
 }
 

@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const packageRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(packageRoot, "..", "..", "..");
@@ -51,6 +52,7 @@ const premiumCssHelperHooks = [
 ];
 
 const dualWorkspaceRuntimeExports = [
+  "buildSurfaceWorkspaceConsoleLayoutMarkup",
   "buildPremiumWorkspaceToolbarConsoleMarkup",
   "buildPremiumWorkspaceListConsoleMarkup",
   "buildPremiumWorkspaceToolbarConsoleController",
@@ -173,6 +175,7 @@ const premiumPrimitiveExports = {
   ],
   "workspace.js": [
     "buildSurfaceWorkspaceShellConfig",
+    "buildSurfaceWorkspaceConsoleLayoutMarkup",
     "syncWorkspaceToolbarConsole",
     "clearWorkspaceToolbarConsole",
     "buildManagedPreviewWorkspaceHooks",
@@ -243,6 +246,72 @@ function extractObjectAssignExports(fileName, targetName) {
   return exported;
 }
 
+function loadWorkspaceRuntimeForMarkupTest(source) {
+  const surfaceLayerApi = {
+    _shared: {},
+    resolveSurfaceWorkspaceOwnership() {
+      return null;
+    },
+    escapeHtml(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    },
+    parseSearchParams(value) {
+      return new URLSearchParams(String(value || ""));
+    },
+    normalizePathname(value) {
+      return String(value || "/");
+    },
+    readCurrentActionModel() {
+      return "";
+    },
+    buildSelectFilterWorkspaceConsoleMarkup(config) {
+      const settings = config && typeof config === "object" ? config : {};
+      return [
+        '<div class="o_surface_workspace_console"',
+        ` data-surface-console-region="${settings.consoleRegion || ""}"`,
+        ` data-layout="${settings.layout || ""}">`,
+        "</div>",
+      ].join("");
+    },
+    buildPremiumCommandBarMarkup(config) {
+      return `<section class="${config.className || ""}" data-region="${config.data.surfaceConsoleRegion || ""}"></section>`;
+    },
+    buildPremiumMetricStripMarkup(config) {
+      return `<section class="${config.className || ""}" data-region="${config.data.surfaceConsoleRegion || ""}"></section>`;
+    },
+    buildPremiumSmartTableMarkup(config) {
+      return `<section class="${config.className || ""}"></section>`;
+    },
+    buildPremiumValidationRailMarkup(config) {
+      return `<section class="${config.className || ""}" data-region="${config.data.surfaceConsoleRegion || ""}"></section>`;
+    },
+    buildPremiumEmptyStateMarkup(config) {
+      return `<section class="${config.className || ""}" data-region="${config.data.surfaceConsoleRegion || ""}"></section>`;
+    },
+  };
+  const sandbox = {
+    URL,
+    URLSearchParams,
+    window: {
+      location: { href: "https://example.test/odoo", pathname: "/odoo", search: "", hash: "" },
+      OdooSurfaceLayers: surfaceLayerApi,
+      setTimeout() {},
+      requestAnimationFrame(callback) {
+        if (typeof callback === "function") {
+          callback();
+        }
+      },
+    },
+  };
+  vm.runInNewContext(source, sandbox, { filename: "workspace.js" });
+  return sandbox.window.OdooSurfaceLayers;
+}
+
 function assertSameMembers(actual, expected, label) {
   assert.deepEqual(
     unique(actual).sort(),
@@ -291,6 +360,7 @@ for (const [fileName, expectedExports] of Object.entries(premiumPrimitiveExports
 
 const workspaceSurfaceExports = extractObjectAssignExports("workspace.js", "surfaceLayers");
 const workspaceRuntimeExports = extractObjectAssignExports("workspace.js", "workspaceApi");
+const chromeSource = fs.readFileSync(path.join(sourcesRoot, "chrome.js"), "utf8");
 const workspaceSource = fs.readFileSync(path.join(sourcesRoot, "workspace.js"), "utf8");
 const markupSource = fs.readFileSync(path.join(sourcesRoot, "markup.js"), "utf8");
 const tableSource = fs.readFileSync(path.join(sourcesRoot, "table.js"), "utf8");
@@ -323,11 +393,58 @@ for (const expectedToken of [
   "delete normalized.commandBar.filters",
   'normalized.toolbar.tabs = commandBar.tabs',
   'normalized.toolbar.filters = commandBar.filters',
-  "surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(toolbarConfig.toolbar)",
+  "function buildSurfaceWorkspaceConsoleLayoutMarkup(config)",
+  "function buildSurfaceWorkspaceConsoleMainMarkup(config)",
+  "function buildSurfaceWorkspaceConsoleMetricsMarkup(metrics)",
+  "o_surface_premium_metric_strip--right",
+  'consoleRegion: "main"',
+  'layout: "tabs-first"',
 ]) {
   assert.ok(
     workspaceSource.includes(expectedToken),
     `premium workspace console must route command-bar navigation through toolbar console token ${expectedToken}`
+  );
+}
+for (const expectedToken of [
+  "data-surface-console-region",
+  "o_surface_workspace_console--",
+  "regionClassToken",
+  'var region = String(settings.consoleRegion || "main").trim() || "main";',
+]) {
+  assert.ok(
+    chromeSource.includes(expectedToken),
+    `workspace chrome must stamp declarative console regions through token ${expectedToken}`
+  );
+}
+
+const workspaceRuntime = loadWorkspaceRuntimeForMarkupTest(workspaceSource);
+const consoleLayoutMarkup = workspaceRuntime.buildSurfaceWorkspaceConsoleLayoutMarkup({
+  commandBar: { title: "Facturas" },
+  toolbar: { layout: "filters-first" },
+  metrics: { metrics: [{ label: "Total", value: "$1" }] },
+  smartTable: { columns: [], rows: [] },
+  validationRail: { title: "Validacion" },
+  emptyState: { title: "Sin datos" },
+  bodyMarkup: '<aside data-region="body"></aside>',
+});
+assert.ok(
+  !consoleLayoutMarkup.includes("[object Object]"),
+  "workspace console layout must render object specs instead of leaking [object Object]"
+);
+for (const expectedToken of [
+  'data-region="command"',
+  'data-region="metrics"',
+  'data-region="validation"',
+  'data-region="empty"',
+  'data-layout="filters-first"',
+  "o_surface_premium_metric_strip--right",
+  "o_surface_workspace_console_region--table",
+  "o_surface_workspace_console_region--validation",
+  "o_surface_workspace_console_region--empty",
+]) {
+  assert.ok(
+    consoleLayoutMarkup.includes(expectedToken),
+    `workspace console layout runtime must emit ${expectedToken}`
   );
 }
 

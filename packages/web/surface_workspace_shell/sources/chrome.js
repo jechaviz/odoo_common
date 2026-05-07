@@ -777,13 +777,30 @@
   }
 
   function buildSelectFilterWorkspaceConsoleMarkup(config) {
-    var toolbarMarkup = buildSelectFilterToolbarMarkup(Object.assign({}, config && typeof config === "object" ? config : {}, {
+    var settings = config && typeof config === "object" ? config : {};
+    var toolbarMarkup = buildSelectFilterToolbarMarkup(Object.assign({}, settings, {
       className: "o_surface_workspace_console",
     }));
     if (!toolbarMarkup) {
       return "";
     }
-    return '<div class="o_surface_workspace_console">' + toolbarMarkup + "</div>";
+    var consoleClassName = String(settings.consoleClassName || "").trim();
+    var region = String(settings.consoleRegion || "main").trim() || "main";
+    var regionClassToken = region
+      .replace(/[^a-z0-9_-]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "main";
+    return (
+      '<div class="o_surface_workspace_console o_surface_workspace_console--' + escapeHtml(regionClassToken) +
+      (consoleClassName ? " " + escapeHtml(consoleClassName) : "") +
+      '"' +
+      buildEscapedDataAttributes({
+        "data-surface-console-region": region,
+      }) +
+      ">" +
+      toolbarMarkup +
+      "</div>"
+    );
   }
 
   function normalizeSurfaceBreadcrumbText(value) {

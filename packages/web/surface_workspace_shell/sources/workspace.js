@@ -855,6 +855,183 @@
     return normalized;
   }
 
+  function joinSurfaceClassNames(values) {
+    var seen = Object.create(null);
+    return (Array.isArray(values) ? values : [values]).reduce(function (tokens, value) {
+      String(value || "").split(/\s+/).forEach(function (token) {
+        var normalized = String(token || "").trim();
+        if (!normalized || seen[normalized]) {
+          return;
+        }
+        seen[normalized] = true;
+        tokens.push(normalized);
+      });
+      return tokens;
+    }, []).join(" ");
+  }
+
+  function clonePlainSurfaceConfig(value) {
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? Object.assign({}, value)
+      : {};
+  }
+
+  function withSurfaceConsoleRegion(config, region, className) {
+    var settings = clonePlainSurfaceConfig(config);
+    settings.className = joinSurfaceClassNames([settings.className, className]);
+    settings.data = Object.assign({}, settings.data && typeof settings.data === "object" ? settings.data : {}, {
+      surfaceConsoleRegion: region,
+    });
+    return settings;
+  }
+
+  function buildSurfaceWorkspaceConsoleCommandMarkup(commandBar) {
+    if (!commandBar) {
+      return "";
+    }
+    if (typeof commandBar === "string") {
+      return commandBar;
+    }
+    if (typeof surfaceLayers.buildPremiumCommandBarMarkup !== "function") {
+      return "";
+    }
+    return surfaceLayers.buildPremiumCommandBarMarkup(
+      withSurfaceConsoleRegion(
+        commandBar,
+        "command",
+        "o_surface_premium_command_bar--workspace-console"
+      )
+    );
+  }
+
+  function buildSurfaceWorkspaceConsoleMetricsMarkup(metrics) {
+    if (!metrics) {
+      return "";
+    }
+    if (typeof metrics === "string") {
+      return metrics;
+    }
+    if (typeof surfaceLayers.buildPremiumMetricStripMarkup !== "function") {
+      return "";
+    }
+    var metricConfig = Array.isArray(metrics)
+      ? { metrics: metrics }
+      : clonePlainSurfaceConfig(metrics);
+    return surfaceLayers.buildPremiumMetricStripMarkup(
+      withSurfaceConsoleRegion(
+        metricConfig,
+        "metrics",
+        "o_surface_premium_metric_strip--right"
+      )
+    );
+  }
+
+  function buildSurfaceWorkspaceConsoleMainMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    if (settings.mainMarkup != null) {
+      return String(settings.mainMarkup || "");
+    }
+    if (settings.toolbarMarkup != null) {
+      return String(settings.toolbarMarkup || "");
+    }
+    if (settings.toolbar && typeof surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup === "function") {
+      return String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(Object.assign({
+        consoleRegion: "main",
+        layout: "tabs-first",
+      }, settings.toolbar)) || "");
+    }
+    return "";
+  }
+
+  function buildSurfaceWorkspaceConsoleSmartTableMarkup(smartTable) {
+    if (!smartTable) {
+      return "";
+    }
+    if (typeof smartTable === "string") {
+      return smartTable;
+    }
+    if (typeof surfaceLayers.buildPremiumSmartTableMarkup !== "function") {
+      return "";
+    }
+    return surfaceLayers.buildPremiumSmartTableMarkup(
+      withSurfaceConsoleRegion(
+        smartTable,
+        "table",
+        "o_surface_workspace_console_region o_surface_workspace_console_region--table"
+      )
+    );
+  }
+
+  function buildSurfaceWorkspaceConsoleValidationMarkup(validationRail) {
+    if (!validationRail) {
+      return "";
+    }
+    if (typeof validationRail === "string") {
+      return validationRail;
+    }
+    if (typeof surfaceLayers.buildPremiumValidationRailMarkup !== "function") {
+      return "";
+    }
+    return surfaceLayers.buildPremiumValidationRailMarkup(
+      withSurfaceConsoleRegion(
+        validationRail,
+        "validation",
+        "o_surface_workspace_console_region o_surface_workspace_console_region--validation"
+      )
+    );
+  }
+
+  function buildSurfaceWorkspaceConsoleEmptyMarkup(emptyState) {
+    if (!emptyState) {
+      return "";
+    }
+    if (typeof emptyState === "string") {
+      return emptyState;
+    }
+    if (typeof surfaceLayers.buildPremiumEmptyStateMarkup !== "function") {
+      return "";
+    }
+    return surfaceLayers.buildPremiumEmptyStateMarkup(
+      withSurfaceConsoleRegion(
+        emptyState,
+        "empty",
+        "o_surface_workspace_console_region o_surface_workspace_console_region--empty"
+      )
+    );
+  }
+
+  function buildSurfaceWorkspaceConsoleLayoutMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var sections = [];
+    var commandMarkup = buildSurfaceWorkspaceConsoleCommandMarkup(settings.commandBar);
+    var mainMarkup = buildSurfaceWorkspaceConsoleMainMarkup(settings);
+    var metricsMarkup = buildSurfaceWorkspaceConsoleMetricsMarkup(settings.metrics);
+    var smartTableMarkup = buildSurfaceWorkspaceConsoleSmartTableMarkup(settings.smartTable);
+    var validationMarkup = buildSurfaceWorkspaceConsoleValidationMarkup(settings.validationRail);
+    var emptyMarkup = buildSurfaceWorkspaceConsoleEmptyMarkup(settings.emptyState);
+
+    if (commandMarkup) {
+      sections.push(commandMarkup);
+    }
+    if (mainMarkup) {
+      sections.push(mainMarkup);
+    }
+    if (metricsMarkup) {
+      sections.push(metricsMarkup);
+    }
+    [
+      smartTableMarkup,
+      validationMarkup,
+      emptyMarkup,
+      settings.bodyMarkup,
+    ].forEach(function (sectionMarkup) {
+      if (sectionMarkup) {
+        sections.push(String(sectionMarkup || ""));
+      }
+    });
+    return sections.filter(Boolean).join("");
+  }
+
   function buildPremiumWorkspaceToolbarConsoleMarkup(config, state, handle) {
     var settings = config && typeof config === "object" ? config : {};
     var commandBar = typeof settings.buildCommandBar === "function"
@@ -875,74 +1052,31 @@
     var toolbarConfig = normalizePremiumWorkspaceToolbarConfig(commandBar, settings.toolbar);
     commandBar = toolbarConfig.commandBar;
     var toolbarMarkup = "";
-    var sections = [];
 
     if (typeof settings.buildToolbarMarkup === "function") {
       toolbarMarkup = String(settings.buildToolbarMarkup(state, handle, workspaceApi) || "");
     } else if (settings.toolbarMarkup != null) {
       toolbarMarkup = String(settings.toolbarMarkup || "");
     } else if (toolbarConfig.toolbar && typeof surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup === "function") {
-      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(toolbarConfig.toolbar) || "");
+      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(Object.assign({
+        consoleRegion: "main",
+        layout: "tabs-first",
+      }, toolbarConfig.toolbar)) || "");
     }
 
-    if (commandBar) {
-      sections.push(
-        typeof commandBar === "string"
-          ? commandBar
-          : typeof surfaceLayers.buildPremiumCommandBarMarkup === "function"
-          ? surfaceLayers.buildPremiumCommandBarMarkup(commandBar)
-          : ""
-      );
-    }
-    if (metrics) {
-      sections.push(
-        typeof metrics === "string"
-          ? metrics
-          : typeof surfaceLayers.buildPremiumMetricStripMarkup === "function"
-          ? surfaceLayers.buildPremiumMetricStripMarkup(
-              Array.isArray(metrics)
-                ? { metrics: metrics }
-                : metrics
-            )
-          : ""
-      );
-    }
-    if (toolbarMarkup) {
-      sections.push(toolbarMarkup);
-    }
-    if (smartTable) {
-      sections.push(
-        typeof smartTable === "string"
-          ? smartTable
-          : typeof surfaceLayers.buildPremiumSmartTableMarkup === "function"
-          ? surfaceLayers.buildPremiumSmartTableMarkup(smartTable)
-          : ""
-      );
-    }
-    if (validationRail) {
-      sections.push(
-        typeof validationRail === "string"
-          ? validationRail
-          : typeof surfaceLayers.buildPremiumValidationRailMarkup === "function"
-          ? surfaceLayers.buildPremiumValidationRailMarkup(validationRail)
-          : ""
-      );
-    }
-    if (emptyState) {
-      sections.push(
-        typeof emptyState === "string"
-          ? emptyState
-          : typeof surfaceLayers.buildPremiumEmptyStateMarkup === "function"
-          ? surfaceLayers.buildPremiumEmptyStateMarkup(emptyState)
-          : ""
-      );
-    }
-    if (typeof settings.buildBodyMarkup === "function") {
-      sections.push(String(settings.buildBodyMarkup(state, handle, workspaceApi) || ""));
-    } else if (settings.bodyMarkup != null) {
-      sections.push(String(settings.bodyMarkup || ""));
-    }
-    return sections.filter(Boolean).join("");
+    return buildSurfaceWorkspaceConsoleLayoutMarkup({
+      commandBar: commandBar,
+      metrics: metrics,
+      toolbarMarkup: toolbarMarkup,
+      smartTable: smartTable,
+      validationRail: validationRail,
+      emptyState: emptyState,
+      bodyMarkup: typeof settings.buildBodyMarkup === "function"
+        ? String(settings.buildBodyMarkup(state, handle, workspaceApi) || "")
+        : settings.bodyMarkup != null
+        ? String(settings.bodyMarkup || "")
+        : "",
+    });
   }
 
   function buildPremiumWorkspaceListConsoleMarkup(config, state, handle) {
@@ -969,7 +1103,10 @@
     } else if (settings.toolbarMarkup != null) {
       toolbarMarkup = String(settings.toolbarMarkup || "");
     } else if (settings.toolbar && typeof surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup === "function") {
-      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(settings.toolbar) || "");
+      toolbarMarkup = String(surfaceLayers.buildSelectFilterWorkspaceConsoleMarkup(Object.assign({
+        consoleRegion: "main",
+        layout: "tabs-first",
+      }, settings.toolbar)) || "");
     }
 
     return buildPremiumWorkspaceToolbarConsoleMarkup({
@@ -2030,6 +2167,7 @@
     registerManagedFormEnhancer: registerManagedFormEnhancer,
     syncManagedFormEnhancers: syncManagedFormEnhancers,
     readFieldText: readFieldText,
+    buildSurfaceWorkspaceConsoleLayoutMarkup: buildSurfaceWorkspaceConsoleLayoutMarkup,
     buildPremiumWorkspaceToolbarConsoleMarkup: buildPremiumWorkspaceToolbarConsoleMarkup,
     buildPremiumWorkspaceListConsoleMarkup: buildPremiumWorkspaceListConsoleMarkup,
     buildPremiumWorkspaceToolbarConsoleController: buildPremiumWorkspaceToolbarConsoleController,
@@ -2048,6 +2186,7 @@
     buildWorkspaceBreadcrumbTrail: buildWorkspaceBreadcrumbTrail,
     buildWorkspaceActionHref: buildWorkspaceActionHref,
     buildSurfaceWorkspaceShellConfig: buildSurfaceWorkspaceShellConfig,
+    buildSurfaceWorkspaceConsoleLayoutMarkup: buildSurfaceWorkspaceConsoleLayoutMarkup,
     buildPremiumWorkspaceToolbarConsoleMarkup: buildPremiumWorkspaceToolbarConsoleMarkup,
     buildPremiumWorkspaceListConsoleMarkup: buildPremiumWorkspaceListConsoleMarkup,
     buildPremiumWorkspaceToolbarConsoleController: buildPremiumWorkspaceToolbarConsoleController,

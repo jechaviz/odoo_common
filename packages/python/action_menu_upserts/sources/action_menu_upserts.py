@@ -47,7 +47,6 @@ class ActionWindowSpec:
     target: str = "current"
     domain: str = "[]"
     context: str = "{}"
-    legacy_names: Sequence[str] = ()
     extra_values: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -57,15 +56,6 @@ class ActionWindowSpec:
         object.__setattr__(self, "target", _clean_required_text(self.target, field_name="target"))
         object.__setattr__(self, "domain", _clean_literal(self.domain, default="[]"))
         object.__setattr__(self, "context", _clean_literal(self.context, default="{}"))
-        object.__setattr__(
-            self,
-            "legacy_names",
-            tuple(
-                legacy_name
-                for legacy_name in (_clean_literal(value, default="") for value in self.legacy_names or ())
-                if legacy_name and legacy_name != self.name
-            ),
-        )
         object.__setattr__(self, "extra_values", dict(self.extra_values or {}))
 
 
@@ -150,20 +140,15 @@ def upsert_action_window(conn: ActionMenuUpsertConnection, spec: ActionWindowSpe
         "context": normalized.context,
         **dict(normalized.extra_values),
     }
-    search_names = (normalized.name, *normalized.legacy_names)
-    existing_ids: list[int] = []
-    for action_name in search_names:
-        existing_ids = conn.search(
-            "ir.actions.act_window",
-            [
-                ("name", "=", action_name),
-                ("res_model", "=", normalized.res_model),
-                ("type", "=", "ir.actions.act_window"),
-            ],
-            limit=1,
-        )
-        if existing_ids:
-            break
+    existing_ids = conn.search(
+        "ir.actions.act_window",
+        [
+            ("name", "=", normalized.name),
+            ("res_model", "=", normalized.res_model),
+            ("type", "=", "ir.actions.act_window"),
+        ],
+        limit=1,
+    )
     if existing_ids:
         action_id = _required_record_id(existing_ids[0], context=f"ir.actions.act_window {normalized.name}")
         conn.write("ir.actions.act_window", [action_id], values)

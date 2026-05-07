@@ -204,18 +204,18 @@ body.o_surface_workspace_active :where(.o_surface_premium_textarea) {
   resize: vertical;
 }
 
-body.o_surface_workspace_active:not(.o_surface_workspace_form) {
+body.o_surface_workspace_active.o_surface_workspace_list {
   --o-surface-premium-list-floor: clamp(22rem, calc(100vh - 15rem), 42rem);
 }
 
-body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_content .o_list_view {
+body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_view {
   min-height: var(--o-surface-premium-list-floor);
   min-block-size: var(--o-surface-premium-list-floor);
 }
 
-body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_content .o_list_renderer {
-  min-height: inherit;
-  min-block-size: inherit;
+body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_renderer {
+  min-height: var(--o-surface-premium-list-floor);
+  min-block-size: var(--o-surface-premium-list-floor);
 }
 
 body.o_surface_workspace_active :where(.o_surface_premium_command_bar) {
@@ -2225,6 +2225,10 @@ body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_worksp
 }
 
 @media (max-width: 900px) {
+  body.o_surface_workspace_active.o_surface_workspace_list {
+    --o-surface-premium-list-floor: clamp(16rem, calc(100dvh - 12rem), 30rem);
+  }
+
   .o_surface_workspace_console {
     align-items: flex-start;
     flex-direction: column;

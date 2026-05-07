@@ -246,6 +246,20 @@
     shared.sidebarShellPendingTriggerQueue = [];
   }
 
+  function syncSidebarShellHoverStateFromNode(node) {
+    var targetNode = node instanceof Node ? node : null;
+    var triggerNode = resolveSidebarShellHoverTrigger(targetNode);
+    var popoverNode = resolveSidebarShellMenuPopover(targetNode);
+    if (!(popoverNode instanceof HTMLElement) && triggerNode instanceof HTMLElement) {
+      popoverNode = resolveSidebarShellMenuPopover(triggerNode.parentElement);
+    }
+    shared.sidebarShellHoveredTrigger = triggerNode instanceof HTMLElement ? triggerNode : null;
+    shared.sidebarShellHoveredPopover = popoverNode instanceof HTMLElement ? popoverNode : null;
+    if (!(triggerNode instanceof HTMLElement) && !(popoverNode instanceof HTMLElement)) {
+      shared.sidebarShellPendingTriggerQueue = [];
+    }
+  }
+
   function handleSidebarShellToggleClick(event) {
     if (event) {
       event.preventDefault();
@@ -1547,9 +1561,7 @@
       var triggerNode = resolveSidebarShellHoverTrigger(event.target);
       if (triggerNode instanceof HTMLElement) {
         if (!(event.relatedTarget instanceof Node) || !triggerNode.contains(event.relatedTarget)) {
-          if (shared.sidebarShellHoveredTrigger === triggerNode) {
-            shared.sidebarShellHoveredTrigger = null;
-          }
+          syncSidebarShellHoverStateFromNode(event.relatedTarget);
           scheduleSidebarShellTriggerClose();
         }
         return;
@@ -1559,9 +1571,7 @@
         return;
       }
       if (!(event.relatedTarget instanceof Node) || !popoverNode.contains(event.relatedTarget)) {
-        if (shared.sidebarShellHoveredPopover === popoverNode) {
-          shared.sidebarShellHoveredPopover = null;
-        }
+        syncSidebarShellHoverStateFromNode(event.relatedTarget);
         scheduleSidebarShellTriggerClose();
       }
     }, true);

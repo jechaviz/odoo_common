@@ -577,6 +577,8 @@ for (const expectedToken of [
   "popover.dataset.surfaceSidebarViewportTop = String(Math.round(top));",
   "function suppressSidebarShellOwnerDuplicateItems(popoverNode, ownerLabel)",
   "function suppressSidebarShellDuplicateSiblingItems(popoverNode)",
+  "function syncSidebarShellHoverStateFromNode(node)",
+  "syncSidebarShellHoverStateFromNode(event.relatedTarget);",
   "surfaceSidebarOwnerDuplicateHidden",
   "surfaceSidebarDuplicateHidden",
   "itemNode.dataset.surfaceSidebarItemKind = \"redundant-owner\";",

@@ -8,7 +8,7 @@ Estado: no es una cola pendiente de abstraccion en `common`. Es la puerta de seg
 
 ## Regla Dura
 
-- No cargar paquetes `source-derived` en consumidores nuevos o migrados.
+- No cargar paquetes retirados en consumidores nuevos o migrados.
 - No agregar fallback en `common` para mantener wiring historico vivo.
 - No venderizar archivos fuente de proyecto si ya existe componente canonico equivalente.
 - No resolver comportamiento por labels, action ids historicos, `workspaceHint`, selectors alternos ni nombres de negocio.
@@ -18,7 +18,7 @@ Estado: no es una cola pendiente de abstraccion en `common`. Es la puerta de seg
 
 - Definir como el proyecto consumira `C:\git\odoo\common`: paquete publicado, submodulo, copia generada por pipeline o workspace editable controlado.
 - Si existe `catalog/consumer_definitions/<consumer>.json`, usar esa definicion como fuente de verdad del sync.
-- No usar imports improvisados, `sys.path` locales, copias manuales de `packages/` ni dependencias directas a rutas `source-derived`.
+- No usar imports improvisados, `sys.path` locales, copias manuales de `packages/` ni dependencias directas a rutas retiradas.
 - Capturar evidencia base antes del primer cambio: comando, prueba, screenshot o flujo manual verificable.
 - Migrar una capacidad por slice y commitear solo despues de validar el proyecto consumidor.
 - Si la precondicion no existe, cerrar como bloqueado de consumo; no crear fallback ni compatibilidad en `common`.
@@ -41,20 +41,13 @@ Salida esperada:
 - componentes canonicos candidatos por capacidad
 - campos/copy/selectors que deben vivir en adapter local
 
-## 2. Reemplazar Source-Derived Por Canonical
+## 2. Usar Solo Superficies Canonicas
 
-Usar esta tabla como corte obligatorio:
-
-| Si el consumer usa | Migrar a |
-| --- | --- |
-| `form-section-layout` | `form-layout-surface`, `form-section-headers-surface`, `form-section-visibility-surface`, `form-settings-panel-surface`, `form-chatter-toggle-surface`, `form-subtotals-surface`, `form-layout-state` |
-| `form-defaults` | `form-defaults-surface`, `form-preview-surface`, `form-header-identity-surface` |
-| `form-totals` | `form-totals-surface` |
-| `customer-defaults-web` | `commercial-policy-surface`, `form-action-bridge-surface`, `record-context-surface`, `form-preview-surface`, `partner-defaults` |
+Los consumers nuevos solo pueden declarar paquetes con `status=canonical` en el catalogo.
+Si falta una capacidad, crear una spec/superficie canonica nueva en `common`; no reintroducir artefactos retirados ni copiar codigo desde git history.
 
 Regla de aceptacion:
 
-- el diff elimina la dependencia `source-derived`
 - el adapter declara explicitamente la configuracion que antes estaba implicita
 - no aparece un fallback nuevo en `common` ni en el consumer
 
@@ -90,7 +83,7 @@ El adapter del proyecto es el unico lugar permitido para:
 
 El adapter no debe:
 
-- importar paquetes `source-derived`
+- importar paquetes retirados
 - reimplementar runtimes canonicos
 - tener rutas paralelas legacy/canonical
 - esconder sincronizacion de previews, totals o politica comercial en callbacks anonimos dificiles de auditar
@@ -114,7 +107,7 @@ Antes de considerar terminada la migracion:
 
 Rechazar o revertir si el cambio:
 
-- conserva una dependencia `source-derived`
+- conserva una dependencia retirada
 - agrega fallback a aliases historicos
 - mueve campos/copy de negocio a `common`
 - depende de labels visuales para identidad de seccion o accion
@@ -129,6 +122,6 @@ Cada migracion debe dejar:
 - paths modificados
 - componentes canonicos ensamblados
 - adapters nuevos o actualizados
-- source-derived removidos
+- paquetes retirados removidos
 - pruebas o pasos manuales ejecutados
 - riesgos residuales, si existen

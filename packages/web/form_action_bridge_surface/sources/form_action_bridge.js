@@ -179,7 +179,6 @@
       busyAttr: normalizeText(spec.busyAttr || DEFAULT_BUSY_ATTR),
       contextAttribute: normalizeText(spec.contextAttribute || DEFAULT_CONTEXT_ATTR),
       actionRequest: explicitActionRequest,
-      allowButtonNameFallback: readBooleanFlag(spec, "allowButtonNameFallback", true),
       parseButtonContext: readBooleanFlag(spec, "parseButtonContext", true),
       persistBeforeAction: readBooleanFlag(spec, "persistBeforeAction", true),
       runServerActions: readBooleanFlag(spec, "runServerActions", true),
@@ -295,14 +294,7 @@
     if (explicitActionRequest != null && explicitActionRequest !== "") {
       return explicitActionRequest;
     }
-    if (adapter.allowButtonNameFallback === false) {
-      return null;
-    }
-    if (!(button instanceof HTMLElement)) {
-      return null;
-    }
-    var actionName = normalizeText(button.getAttribute("name") || "");
-    return normalizeActionRequest(actionName);
+    return null;
   }
 
   function parseButtonContextValue(buttonContext, token) {

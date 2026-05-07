@@ -136,8 +136,8 @@ window.OdooSurfaceLayers.installCommercialPolicySurfaceBridge({
 
 Los nombres de modelo, campos, labels y hooks de UX entran por `spec`; el paquete canonico no debe codificar nombres de negocio del proyecto. La unica excepcion permitida aqui es el copy generico de politica comercial, porque justamente forma parte del contrato shared de esta superficie.
 
-## Relacion con el legado
+## Relacion Con Superficies Canonicas
 
-`commercial-policy-surface` reemplaza para integraciones nuevas al runtime derivado `customer-defaults-web`.
+`commercial-policy-surface` es la entrada canonica para politica comercial compartida.
 
 Cuando otra superficie shared necesite solo copy o note-rendering de politica comercial, debe componer estos helpers canonicos en vez de reimplementar strings o renderers locales.

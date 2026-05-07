@@ -30,7 +30,7 @@ El modulo expone:
 
 - imports ad hoc por `sys.path`
 - aliases de componentes
-- source-derived como target valido de sync
+- paquetes retirados como target valido de sync
 - fallbacks a rutas historicas
 - decisiones de negocio del consumidor
 - limpieza fuera del target declarado

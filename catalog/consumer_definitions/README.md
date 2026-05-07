@@ -12,7 +12,7 @@ Estas definiciones no reemplazan los adapters de proyecto. Solo fijan:
 
 Reglas:
 
-- no listar paquetes `source-derived`
+- no listar paquetes retirados
 - no usar rutas absolutas como targets
 - no declarar `..` en targets
 - no usar aliases de componentes

@@ -8,10 +8,10 @@ Scope:
 
 ## Inventory
 
-- Web packages: 21 total, 17 canonical, 4 source-derived.
+- Web packages: 17 total, 17 canonical.
 - Python packages: 35 total, 35 canonical.
 - Schema packages: 3 total, 3 canonical.
-- Source-derived web packages are archive/traceability records only; new assembly must use their canonical replacements.
+- Removed archive web packages live only in git history; active assembly must use canonical packages.
 
 ## Canonical Surfaces Already Extracted
 
@@ -44,9 +44,7 @@ Scope:
 - Fixed: `form-subtotals-surface` no longer hard-codes the asset field display normalization from the source runtime. Project-specific passive formatting now enters through `fieldDisplayNormalizers`.
 - Fixed: source project docs now point to the active `fiax` workspace while keeping `odoo_fiax` as the historical origin identifier.
 - Corrected: `odoo_fiax` source workspace is `C:\git\customers\yo\odoo_fiax`; the plain `fiax` workspace is not the Odoo migration source.
-- Fixed: the four source-derived web packages now declare `replacement_components` in their package manifests.
 - Fixed: catalog validation is now repeatable through `catalog/validate_catalog.ps1`.
-- Updated: source-derived guidance now states archive-only traceability and does not present those packages as fallback support or recommended assembly targets.
 - Added: `tax-upserts` canonicalizes `account.tax.group` and `account.tax` publication without country-specific fiscal canon, XML ID lookup, field detection, fallback group creation, or account-copy behavior.
 - Added: `binary-attachment-upserts` canonicalizes `ir.attachment` binary publication without orphan cleanup, `ir.asset` writes, version-field detection, or checksum-only metadata skips.
 - Added: `backend-web-assets` canonicalizes attachment-backed `ir.asset` publication, fingerprinting, token replacement, and explicit managed cleanup without direct bootstrap injection or version-field fallbacks.
@@ -68,7 +66,7 @@ Scope:
 - Added: `sequence-upserts` canonicalizes `ir.sequence` publication without business-model binding, next-number scans, project slugification, or `number_next_actual` compatibility.
 - Added: `survey-upserts` canonicalizes survey page/question/answer publication without settings introspection, dry-run branching, generated-key parsing, or stale page/question deletion.
 - Added: `odoo-runtime-primitives` canonicalizes domain literal construction, Python function source extraction, and many2one RPC value normalization without connection management, XML ID lookup, field detection, or legacy action-server compatibility.
-- Added: `common-component-sync` canonicalizes consumer sync manifests, catalog resolution, dependency-ordered file bindings, web publish-order checks, target-collision detection, and safe generated-copy pruning without component aliases, source-derived targets, path hacks, or manual copy policy.
+- Added: `common-component-sync` canonicalizes consumer sync manifests, catalog resolution, dependency-ordered file bindings, web publish-order checks, target-collision detection, and safe generated-copy pruning without component aliases, retired package targets, path hacks, or manual copy policy.
 - Added: `view-fragment-assembly` canonicalizes strict XML view fragment registries, arch assembly, explicit substitutions, and view blueprint serialization without business fragments, folder fallbacks, approximate matching, or view upsert side effects.
 - Added: `navigation-blueprints` canonicalizes keyed window-action/menu blueprint construction and duplicate-key checks without business menu trees, ID resolution, upserts, aliases, or fallback name matching.
 - Added: `backend-web-assets` now derives `BackendWebAssetSpec` rows from common sync bindings, preserving dependency and publish order while requiring explicit target-prefix stripping instead of route/path inference.
@@ -93,19 +91,18 @@ Scope:
 - Rejected: `settings_admin.py`, `custom_field_runtime.py`, and `custom_field_cleanup.py` because they contain cross-version method probing, partial error continuation, or legacy deletion behavior.
 - Rejected: remaining server-action templates for portal preview, asset selector, and sale-order charge rules because their safe-eval bodies contain business policy, defensive try/except fallbacks, and field/model probing. If needed later, rewrite them from strict specs using `text-templates` plus `automation_upserts`.
 
-## Remaining Source-Derived Archive Traces
+## Retired Archive Traces
 
-- `form-section-layout`: archive trace for the original section-layout extraction only. New consumers should assemble `form-layout-surface`, section sibling surfaces, `form-subtotals-surface`, and `form-layout-state`.
-- `form-defaults`: archive trace for the Rental extraction only. New consumers should assemble `form-defaults-surface`, `form-preview-surface`, and `form-header-identity-surface`.
-- `form-totals`: archive trace for the Rental totals extraction only. New consumers should assemble `form-totals-surface`.
-- `customer-defaults-web`: archive trace for the Rental customer policy extraction only. New consumers should assemble `commercial-policy-surface`, `form-action-bridge-surface`, `record-context-surface`, `form-preview-surface`, and `partner-defaults`.
+- The previous monolithic web extractions were removed from `packages/web` and the component catalog.
+- New consumers must assemble the canonical surface families directly.
+- Historical extraction notes stay in git history, not in active package inventory.
 
 ## Estado De Cierre
 
 - La extraccion de paquetes comunes desde las familias auditadas queda cerrada para esta pasada.
 - Las familias reutilizables restantes ya tienen paquetes canonicos o fueron rechazadas para `common` porque codifican politica de negocio del proyecto, fixtures de importacion, orquestacion de pruebas live, limpieza/reconciliacion destructiva o comportamiento de compatibilidad.
 - La pasada correctiva sobre `C:\git\customers\yo\odoo_fiax` promovio las capas neutrales adicionales: specs de backend assets desde sync bindings, resolvers exactos de registry, templates QWeb por key, y upsert generico por dominio exacto.
-- Cualquier trabajo posterior sobre consumidores debe pasar por `CONSUMER_MIGRATION_CHECKLIST.md`; no debe abrir mas fallbacks comunes ni ensamblajes source-derived.
+- Cualquier trabajo posterior sobre consumidores debe pasar por `CONSUMER_MIGRATION_CHECKLIST.md`; no debe abrir mas fallbacks comunes ni ensamblajes retirados.
 - Migrar consumidores requiere una politica explicita de import/distribucion para `C:\git\odoo\common` y evidencia base de paridad por proyecto antes de cambiar repos fuente.
 
 ## Intencionalmente Local Al Proyecto
@@ -123,8 +120,7 @@ Scope:
 
 - Canonical examples still use concrete Odoo model and field names in docs/examples. That is acceptable as sample material, but runtime code should stay business-neutral.
 - `partner-defaults` includes default sale/invoice model names by configuration. That remains reusable while the caller can override names, but it should be watched if another project needs a fully model-agnostic preset layer.
-- Source-derived artifacts still contain business fields and Rental paths by design. They are archive inputs only and should not be used as assembly targets for new projects.
-- The catalog schema has no dedicated `archive_only` flag. The policy remains documented through `status: source-derived`, `replacement_components`, this audit, and the assembly guide to avoid validator or downstream schema risk.
+- Retired artifacts are no longer kept as active packages; use git history for provenance if an old extraction must be inspected.
 
 ## Consumer Migration Gate
 
@@ -135,5 +131,5 @@ Puerta requerida antes de cambiar consumidores:
 - elegir una estrategia de paquete/import para `common` en vez de hacks `sys.path` o copias fuente
 - capturar evidencia del comportamiento actual del consumidor objetivo
 - reemplazar una capacidad por slice con un adapter delgado del proyecto
-- rechazar cualquier cambio que agregue aliases, compatibilidad legacy, fallbacks de version o dependencias runtime source-derived
+- rechazar cualquier cambio que agregue aliases, compatibilidad legacy, fallbacks de version o dependencias runtime retiradas
 - ejecutar la validacion propia del proyecto consumidor antes de commitear

@@ -1,8 +1,0 @@
-{
-  "modules": [
-    "sections.css",
-    "settings_panel.css",
-    "subtotals.css",
-    "chatter.css"
-  ]
-}

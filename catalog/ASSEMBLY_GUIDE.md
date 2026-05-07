@@ -1,12 +1,12 @@
 # Assembly Guide
 
-Para migrar consumidores existentes, usar `catalog/CONSUMER_MIGRATION_CHECKLIST.md` junto con esta guia. La checklist convierte las auditorias por proyecto en inventario, reemplazo `source-derived`, contrato de adapters y evidencia minima de cierre.
+Para migrar consumidores existentes, usar `catalog/CONSUMER_MIGRATION_CHECKLIST.md` junto con esta guia. La checklist convierte las auditorias por proyecto en inventario, contrato de adapters canonicos y evidencia minima de cierre.
 
 ## Regla base
 
 No ensamblar por proyecto fuente. Ensamblar por capacidad canónica.
 
-Los perfiles recomendados ensamblan solo componentes canonicos. Las piezas `source-derived` existen como archivo de trazabilidad de origen; no son soporte legacy, fallback operativo ni ruta recomendada para proyectos nuevos. Si una capacidad aparece en una pieza `source-derived`, ensamblar sus `replacement_components` canonicos.
+Los perfiles recomendados ensamblan solo componentes canonicos. Las extracciones anteriores no son paquetes activos; si una capacidad falta, debe expresarse como superficie canonica nueva.
 
 ## Capas canónicas
 
@@ -61,7 +61,7 @@ Los perfiles recomendados ensamblan solo componentes canonicos. Las piezas `sour
    - usar cuando el browser debe sincronizar politica comercial, assignment ids o hydration de previews
    - tambien es la fuente canonica de copy y nota compartida para superficies comerciales de captura
    - si esa superficie necesita disparar acciones server-side, ensamblar tambien `form-action-bridge-surface`
-   - es la base canonica para nuevas integraciones; no volver a usar `customer-defaults-web`
+   - es la base canonica para nuevas integraciones comerciales
 
 12. `form-layout-surface`
    - usar cuando el formulario necesita runtime base de layout, coleccion de items, persistencia de orden y alcance compartido
@@ -80,14 +80,14 @@ Los perfiles recomendados ensamblan solo componentes canonicos. Las piezas `sour
     - usar cuando el formulario necesita colapsar/expandir chatter sin acoplar ese comportamiento al layout shell
 
 17. `form-subtotals-surface`
-    - usar cuando el formulario necesita editor/layout de subtotales desacoplado del monolito source-derived `form-section-layout`
+    - usar cuando el formulario necesita editor/layout de subtotales desacoplado y declarativo
     - el consumo canonico debe entrar por `buildFormSubtotalsSurfaceAdapter(spec)` cuando el proyecto necesite orchestration reusable y no solo acceso directo al runtime interno del layout
     - si se consume el adapter canonico, debe cargarse tambien `surface-workspace-shell` porque la API shared vive en `window.OdooSurfaceLayers`
 
 18. `form-totals-surface`
     - usar cuando el formulario necesita normalizar `tax_totals`, derivar filas visibles de impuestos y sincronizar un bloque DOM de totales
     - el consumo canonico debe entrar por `buildFormTotalsSurfaceAdapter(spec)` cuando el proyecto necesite un controller reusable y no solo un renderer con `root` ya resuelto
-    - es la superficie canonica para breakdown fiscal; no volver a ensamblar `form-totals`
+    - es la superficie canonica para breakdown fiscal
 
 19. `form-layout-state`
     - usar cuando el proyecto necesita sembrar o persistir desde servidor el estado compartido de layout
@@ -191,16 +191,17 @@ Usar esta combinacion cuando el formulario no necesita todo el shell de captura,
 - `commercial-policy-surface` si el payload resuelto tambien afecta previews o condiciones vivas del browser
 - `form-action-bridge-surface` si el flujo tambien necesita despachar acciones server-side desde el formulario
 
-## Trazas source-derived
+## Piezas retiradas
 
-Estas piezas siguen existiendo solo como archivo de origen y trazabilidad de extraccion. No son soporte legacy, fallback operativo ni camino preferente de nuevas integraciones:
+Las extracciones monoliticas anteriores ya no viven en el catalogo ni en `packages/web`.
+Si una integracion necesita esas capacidades, debe ensamblar las superficies canonicas actuales:
 
-- `form-section-layout` -> `form-layout-surface`, `form-section-headers-surface`, `form-section-visibility-surface`, `form-settings-panel-surface`, `form-chatter-toggle-surface`, `form-subtotals-surface`, `form-layout-state`
-- `form-defaults` -> `form-defaults-surface`, `form-preview-surface`, `form-header-identity-surface`
-- `form-totals` -> `form-totals-surface`
-- `customer-defaults-web` -> `commercial-policy-surface`, `form-action-bridge-surface`, `record-context-surface`, `form-preview-surface`, `partner-defaults`
+- layout adaptable: `form-layout-surface`, `form-section-headers-surface`, `form-section-visibility-surface`, `form-settings-panel-surface`, `form-chatter-toggle-surface`, `form-subtotals-surface`, `form-layout-state`
+- defaults y preview de formulario: `form-defaults-surface`, `form-preview-surface`, `form-header-identity-surface`
+- totales fiscales: `form-totals-surface`
+- politica comercial de cliente: `commercial-policy-surface`, `form-action-bridge-surface`, `record-context-surface`, `form-preview-surface`, `partner-defaults`
 
-Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las superficies canonicas nuevas y no cargar, venderizar ni depender de la pieza source-derived. En particular, `form-totals` queda reemplazado por `form-totals-surface`.
+Regla: no cargar, venderizar ni depender de artefactos retirados; cualquier capacidad faltante se expresa como spec canonica nueva.
 
 ## Regla de adaptadores
 
@@ -220,5 +221,5 @@ Regla: si una integracion nueva necesita esas capacidades, debe ensamblar las su
 - para `form-totals-surface`, los adapters deben declarar `selector` o `resolveRoot`, `rowSelector`, `fallbackSelector` y cualquier formatter monetario o hook de visibilidad explicitamente; no debe revivirse el wiring inline de `form_totals.js`
 - para `form-header-identity-surface`, los adapters deben declarar `fieldMap`, `displayRefBuilder`, `documentSeriesNormalizer`, `breadcrumbRoot`, `titleSync` y cualquier hook opcional de persistencia de forma explicita; no debe revivirse la heuristica Rental del header ni wiring por labels del breadcrumb
 - para `form-action-bridge-surface`, los adapters deben declarar `actionId`, `payloadBuilder`, `contextBuilder`, `successHandler` y cualquier gating o confirmacion de forma explicita; no debe esconderse dentro de `commercial-policy-surface` ni revivir puentes implicitos por nombre de boton o callback historico
-- para `form-layout-surface` y sus paquetes hermanos, el host debe declarar access rules, persistence, settings metadata y editores por contratos explicitos; no debe reconstruirse el monolito de `form_section_layout`
+- para `form-layout-surface` y sus paquetes hermanos, el host debe declarar access rules, persistence, settings metadata y editores por contratos explicitos
 - los modos de route presentation (`query`, `hash`, `path-tail`) permanecen solo porque son parte del contrato publico canonico del shell; no deben reinterpretarse como compatibilidad con rutas historicas del proyecto

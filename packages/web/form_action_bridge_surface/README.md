@@ -76,7 +76,6 @@ La persistencia intenta, en este orden:
 
 - `actionRequest`
 - `actionId`
-- `allowButtonNameFallback`
 - `resolveActionRequest(button, runtimeContext, meta, adapter)`
 - `runServerActions`
 - `contextAttribute`
@@ -86,7 +85,6 @@ La persistencia intenta, en este orden:
 Orden canonico:
 - `resolveActionRequest(...)` si existe
 - `actionRequest`/`actionId` declarativo
-- `button.getAttribute("name")` solo si `allowButtonNameFallback !== false`
 
 Si la accion es numerica y `runServerActions !== false`, el runtime ejecuta:
 
@@ -110,7 +108,6 @@ window.OdooSurfaceLayers.buildFormActionBridgeConfig({
   bridgeKey: "server-action-bridge",
   buttonSelector: ".o_form_view button[type='action']",
   actionId: 123,
-  allowButtonNameFallback: false,
   persistBeforeAction: true,
   resolveAdditionalContext: function (_button, _runtimeContext, meta) {
     return {

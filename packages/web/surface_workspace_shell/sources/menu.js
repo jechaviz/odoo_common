@@ -65,7 +65,7 @@
       var targetApp = list.find(function (app) {
         return appMatchesConfig(app, config);
       }) || null;
-      return Number(targetApp && targetApp.id || targetApp && targetApp.appID || 0) || 0;
+      return Number(targetApp && targetApp.id || 0) || 0;
     } catch (_error) {
       return 0;
     }

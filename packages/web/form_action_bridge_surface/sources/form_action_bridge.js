@@ -205,7 +205,7 @@
     }
     return findVisibleForm({
       formSelector: adapter.formSelector,
-      allowFallback: true,
+      allowFallback: false,
     });
   }
 
@@ -396,8 +396,7 @@
         return candidate;
       }
     }
-    var fallbackCandidate = querySelectorElement(document.documentElement, adapter.saveButtonSelector);
-    return isButtonVisible(fallbackCandidate) ? fallbackCandidate : null;
+    return null;
   }
 
   function waitForRecordMaterialization(button, runtimeContext, previousRecordId, timeoutMs) {

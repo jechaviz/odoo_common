@@ -1701,7 +1701,7 @@
     }
     var anyVisibleFormRoot = strictFormRoot instanceof HTMLElement
       ? strictFormRoot
-      : findVisibleForm({}, { allowFallback: true });
+      : findVisibleFormWithoutMarker(config, { allowFallback: false });
     var hasVisibleMismatchedForm = !!(
       actionScoped &&
       hasFormOwnershipHints(config) &&
@@ -1714,7 +1714,7 @@
       ? null
       : hasActionModelMismatchedForm
       ? null
-      : findVisibleForm(config, { allowFallback: actionScoped });
+      : null;
     var visibleListTable = findVisibleListTable();
     var strictListTable = !hasCurrentActionIdMismatch && visibleListTable instanceof HTMLElement && hasListOwnershipHints(config) && matchesListFieldHints(visibleListTable, config)
       ? visibleListTable

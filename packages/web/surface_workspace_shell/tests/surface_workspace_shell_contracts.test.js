@@ -539,6 +539,7 @@ const listWorkspaceSource = fs.readFileSync(path.join(sourcesRoot, "list_workspa
 const routeSource = fs.readFileSync(path.join(sourcesRoot, "route.js"), "utf8");
 const sidebarSource = fs.readFileSync(path.join(sourcesRoot, "sidebar_shell.js"), "utf8");
 const workspaceSource = fs.readFileSync(path.join(sourcesRoot, "workspace.js"), "utf8");
+const menuSource = fs.readFileSync(path.join(sourcesRoot, "menu.js"), "utf8");
 const markupSource = fs.readFileSync(path.join(sourcesRoot, "markup.js"), "utf8");
 const tableSource = fs.readFileSync(path.join(sourcesRoot, "table.js"), "utf8");
 for (const exportName of dualWorkspaceRuntimeExports) {
@@ -594,10 +595,23 @@ for (const expectedToken of [
   "routeOwnership.configuredActionIds.length",
   "!hasCurrentActionIdMismatch &&",
   "!hasCurrentActionIdMismatch && visibleListTable instanceof HTMLElement",
+  "findVisibleFormWithoutMarker(config, { allowFallback: false })",
+  "var formRoot = strictFormRoot instanceof HTMLElement",
+  ": null;",
 ]) {
   assert.ok(
     workspaceSource.includes(expectedToken),
     `workspace ownership must not activate shared surfaces over mismatched native actions through token ${expectedToken}`
+  );
+}
+for (const forbiddenToken of [
+  "targetApp.appID",
+  "findVisibleForm({}, { allowFallback: true })",
+  "findVisibleForm(config, { allowFallback: actionScoped })",
+]) {
+  assert.ok(
+    !workspaceSource.includes(forbiddenToken) && !menuSource.includes(forbiddenToken),
+    `surface workspace shell must not keep legacy ownership fallback token ${forbiddenToken}`
   );
 }
 for (const expectedToken of [

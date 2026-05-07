@@ -383,6 +383,10 @@ for (const expectedToken of [
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_toolbar__console > .o_surface_premium_command_bar",
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_toolbar__console > .o_surface_premium_metric_strip",
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_console__tab",
+  'grid-template-areas:',
+  '"main metrics"',
+  "grid-area: metrics",
+  "grid-area: main",
 ]) {
   assert.ok(
     surfaceLayerStyles.includes(expectedToken),

@@ -499,6 +499,12 @@ for (const selector of premiumCssHelperHooks) {
 for (const expectedToken of [
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_toolbar__console > .o_surface_premium_command_bar",
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_toolbar__console > .o_surface_premium_metric_strip",
+  "--o-surface-premium-list-floor",
+  "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_content .o_list_view",
+  "min-height: var(--o-surface-premium-list-floor)",
+  "min-block-size: var(--o-surface-premium-list-floor)",
+  "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_content .o_list_renderer",
+  "min-block-size: inherit",
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_console__tab",
   'grid-template-areas:',
   '"main metrics"',

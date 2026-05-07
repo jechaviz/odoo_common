@@ -258,7 +258,7 @@
     }
     return findVisibleForm({
       formSelector: adapter.formSelector,
-      allowFallback: true,
+      allowFallback: false,
     });
   }
 

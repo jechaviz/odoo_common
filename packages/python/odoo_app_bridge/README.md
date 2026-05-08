@@ -20,6 +20,7 @@ It absorbs the useful parts of `C:\git\odoo\odoo_bridge` and updates the archite
 - `client_assets.py`: public HTML/CSS and browser ESM client.
 - `lint.py`: security and ergonomics lint before generation.
 - `module_builder.py`: layered addon writer and zip packager.
+- `pocketbase_compat.py`: PocketBase export/SQLite loader, OdooBase contract translator and JS SDK shim.
 
 Generated modules keep SoC from the first file:
 
@@ -50,6 +51,9 @@ Already generated:
 - CORS allowlist, payload limits, security headers, API keys and dependency-free rate limiting
 - admin operation catalog for health, auth, queries, commands and events
 - static browser SDK, simulator, OpenAPI, AsyncAPI and contract snapshots
+- PocketBase collection export to OdooBase query/command contracts
+- PocketBase-style JS client shim for `pb.collection(...).getList/create/update/delete` and authStore
+- one-line PocketBase project/export to importable Odoo addon zip
 
 Release gate:
 
@@ -62,12 +66,13 @@ Mapped next:
 
 - MFA, invitations, password reset and email verification
 - provider-specific OAuth profile normalizers
-- collection-like resource specs, row rules, files, webhooks and realtime adapters
+- richer row-rule semantics, files, webhooks and realtime adapters
 - migrations, upgrade plans and real-Odoo install tests
 
 Use `build_odoobase_blueprint(spec)` to inspect what is generated now and what the next-generation surface should add.
 See `docs/WORLD_CLASS_APP_ROADMAP.md` for the broader product roadmap.
 See `docs/RELEASE_GATE_RUNBOOK.md` for production promotion evidence and smoke checks.
+See `docs/POCKETBASE_COMPATIBILITY.md` for the local PocketBase -> OdooBase workflow, compatibility matrix, limits and official source links.
 
 ## Minimal Usage
 
@@ -108,3 +113,23 @@ write_app_bridge_module_zip(Path("dist"), spec)
 ```
 
 The generated addon can be copied or zipped into an Odoo addons path. Its public app is available at `/apps/acme` and it does not require the `website` module.
+
+## PocketBase Compatibility
+
+```python
+from odoo_app_bridge import write_pocketbase_compat_module_zip
+
+write_pocketbase_compat_module_zip(
+    "dist",
+    r"C:\path\to\pocketbase_project",  # pb_schema.json, collections JSON, or pb_data/data.db
+    app={
+        "name": "Pocket Tasks",
+        "slug": "pocket-tasks",
+        "module": "x_pocket_tasks",
+        "summary": "PocketBase-compatible task app.",
+    },
+    overwrite=True,
+)
+```
+
+This generates the normal base-only OdooBase addon plus `static/src/js/pocketbase_compat.js` and `static/src/json/pocketbase_collections.json`, so local PocketBase prototypes can move toward Odoo with a small client swap.

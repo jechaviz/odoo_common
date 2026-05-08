@@ -41,8 +41,22 @@ Odoo App Bridge already emits these OdooBase pieces:
 - `services/bridge_runtime.py`: OAuth2 providers/start/callback/link/unlink.
 - `models/bridge_operation.py`: backend catalog of app endpoints.
 - `static/src/js/bridge_client.js`: browser SDK and simulator.
+- `sources/pocketbase_compat.py`: PocketBase export/SQLite loader and OdooBase contract translator.
+- `static/src/js/pocketbase_compat.js`: generated PocketBase-style browser shim when compatibility extras are requested.
+- `static/src/json/pocketbase_collections.json`: preserved PocketBase collection metadata and route map.
 
 This gives an app a separate door into Odoo: the Odoo admin remains `res.users`, while the mounted app can authenticate its own users without requiring the website or portal module.
+
+## PocketBase Compatibility Layer
+
+The compatibility layer is deliberately a translator, not a hidden second runtime:
+
+- `load_pocketbase_export()` accepts PocketBase JSON exports and `pb_data/data.db`.
+- `pocketbase_export_to_app_bridge_spec()` maps `base`, `auth` and `view` collections into OdooBase query/command contracts.
+- `build_pocketbase_compat_extra_files()` adds the generated JS shim and preserved collection metadata to a normal base-only addon.
+- `write_pocketbase_compat_module_zip()` is the one-line local PocketBase to OdooBase handoff.
+
+The generated shim supports common PocketBase JS client ergonomics: `collection(name)`, `getList`, `getFullList`, `getFirstListItem`, `getOne`, `create`, `update`, `delete`, `authWithPassword`, `authRefresh`, `listAuthMethods`, OAuth2 code callback, `authStore`, and local subscription stubs. Realtime, batch, exact file serving and JS migrations remain adapter work, because those need Odoo-specific storage, bus and upgrade semantics.
 
 ## Release Gate And Operability
 

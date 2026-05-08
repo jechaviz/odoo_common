@@ -10,6 +10,7 @@ A generated app can move from scaffold to production candidate only when:
 - the generated `static/src/json/bridge_security_report.json` has `release_ready: true`.
 - the generated addon compiles and its XML parses.
 - OpenAPI, AsyncAPI and bridge contract snapshots are archived with the zip.
+- PocketBase compatibility assets, when present, are archived with `pocketbase_collections.json`.
 - a smoke run checks `/health`, `/readiness`, `/metrics` and `/security_report`.
 
 Critical or high security findings block promotion. A score below the release threshold also blocks promotion, even if no single finding is critical.
@@ -25,6 +26,7 @@ Keep these artifacts for each promoted contract digest:
 - `bridge_security_report.json`
 - unit test report
 - generated-addon compile/XML smoke output
+- PocketBase source export or `pocketbase_collections.json` when the addon was generated from PocketBase
 - Odoo install or upgrade smoke log
 - operator approval or deployment ticket reference
 
@@ -61,6 +63,7 @@ Before release:
 - confirm CORS origins are explicit
 - confirm rate limiting is enabled
 - confirm app sessions can be revoked
+- for PocketBase-derived apps, confirm public mutation rules were intentionally translated and no unexpected anonymous command is release-blocking
 - confirm rollback uses the previous addon zip and contract digest
 
 ## CI Sketch

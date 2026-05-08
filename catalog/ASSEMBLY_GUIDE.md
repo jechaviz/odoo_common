@@ -106,7 +106,27 @@ Los perfiles recomendados ensamblan solo componentes canonicos. Las extracciones
    - usar cuando el proyecto necesita un contrato comun para payload fuente y payload resuelto de terminos/condiciones
    - no es runtime JS; es un paquete `schema`
 
+23. `odoo-module-scaffold`
+   - usar cuando el proyecto necesita crear addons nuevos desde contratos explicitos en vez de copiar modulos historicos
+   - genera capas `contracts`, `adapters`, `services`, `models`, `security`, `views` y `tests`
+   - mantiene DI/SoC como forma por defecto: los services reciben repositorios/adapters inyectados y los modelos quedan como ORM declarations
+   - no lee configuracion de proyecto, no conecta a Odoo y no borra ni migra modulos existentes
+
 ## Combinaciones recomendadas
+
+### Fabrica de modulos Odoo
+
+- `odoo-module-scaffold`
+- `feature-catalog`
+- `resource-config`
+- `workflow-config`
+- `view-fragment-assembly`
+- `navigation-blueprints`
+- `security-upserts`
+- `action-menu-upserts`
+- `view-upserts`
+
+Usar esta combinacion para que templates y repos consumidores creen addons nuevos desde specs declarativas. El scaffold produce la estructura local; los paquetes de publicacion se usan despues cuando un adapter necesita sincronizar seguridad, vistas, acciones o menus contra una instancia viva.
 
 ### Documento transaccional
 

@@ -1211,6 +1211,26 @@
     ]
   },
   {
+    "key": "odoo-module-scaffold",
+    "title": "Odoo Module Scaffold",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/module_scaffold",
+    "origins": [
+      {
+        "project": "odoo_common",
+        "path": "packages/python/module_scaffold"
+      }
+    ],
+    "features": [
+      "Odoo module contract specs",
+      "layered addon file generation",
+      "service and adapter scaffolds",
+      "model, view and security scaffolds",
+      "safe scaffold write plans"
+    ]
+  },
+  {
     "key": "terms-and-conditions",
     "title": "Terms And Conditions Schema Pattern",
     "runtime": "schema",

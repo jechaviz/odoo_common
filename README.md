@@ -29,6 +29,7 @@ Separar la capa reutilizable de la capa de negocio para poder armar otros proyec
   - runtimes JS/CSS reutilizables para cliente web de Odoo
 - `packages/python/`
   - helpers server-side y mixins reutilizables
+  - scaffolds canonicos para crear nuevos addons Odoo por contrato
 - `packages/schema/`
   - patrones de campos, herencia y configuracion que no son runtime
 - `references/projects/`
@@ -52,3 +53,4 @@ Separar la capa reutilizable de la capa de negocio para poder armar otros proyec
 2. adelgazar adapters de proyecto
 3. prohibir aliases historicos y rescates fallback innecesarios
 4. mantener manifiestos y perfiles como fuente de verdad
+5. crear nuevos modulos desde `odoo-module-scaffold` y adapters delgados, no desde copias historicas de proyectos

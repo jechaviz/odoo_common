@@ -19,6 +19,7 @@ Estado: no es una cola pendiente de abstraccion en `common`. Es la puerta de seg
 - Definir como el proyecto consumira `C:\git\odoo\common`: paquete publicado, submodulo, copia generada por pipeline o workspace editable controlado.
 - Si existe `catalog/consumer_definitions/<consumer>.json`, usar esa definicion como fuente de verdad del sync.
 - No usar imports improvisados, `sys.path` locales, copias manuales de `packages/` ni dependencias directas a rutas retiradas.
+- Para modulos nuevos, partir de `odoo-module-scaffold` y adaptar desde contracts/adapters/services; no copiar un modulo historico como plantilla base.
 - Capturar evidencia base antes del primer cambio: comando, prueba, screenshot o flujo manual verificable.
 - Migrar una capacidad por slice y commitear solo despues de validar el proyecto consumidor.
 - Si la precondicion no existe, cerrar como bloqueado de consumo; no crear fallback ni compatibilidad en `common`.

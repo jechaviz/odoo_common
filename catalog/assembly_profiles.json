@@ -516,6 +516,28 @@
     ]
   },
   {
+    "key": "odoo_module_factory",
+    "title": "Odoo Module Factory",
+    "components": [
+      "odoo-module-scaffold",
+      "feature-catalog",
+      "resource-config",
+      "workflow-config",
+      "view-fragment-assembly",
+      "navigation-blueprints",
+      "security-upserts",
+      "action-menu-upserts",
+      "view-upserts"
+    ],
+    "use_cases": [
+      "new addon creation from explicit contracts",
+      "layered module architecture",
+      "thin Odoo adapters around injected services",
+      "declarative model, view, menu and security publication",
+      "consumer templates without copied project logic"
+    ]
+  },
+  {
     "key": "terms_driven_documents",
     "title": "Terms Driven Documents",
     "components": [

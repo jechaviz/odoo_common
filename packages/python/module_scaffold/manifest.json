@@ -1,0 +1,20 @@
+{
+  "key": "odoo-module-scaffold",
+  "title": "Odoo Module Scaffold",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_common",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "module_scaffold.py"
+  ],
+  "capabilities": [
+    "odoo-module-contract-spec",
+    "layered-addon-file-generation",
+    "service-adapter-scaffold",
+    "model-view-security-scaffold",
+    "safe-scaffold-write-plan"
+  ]
+}

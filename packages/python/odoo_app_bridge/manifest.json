@@ -1,0 +1,42 @@
+{
+  "key": "odoo-app-bridge",
+  "title": "Odoo App Bridge",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_bridge",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "client_assets.py",
+    "contracts.py",
+    "documents.py",
+    "lint.py",
+    "module_builder.py",
+    "odoobase.py",
+    "security_scanner.py"
+  ],
+  "capabilities": [
+    "contract-first-base-only-apps",
+    "public-http-controller-generation",
+    "app-local-login-and-users",
+    "app-scoped-social-auth-link-models",
+    "oauth2-pkce-state-flow",
+    "contract-declared-function-routes",
+    "generated-scheduled-functions",
+    "explicit-hook-surface",
+    "owasp-first-security-scanner",
+    "auditable-security-release-gate",
+    "visual-security-center-wizard",
+    "generated-readiness-and-metrics-endpoints",
+    "ci-security-evidence-report",
+    "cors-payload-security-header-hardening",
+    "hashed-api-keys-and-rate-limits",
+    "pocketbase-inspired-odoobase-blueprint",
+    "admin-request-log-generation",
+    "openapi-asyncapi-generation",
+    "contract-security-lint",
+    "browser-client-and-simulator-generation",
+    "importable-odoo-module-zip"
+  ]
+}

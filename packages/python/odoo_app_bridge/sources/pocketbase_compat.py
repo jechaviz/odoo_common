@@ -250,9 +250,9 @@ def build_pocketbase_compat_extra_files(
     collections = tuple(PocketBaseCollectionSpec.from_mapping(item) for item in export["collections"])
     module_root = Path(spec.app.module)
     compat_payload = {
-        "collections": [item.raw or _collection_wire_mapping(item) for item in collections],
+        "collections": [_collection_asset_mapping(spec, item) for item in collections],
         "normalized": [item.to_mapping() for item in collections],
-        "compatibility": compatibility_matrix(),
+        "compatibility": _asset_compatibility(),
         "routes": _route_map(spec),
     }
     return (
@@ -282,20 +282,27 @@ def build_pocketbase_compat_js(spec: OdooAppBridgeSpec, collections: Iterable[Po
         f"export const pocketbaseCollections = {collections_json};\n"
         f"export const pocketbaseRoutes = {routes_json};\n\n"
         "class PocketBaseAuthStore {\n"
-        "  constructor() {\n"
+        "  constructor({storageKey = 'pb_auth', storage = null} = {}) {\n"
+        "    this.storageKey = storageKey;\n"
+        "    this.storage = storage || (typeof window !== 'undefined' ? window.localStorage : null);\n"
         "    this.token = '';\n"
         "    this.record = null;\n"
         "    this._listeners = new Set();\n"
+        "    this.loadFromStorage();\n"
         "  }\n\n"
         "  get isValid() { return Boolean(this.record); }\n\n"
+        "  get model() { return this.record; }\n\n"
+        "  set model(value) { this.record = value || null; }\n\n"
         "  save(token, record) {\n"
         "    this.token = token || '';\n"
         "    this.record = record || null;\n"
+        "    this._persist();\n"
         "    this._emit();\n"
         "  }\n\n"
         "  clear() {\n"
         "    this.token = '';\n"
         "    this.record = null;\n"
+        "    this._drop();\n"
         "    this._emit();\n"
         "  }\n\n"
         "  onChange(callback, fireImmediately = false) {\n"
@@ -306,7 +313,78 @@ def build_pocketbase_compat_js(spec: OdooAppBridgeSpec, collections: Iterable[Po
         "  _emit() {\n"
         "    for (const callback of this._listeners) callback(this.token, this.record);\n"
         "  }\n"
+        "\n"
+        "  loadFromStorage() {\n"
+        "    if (!this.storage) return;\n"
+        "    try {\n"
+        "      const raw = this.storage.getItem(this.storageKey);\n"
+        "      if (!raw) return;\n"
+        "      const parsed = JSON.parse(raw);\n"
+        "      this.token = parsed.token || '';\n"
+        "      this.record = parsed.record || null;\n"
+        "    } catch (_err) {\n"
+        "      this.token = '';\n"
+        "      this.record = null;\n"
+        "    }\n"
+        "  }\n"
+        "\n"
+        "  _persist() {\n"
+        "    if (!this.storage) return;\n"
+        "    try {\n"
+        "      this.storage.setItem(this.storageKey, JSON.stringify({token: this.token, record: this.record}));\n"
+        "    } catch (_err) {}\n"
+        "  }\n"
+        "\n"
+        "  _drop() {\n"
+        "    if (!this.storage) return;\n"
+        "    try { this.storage.removeItem(this.storageKey); } catch (_err) {}\n"
+        "  }\n"
+        "\n"
+        "  exportToCookie(name = this.storageKey, {maxAge = 604800, path = '/'} = {}) {\n"
+        "    if (typeof document === 'undefined') return '';\n"
+        "    const value = encodeURIComponent(JSON.stringify({token: this.token, record: this.record}));\n"
+        "    document.cookie = `${name}=${value}; Max-Age=${maxAge}; Path=${path}; SameSite=Lax`;\n"
+        "    return value;\n"
+        "  }\n"
+        "\n"
+        "  importFromCookie(name = this.storageKey) {\n"
+        "    if (typeof document === 'undefined') return false;\n"
+        "    const prefix = `${name}=`;\n"
+        "    const raw = String(document.cookie || '').split(';').map((item) => item.trim()).find((item) => item.startsWith(prefix));\n"
+        "    if (!raw) return false;\n"
+        "    try {\n"
+        "      const parsed = JSON.parse(decodeURIComponent(raw.slice(prefix.length)));\n"
+        "      this.save(parsed.token || '', parsed.record || parsed.model || null);\n"
+        "      return true;\n"
+        "    } catch (_err) {\n"
+        "      return false;\n"
+        "    }\n"
+        "  }\n"
         "}\n\n"
+        "export class LocalAuthStore extends PocketBaseAuthStore {}\n\n"
+        "function normalizeFilterValue(raw) {\n"
+        "  const text = String(raw || '').trim();\n"
+        "  if (text === 'true') return true;\n"
+        "  if (text === 'false') return false;\n"
+        "  if (text === 'null') return null;\n"
+        "  if ((text.startsWith(\"'\") && text.endsWith(\"'\")) || (text.startsWith('\"') && text.endsWith('\"'))) return text.slice(1, -1);\n"
+        "  if (/^-?\\d+(\\.\\d+)?$/.test(text)) return Number(text);\n"
+        "  return text;\n"
+        "}\n\n"
+        "function parsePocketBaseFilter(expression) {\n"
+        "  if (!expression || typeof expression !== 'string') return {};\n"
+        "  const suffixByOperator = {'=': '', '!=': '__ne', '>': '__gt', '>=': '__gte', '<': '__lt', '<=': '__lte', '~': '__like'};\n"
+        "  const filters = {};\n"
+        "  const clauses = expression.split(/\\s+(?:&&|and)\\s+/i).map((item) => item.trim()).filter(Boolean);\n"
+        "  for (const clause of clauses) {\n"
+        "    const match = clause.match(/^([A-Za-z_][A-Za-z0-9_]*)\\s*(>=|<=|!=|=|>|<|~)\\s*(.+)$/);\n"
+        "    if (!match) throw new Error(`unsupported_filter_expression:${clause}`);\n"
+        "    const [, field, operator, rawValue] = match;\n"
+        "    filters[`${field}${suffixByOperator[operator]}`] = normalizeFilterValue(rawValue);\n"
+        "  }\n"
+        "  return filters;\n"
+        "}\n\n"
+        "const pocketbaseFilterExamples = [\"status = 'todo'\", 'published = true', 'estimate >= 3', \"owner != ''\"];\n\n"
         "class PocketBaseCollectionService {\n"
         "  constructor(client, name) {\n"
         "    this.client = client;\n"
@@ -329,9 +407,15 @@ def build_pocketbase_compat_js(spec: OdooAppBridgeSpec, collections: Iterable[Po
         "    return { page: safePage, perPage: safePerPage, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / safePerPage)), items };\n"
         "  }\n\n"
         "  async getFullList(options = {}) {\n"
-        "    const batch = Number(options.batch || options.perPage || 200);\n"
-        "    const result = await this.getList(1, batch, options);\n"
-        "    return result.items;\n"
+        "    const batch = Math.max(1, Number(options.batch || options.perPage || 200));\n"
+        "    const maxPages = Math.max(1, Number(options.maxPages || 100));\n"
+        "    const items = [];\n"
+        "    for (let page = 1; page <= maxPages; page += 1) {\n"
+        "      const result = await this.getList(page, batch, options);\n"
+        "      items.push(...result.items);\n"
+        "      if (result.items.length < batch || items.length >= result.totalItems) break;\n"
+        "    }\n"
+        "    return items;\n"
         "  }\n\n"
         "  async getFirstListItem(filter, options = {}) {\n"
         "    const result = await this.getList(1, 1, {...options, filter});\n"
@@ -395,6 +479,13 @@ def build_pocketbase_compat_js(spec: OdooAppBridgeSpec, collections: Iterable[Po
         "    this.client.authStore.save(token, record);\n"
         "    return { token, record };\n"
         "  }\n\n"
+        "  async authWithOAuth2(options = {}) {\n"
+        "    const provider = options.provider || options.name;\n"
+        "    const response = await this.client.bridge.oauth2Start({provider, redirect_url: options.redirectUrl || options.redirectURL || '', createData: options.createData || {}});\n"
+        "    const data = response.data || response;\n"
+        "    if (typeof options.urlCallback === 'function') await options.urlCallback(data.authorize_url || data.url || '', data);\n"
+        "    return data;\n"
+        "  }\n\n"
         "  subscribe(topic, callback) {\n"
         "    return this.client._subscribe(`${this.name}/${topic}`, callback);\n"
         "  }\n\n"
@@ -404,6 +495,7 @@ def build_pocketbase_compat_js(spec: OdooAppBridgeSpec, collections: Iterable[Po
         "  _filters(query) {\n"
         "    if (query.filters) return query.filters;\n"
         "    if (query.filter && typeof query.filter === 'object') return query.filter;\n"
+        "    if (query.filter && typeof query.filter === 'string') return parsePocketBaseFilter(query.filter);\n"
         "    return {};\n"
         "  }\n\n"
         "  _sort(query) {\n"
@@ -413,20 +505,91 @@ def build_pocketbase_compat_js(spec: OdooAppBridgeSpec, collections: Iterable[Po
         "    return first.startsWith('-') ? {field: first.slice(1), dir: 'desc'} : {field: first, dir: 'asc'};\n"
         "  }\n"
         "}\n\n"
+        "class PocketBaseBatch {\n"
+        "  constructor(client) {\n"
+        "    this.client = client;\n"
+        "    this.operations = [];\n"
+        "  }\n\n"
+        "  collection(name) {\n"
+        "    const batch = this;\n"
+        "    return {\n"
+        "      create: (body = {}, options = {}) => batch.create(name, body, options),\n"
+        "      update: (id, body = {}, options = {}) => batch.update(name, id, body, options),\n"
+        "      delete: (id, options = {}) => batch.delete(name, id, options),\n"
+        "      upsert: (body = {}, options = {}) => batch.upsert(name, body, options),\n"
+        "    };\n"
+        "  }\n\n"
+        "  create(collection, body = {}, options = {}) {\n"
+        "    return this._add(collection, \"create\", () => this.client.collection(collection).create(body, options));\n"
+        "  }\n\n"
+        "  update(collection, id, body = {}, options = {}) {\n"
+        "    return this._add(collection, \"update\", () => this.client.collection(collection).update(id, body, options));\n"
+        "  }\n\n"
+        "  delete(collection, id, options = {}) {\n"
+        "    return this._add(collection, \"delete\", () => this.client.collection(collection).delete(id, options));\n"
+        "  }\n\n"
+        "  upsert(collection, body = {}, options = {}) {\n"
+        "    return this._add(collection, \"upsert\", () => body && body.id ? this.client.collection(collection).update(body.id, body, options) : this.client.collection(collection).create(body, options));\n"
+        "  }\n\n"
+        "  _add(collection, action, run) {\n"
+        "    const operation = {collection, action, run};\n"
+        "    this.operations.push(operation);\n"
+        "    return operation;\n"
+        "  }\n\n"
+        "  async send() {\n"
+        "    const results = [];\n"
+        "    for (const operation of this.operations) {\n"
+        "      switch (operation.action) {\n"
+        "        case \"create\":\n"
+        "        case \"update\":\n"
+        "        case \"delete\":\n"
+        "        case \"upsert\":\n"
+        "          results.push(await operation.run());\n"
+        "          break;\n"
+        "        default:\n"
+        "          throw new Error(`unknown_batch_action:${operation.action}`);\n"
+        "      }\n"
+        "    }\n"
+        "    return results;\n"
+        "  }\n"
+        "}\n\n"
         "export class PocketBaseCompat {\n"
         f"  constructor(baseUrl = {base_prefix!r}, options = {{}}) {{\n"
         "    this.baseUrl = String(baseUrl || '').replace(/[/]$/, '');\n"
         "    this.bridge = options.bridge || new OdooAppBridgeClient({basePrefix: this.baseUrl, mode: options.mode || 'network', transport: options.transport || null});\n"
-        "    this.authStore = options.authStore || new PocketBaseAuthStore();\n"
+        "    this.authStore = options.authStore || new LocalAuthStore({storageKey: options.authStoreKey || `pb_auth_${this.baseUrl}`, storage: options.authStorage || null});\n"
         "    this.collections = {\n"
         "      getFullList: async () => pocketbaseCollections,\n"
         "      import: async () => { throw new Error('collection_import_requires_regeneration'); },\n"
         "    };\n"
         "    this.health = { check: () => this.bridge.health() };\n"
-        "    this.files = { getURL: (record, filename) => filename || record?.url || '' };\n"
+        "    this.files = { getURL: (record, filename) => this.fileURL(record, filename) };\n"
         "    this._subscriptions = new Map();\n"
         "  }\n\n"
         "  collection(name) { return new PocketBaseCollectionService(this, name); }\n\n"
+        "  createBatch() {\n"
+        "    const batch = new PocketBaseBatch(this);\n"
+        "    batch.collection = batch.collection.bind(batch);\n"
+        "    batch.create = batch.create.bind(batch);\n"
+        "    batch.update = batch.update.bind(batch);\n"
+        "    batch.delete = batch.delete.bind(batch);\n"
+        "    batch.upsert = batch.upsert.bind(batch);\n"
+        "    return batch;\n"
+        "  }\n\n"
+        "  async clearAuth() { this.authStore.clear(); }\n\n"
+        "  syncAuthCookie() { return this.authStore.exportToCookie(); }\n\n"
+        "  loadAuthCookie() { return this.authStore.importFromCookie(); }\n\n"
+        "  loadAuthStore() { return this.authStore.loadFromStorage(); }\n\n"
+        "  get authToken() { return this.authStore.token; }\n\n"
+        "  get authModel() { return this.authStore.model; }\n\n"
+        "  fileURL(record, filename) {\n"
+        "    if (!filename) return record?.url || '';\n"
+        "    if (/^https?:\\/\\//i.test(filename)) return filename;\n"
+        "    const collection = record?.collectionName || record?.collectionId || record?.collection || '';\n"
+        "    const id = record?.id || '';\n"
+        "    if (!collection || !id) return filename;\n"
+        "    return `${this.baseUrl}/files/${collection}/${id}/${encodeURIComponent(filename)}`;\n"
+        "  }\n\n"
         "  createIdempotencyKey(prefix) {\n"
         "    return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;\n"
         "  }\n\n"
@@ -450,7 +613,7 @@ def build_pocketbase_compat_js(spec: OdooAppBridgeSpec, collections: Iterable[Po
         "    return Promise.resolve();\n"
         "  }\n"
         "}\n\n"
-        "export { PocketBaseCompat as PocketBase };\n"
+        "export { PocketBaseCompat as PocketBase, PocketBaseAuthStore };\n"
         "export default PocketBaseCompat;\n"
     )
 
@@ -522,6 +685,35 @@ def compatibility_matrix() -> dict[str, dict[str, str]]:
         "realtime": {"status": "adapter", "notes": "subscribe/unsubscribe are local stubs until an Odoo bus/SSE adapter is enabled."},
         "hooks": {"status": "translated", "notes": "PocketBase JS hooks are not executed; OdooBase exposes typed hooks and functions."},
         "migrations": {"status": "translated", "notes": "PocketBase collection export regenerates an Odoo module; destructive imports are avoided."},
+    }
+
+
+def _asset_compatibility() -> dict[str, Any]:
+    return {
+        "source": "pocketbase",
+        "target": "odoobase",
+        "authStore": {
+            "status": "generated",
+            "features": ["localStorage", "save", "clear", "onChange", "loadFromStorage", "exportToCookie", "importFromCookie"],
+        },
+        "filterParser": {
+            "status": "generated",
+            "operators": ["=", "!=", ">", ">=", "<", "<=", "~"],
+            "notes": "Simple conjunctions are translated to declared bridge filters.",
+        },
+        "batch": {
+            "status": "generated",
+            "mode": "sequential",
+            "operations": ["create", "update", "delete", "upsert"],
+        },
+        "files": {
+            "status": "adapter",
+            "notes": "URL builder emits OdooBase app-prefix file URLs; protected file token semantics are future adapter work.",
+        },
+        "realtime": {
+            "status": "local-stub",
+            "notes": "Callbacks are retained locally until Odoo bus/SSE transport is enabled.",
+        },
     }
 
 
@@ -688,19 +880,22 @@ def _query_fields(collection: PocketBaseCollectionSpec) -> tuple[str, ...]:
 
 def _filters_for_collection(collection: PocketBaseCollectionSpec) -> list[BridgeFilterSpec]:
     filters = [BridgeFilterSpec(name="id", field="id", operator="=", type="int", required=False)]
+    filters.extend(_operator_filters_for_field("id", "id", "int"))
     for field_spec in collection.fields:
         if field_spec.hidden or field_spec.type in {"password", "file", "json", "geoPoint"}:
             continue
+        value_type = _bridge_value_type(field_spec)
         filters.append(
             BridgeFilterSpec(
                 name=field_spec.name,
                 field=field_spec.name,
                 operator="=",
-                type=_bridge_value_type(field_spec),
+                type=value_type,
                 required=False,
                 notes=f"PocketBase {field_spec.type} filter.",
             )
         )
+        filters.extend(_operator_filters_for_field(field_spec.name, field_spec.name, value_type))
     return filters
 
 
@@ -733,6 +928,31 @@ def _bridge_value_type(field_spec: PocketBaseFieldSpec) -> ValueType:
     if field_spec.type in {"json", "geoPoint"}:
         return "json"
     return "str"
+
+
+def _operator_filters_for_field(name: str, field: str, value_type: ValueType) -> list[BridgeFilterSpec]:
+    if value_type.startswith("list[") or value_type == "json":
+        return []
+    specs = [
+        (f"{name}__ne", "!=", value_type),
+        (f"{name}__gt", ">", value_type),
+        (f"{name}__gte", ">=", value_type),
+        (f"{name}__lt", "<", value_type),
+        (f"{name}__lte", "<=", value_type),
+    ]
+    if value_type == "str":
+        specs.append((f"{name}__like", "ilike", value_type))
+    return [
+        BridgeFilterSpec(
+            name=filter_name,
+            field=field,
+            operator=operator,
+            type=filter_type,
+            required=False,
+            notes=f"PocketBase string filter operator {operator}.",
+        )
+        for filter_name, operator, filter_type in specs
+    ]
 
 
 def _simple_rule_domain(rule: str | None) -> list[tuple[str, str, Any]]:
@@ -861,6 +1081,39 @@ def _collection_wire_mapping(collection: PocketBaseCollectionSpec) -> dict[str, 
         "updateRule": collection.update_rule,
         "deleteRule": collection.delete_rule,
     }
+
+
+def _collection_asset_mapping(spec: OdooAppBridgeSpec, collection: PocketBaseCollectionSpec) -> dict[str, Any]:
+    data = _collection_wire_mapping(collection)
+    base = f"/api/app/{spec.app.slug}/collections/{collection.name}"
+    routes = {
+        "list": f"{base}/records",
+        "view": f"{base}/records/<id>",
+        "create": f"{base}/records/create",
+        "update": f"{base}/records/update",
+        "delete": f"{base}/records/delete",
+    }
+    if collection.type == "auth":
+        routes.update(
+            {
+                "authWithPassword": f"{base}/auth-with-password",
+                "authRefresh": f"{base}/auth-refresh",
+                "listAuthMethods": f"{base}/auth-methods",
+                "authWithOAuth2Code": f"{base}/auth-with-oauth2-code",
+            }
+        )
+    data["routes"] = routes
+    data["compatibility"] = {
+        "type": collection.type,
+        "rules": {
+            "list": _rule_note("PB listRule", collection.list_rule),
+            "view": _rule_note("PB viewRule", collection.view_rule),
+            "create": _rule_note("PB createRule", collection.create_rule),
+            "update": _rule_note("PB updateRule", collection.update_rule),
+            "delete": _rule_note("PB deleteRule", collection.delete_rule),
+        },
+    }
+    return data
 
 
 def _field_options(data: Mapping[str, Any]) -> dict[str, Any]:

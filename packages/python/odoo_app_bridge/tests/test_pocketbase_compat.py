@@ -104,6 +104,22 @@ def sample_pocketbase_export() -> dict[str, object]:
 
 
 class PocketBaseCompatTest(unittest.TestCase):
+    def _build_pocketbase_files(self) -> dict[str, str]:
+        spec = pocketbase_export_to_app_bridge_spec(
+            sample_pocketbase_export(),
+            app={
+                "name": "Pocket Tasks",
+                "slug": "pocket-tasks",
+                "module": "x_pocket_tasks",
+                "summary": "PocketBase-compatible task app.",
+            },
+        )
+        extra_files = build_pocketbase_compat_extra_files(sample_pocketbase_export(), spec)
+        return {
+            item.relative_path.as_posix(): item.content
+            for item in build_app_bridge_module_files(spec, extra_files=extra_files)
+        }
+
     def test_loads_pocketbase_export_with_auth_and_base_collections(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             export_path = Path(tmpdir) / "pb_schema.json"
@@ -195,6 +211,75 @@ class PocketBaseCompatTest(unittest.TestCase):
         self.assertIn("getList(page = 1, perPage = 30, query = {})", files[shim_path])
         self.assertIn("authStore", files[shim_path])
         self.assertEqual(json.loads(files[collections_path])["collections"][1]["name"], "tasks")
+
+    def test_generated_js_auth_store_persists_to_local_storage(self) -> None:
+        files = self._build_pocketbase_files()
+        js = files["x_pocket_tasks/static/src/js/pocketbase_compat.js"]
+
+        self.assertIn("localStorage", js)
+        self.assertIn("pb_auth", js)
+        self.assertIn("authStore.save", js)
+        self.assertIn("authStore.clear", js)
+        self.assertIn("authStore.loadFromStorage", js)
+        self.assertIn("authStore.exportToCookie", js)
+        self.assertIn("authStore.importFromCookie", js)
+        self.assertIn("JSON.stringify", js)
+        self.assertIn("JSON.parse", js)
+        self.assertIn("this.authStore.token", js)
+        self.assertIn("this.authStore.model", js)
+
+    def test_generated_js_parses_pocketbase_filter_strings_to_bridge_filters(self) -> None:
+        files = self._build_pocketbase_files()
+        js = files["x_pocket_tasks/static/src/js/pocketbase_compat.js"]
+
+        self.assertIn("parsePocketBaseFilter", js)
+        self.assertIn("normalizeFilterValue", js)
+        self.assertIn("filters", js)
+        self.assertIn("query.filter", js)
+        self.assertIn("status = 'todo'", js)
+        self.assertIn("published = true", js)
+        self.assertIn("estimate >= 3", js)
+        self.assertIn("owner != ''", js)
+        self.assertIn("~", js)
+        self.assertIn("!=", js)
+        self.assertIn(">=", js)
+        self.assertIn("<=", js)
+
+    def test_generated_js_create_batch_runs_sequential_create_update_delete_upsert(self) -> None:
+        files = self._build_pocketbase_files()
+        js = files["x_pocket_tasks/static/src/js/pocketbase_compat.js"]
+
+        self.assertIn("createBatch", js)
+        self.assertIn("batch.collection", js)
+        self.assertIn("batch.create", js)
+        self.assertIn("batch.update", js)
+        self.assertIn("batch.delete", js)
+        self.assertIn("batch.upsert", js)
+        self.assertIn("async send", js)
+        self.assertIn("for (const operation of", js)
+        self.assertIn("await operation", js)
+        self.assertIn("case \"create\"", js)
+        self.assertIn("case \"update\"", js)
+        self.assertIn("case \"delete\"", js)
+        self.assertIn("case \"upsert\"", js)
+
+    def test_collections_json_includes_compatibility_routes_contract(self) -> None:
+        files = self._build_pocketbase_files()
+        collections = json.loads(files["x_pocket_tasks/static/src/json/pocketbase_collections.json"])
+        tasks = next(collection for collection in collections["collections"] if collection["name"] == "tasks")
+        users = next(collection for collection in collections["collections"] if collection["name"] == "users")
+
+        self.assertIn("compatibility", collections)
+        self.assertIn("routes", collections)
+        self.assertEqual(collections["compatibility"]["source"], "pocketbase")
+        self.assertIn("authStore", collections["compatibility"])
+        self.assertIn("filterParser", collections["compatibility"])
+        self.assertIn("batch", collections["compatibility"])
+        self.assertEqual(tasks["routes"]["list"], "/api/app/pocket-tasks/collections/tasks/records")
+        self.assertEqual(tasks["routes"]["create"], "/api/app/pocket-tasks/collections/tasks/records/create")
+        self.assertEqual(tasks["routes"]["update"], "/api/app/pocket-tasks/collections/tasks/records/update")
+        self.assertEqual(tasks["routes"]["delete"], "/api/app/pocket-tasks/collections/tasks/records/delete")
+        self.assertEqual(users["routes"]["authWithPassword"], "/api/app/pocket-tasks/collections/users/auth-with-password")
 
     def test_one_line_helper_writes_importable_zip_with_pocketbase_assets(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -64,6 +64,33 @@
     return normalized ? normalized.split(/\s+/)[0] : "";
   }
 
+  function findTableCellAnchor(row, selector) {
+    var normalizedSelector = String(selector || "").trim();
+    if (!(row instanceof HTMLTableRowElement) || !normalizedSelector) {
+      return null;
+    }
+    try {
+      var anchor = row.querySelector(normalizedSelector);
+      return anchor instanceof HTMLTableCellElement ? anchor : null;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function insertTableCellBefore(parent, cell, anchor) {
+    if (!(parent instanceof HTMLTableRowElement) || !(cell instanceof HTMLTableCellElement)) {
+      return;
+    }
+    var target = anchor instanceof HTMLTableCellElement && anchor.parentNode === parent ? anchor : null;
+    if (target && target !== cell) {
+      parent.insertBefore(cell, target);
+      return;
+    }
+    if (cell.parentNode !== parent) {
+      parent.appendChild(cell);
+    }
+  }
+
   function normalizeArray(value) {
     return Array.isArray(value) ? value : [];
   }
@@ -416,11 +443,20 @@
     if (!headerClassToken || !cellClassToken) {
       return null;
     }
+    var insertBeforeHeaderSelector = String(settings.insertBeforeHeaderSelector || "").trim();
+    var insertBeforeCellSelector = String(settings.insertBeforeCellSelector || "").trim();
     var header = headerRow.querySelector("." + headerClassToken);
     if (!(header instanceof HTMLTableCellElement)) {
       header = document.createElement("th");
       syncClassName(header, headerClassName);
       markManaged(header);
+    }
+    insertTableCellBefore(
+      headerRow,
+      header,
+      findTableCellAnchor(headerRow, insertBeforeHeaderSelector)
+    );
+    if (header.parentNode !== headerRow) {
       headerRow.appendChild(header);
     }
     syncClassName(header, headerClassName);
@@ -441,8 +477,12 @@
         cell = document.createElement("td");
         syncClassName(cell, cellClassName);
         markManaged(cell);
-        row.appendChild(cell);
       }
+      insertTableCellBefore(
+        row,
+        cell,
+        findTableCellAnchor(row, insertBeforeCellSelector) || row.cells[header.cellIndex] || null
+      );
       syncClassName(cell, cellClassName);
       markManaged(cell);
       syncInnerHtml(cell, String(renderCell(row, index, settings) || ""));
@@ -562,23 +602,56 @@
     });
   }
 
+  function hasVisibleManagedPreviewActions(actions) {
+    return normalizePreviewActions(actions).some(function (item) {
+      if (typeof item === "string") {
+        return !!String(item || "").trim();
+      }
+      return !!(item && item.visible !== false);
+    });
+  }
+
   function ensureManagedPreviewActionColumn(config) {
     var settings = config && typeof config === "object" ? config : {};
     var ownerKey = String(settings.ownerKey || settings.bridgeKey || settings.key || "").trim();
     var headerClassName = String(settings.headerClassName || DEFAULT_PREVIEW_HEADER_CLASS_NAME).trim();
     var cellClassName = String(settings.cellClassName || DEFAULT_PREVIEW_CELL_CLASS_NAME).trim();
     var cellClassToken = getPrimaryClassToken(cellClassName);
+    var table = settings.table instanceof HTMLTableElement ? settings.table : null;
+    var rows = Array.isArray(settings.rows)
+      ? settings.rows
+      : table instanceof HTMLTableElement
+      ? Array.prototype.slice.call(table.querySelectorAll("tbody tr.o_data_row")).filter(function (row) {
+          return row instanceof HTMLTableRowElement;
+        })
+      : [];
+    var actionResolver = typeof settings.buildActions === "function"
+      ? settings.buildActions
+      : null;
+    var actionsByRow = rows.map(function (row, index) {
+      return actionResolver ? actionResolver(row, index, settings) : settings.actions;
+    });
+    if (settings.keepEmptyColumn !== true && !actionsByRow.some(hasVisibleManagedPreviewActions)) {
+      if (table instanceof HTMLTableElement) {
+        clearManagedPreviewActionColumn({
+          table: table,
+          headerClassName: headerClassName,
+          cellClassName: cellClassName,
+          ownerKey: ownerKey,
+        });
+      }
+      return null;
+    }
     var result = surfaceLayerApi.ensureManagedActionColumn({
-      table: settings.table,
-      rows: settings.rows,
+      table: table || settings.table,
+      rows: rows,
       headerLabel: String(settings.headerLabel || "Vistas").trim(),
       headerClassName: headerClassName,
       cellClassName: cellClassName,
+      insertBeforeHeaderSelector: "th.o_list_actions_header",
+      insertBeforeCellSelector: "td.w-print-0.p-print-0",
       renderCell: function (row, index) {
-        var actionResolver = typeof settings.buildActions === "function"
-          ? settings.buildActions
-          : null;
-        var actions = actionResolver ? actionResolver(row, index, settings) : settings.actions;
+        var actions = actionsByRow[index] || [];
         return buildManagedPreviewActionsMarkup({
           actions: actions,
           ownerKey: ownerKey,

@@ -543,6 +543,21 @@ const workspaceSource = fs.readFileSync(path.join(sourcesRoot, "workspace.js"), 
 const menuSource = fs.readFileSync(path.join(sourcesRoot, "menu.js"), "utf8");
 const markupSource = fs.readFileSync(path.join(sourcesRoot, "markup.js"), "utf8");
 const tableSource = fs.readFileSync(path.join(sourcesRoot, "table.js"), "utf8");
+for (const expectedToken of [
+  "findTableCellAnchor",
+  "insertTableCellBefore",
+  "hasVisibleManagedPreviewActions",
+  "keepEmptyColumn",
+  "insertBeforeHeaderSelector",
+  "insertBeforeCellSelector",
+  "th.o_list_actions_header",
+  "td.w-print-0.p-print-0",
+]) {
+  assert.ok(
+    tableSource.includes(expectedToken),
+    `table.js must keep preview/action columns aligned before native sticky actions via ${expectedToken}`
+  );
+}
 for (const exportName of dualWorkspaceRuntimeExports) {
   assert.ok(
     workspaceSurfaceExports.has(exportName),
@@ -892,14 +907,26 @@ for (const expectedToken of [
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_toolbar__console > .o_surface_premium_command_bar",
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_toolbar__console > .o_surface_premium_metric_strip",
   "body.o_surface_workspace_active.o_surface_workspace_list {",
+  "--o-surface-modal-close-bg",
   "--o-surface-premium-list-floor",
   "--o-surface-premium-list-floor: clamp(22rem, calc(100vh - 15rem), 42rem);",
   "body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_view",
   "min-height: var(--o-surface-premium-list-floor)",
   "min-block-size: var(--o-surface-premium-list-floor)",
   "body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_renderer",
+  "background: rgba(17, 21, 30, 0.22)",
+  "body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_renderer.table-responsive",
+  "overflow-x: auto !important",
+  "body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_renderer > table.o_list_table",
+  "height: auto !important",
+  "min-height: 0 !important",
+  "body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_renderer > table.o_list_table > tbody > tr.o_data_row > td",
   "body.o_surface_workspace_active.o_surface_workspace_list {\n    --o-surface-premium-list-floor: clamp(16rem, calc(100dvh - 12rem), 30rem);",
   "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_surface_workspace_console__tab",
+  "body.o_surface_workspace_active :where(.o_dialog .btn-close, .o_technical_modal .btn-close, .modal .btn-close)",
+  "background-image: var(--o-surface-modal-close-bg) !important",
+  "filter: none !important",
+  "opacity: 0.92 !important",
   "--o-surface-tab-font-size-current",
   "--o-surface-tab-min-height-current",
   "font-size: var(--o-surface-tab-font-size-current)",
@@ -918,6 +945,11 @@ for (const expectedToken of [
   "body.o_surface_workspace_active :where(.o_surface_premium_metric__trend--success)",
   "body.o_web_client.o_surface_sidebar_shell_active .o_surface_sidebar_shell_menu_popover",
   "body.o_web_client.o_surface_workspace_active .o_popover.popover:not(.o_surface_sidebar_shell_menu_popover)",
+  "width: 5.4rem !important",
+  "table.o_list_table:has(.o_list_actions_header) .o_surface_record_preview_header",
+  "inset-inline-end: var(--o-surface-record-native-action-width, 2.4rem)",
+  "position: sticky",
+  "justify-content: center",
   "background: rgb(21, 25, 35) !important",
   "-webkit-backdrop-filter: blur(12px) saturate(1.08)",
   "outline: 1px solid rgba(7, 10, 18, 0.74)",

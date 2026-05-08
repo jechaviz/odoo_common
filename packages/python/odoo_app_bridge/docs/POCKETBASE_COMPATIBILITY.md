@@ -42,6 +42,14 @@ const pb = new PocketBase("/apps/pocket-tasks");
 const page = await pb.collection("tasks").getList(1, 30);
 ```
 
+Supported SDK-style extras:
+
+- `authStore.save`, `authStore.clear`, `authStore.onChange`, `authStore.loadFromStorage`, `authStore.exportToCookie` and `authStore.importFromCookie`
+- simple filter strings such as `status = 'todo' && published = true && estimate >= 3`
+- `createBatch()` with sequential `create`, `update`, `delete` and `upsert`
+- `files.getURL(record, filename)` app-prefix URL generation
+- collection metadata with per-collection compatibility routes in `pocketbase_collections.json`
+
 ## Compatibility Matrix
 
 | PocketBase concept | OdooBase mapping | Current package status | Notes |
@@ -53,14 +61,14 @@ const page = await pb.collection("tasks").getList(1, 30);
 | Superusers/admin UI | Odoo backend menus, groups, request log and Security Center | Partial | Admin operations are mediated by Odoo security and generated backend views, not by the PocketBase dashboard. |
 | API rules: list/view/create/update/delete/manage | Contract security lint, Odoo ACLs/record rules and generated service role checks | Partial | PocketBase rule expressions are not interpreted directly. Rules must be translated into Odoo groups, record rules and service-level checks. |
 | REST CRUD API | Generated HTTP query and command endpoints plus OpenAPI snapshot | Generated adapter | Routes are mounted under `/apps/<slug>/collections/<collection>/records...`; the JS shim maps common SDK methods to those routes. |
-| Realtime subscriptions | AsyncAPI contract snapshots and future realtime adapters | Planned | README lists realtime adapters as mapped next. Odoo long-polling/bus integration is a future adapter concern. |
-| Files | Odoo binary fields or `ir.attachment`-backed publication | Planned | File storage behavior differs from PocketBase, which stores file names in its database and serves managed files through its own APIs. |
+| Realtime subscriptions | AsyncAPI contract snapshots and future realtime adapters | Local stub | The shim keeps callbacks and returns unsubscribe functions, but does not yet open SSE/Odoo bus transport. |
+| Files | Odoo binary fields or `ir.attachment`-backed publication | Adapter | The shim builds deterministic app-prefix file URLs. Protected file tokens and thumbnails remain storage-policy work. |
 | JavaScript/Go hooks | Explicit generated hook surface for auth, functions and jobs | Partial | OdooBase generates hook locations and function/job routes, but does not run PocketBase `pb_hooks` or Go extension code. |
 | JavaScript/Go migrations | Odoo module install/upgrade data, generated manifests and future migration plans | Planned | PocketBase migrations are not executed by OdooBase. They should be translated into Odoo module data/model changes. |
 | OAuth2 auth | Admin-managed OAuth2 providers, PKCE state flow and external auth links | Partial | Provider-specific profile normalizers are mapped next. |
 | API keys | Hashed API keys and dependency-free rate limiting in generated endpoints | Partial | This is an OdooBase endpoint capability, not PocketBase token compatibility. |
 | Dashboard schema builder | Contract-first specs, generated backend admin controls and catalog documentation | Partial | Schema editing is expected to happen in source contracts, then regenerate the addon. |
-| Client SDK | Static browser SDK, simulator mode and PocketBase-compatible shim | Partial | Common `pb.collection(name)` record CRUD and auth methods are supported. Advanced realtime, batch and file APIs are adapter/future scope. |
+| Client SDK | Static browser SDK, simulator mode and PocketBase-compatible shim | Partial | Common record CRUD/auth, persistent authStore, simple filter strings, sequential batch and file URL helpers are supported. Realtime transport remains future scope. |
 
 ## Honest Limits
 

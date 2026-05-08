@@ -53,6 +53,7 @@ Already generated:
 - static browser SDK, simulator, OpenAPI, AsyncAPI and contract snapshots
 - PocketBase collection export to OdooBase query/command contracts
 - PocketBase-style JS client shim for `pb.collection(...).getList/create/update/delete` and authStore
+- persistent `authStore`, simple PocketBase filter strings, sequential batch adapter and file URL builder
 - one-line PocketBase project/export to importable Odoo addon zip
 
 Release gate:

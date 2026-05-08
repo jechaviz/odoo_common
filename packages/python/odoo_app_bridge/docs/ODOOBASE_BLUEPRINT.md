@@ -56,7 +56,7 @@ The compatibility layer is deliberately a translator, not a hidden second runtim
 - `build_pocketbase_compat_extra_files()` adds the generated JS shim and preserved collection metadata to a normal base-only addon.
 - `write_pocketbase_compat_module_zip()` is the one-line local PocketBase to OdooBase handoff.
 
-The generated shim supports common PocketBase JS client ergonomics: `collection(name)`, `getList`, `getFullList`, `getFirstListItem`, `getOne`, `create`, `update`, `delete`, `authWithPassword`, `authRefresh`, `listAuthMethods`, OAuth2 code callback, `authStore`, and local subscription stubs. Realtime, batch, exact file serving and JS migrations remain adapter work, because those need Odoo-specific storage, bus and upgrade semantics.
+The generated shim supports common PocketBase JS client ergonomics: `collection(name)`, `getList`, `getFullList`, `getFirstListItem`, `getOne`, `create`, `update`, `delete`, `authWithPassword`, `authRefresh`, `listAuthMethods`, OAuth2 start/code callback, persistent `authStore`, simple filter-string parsing, sequential `createBatch()`, app-prefix file URLs and local subscription stubs. Realtime transport, transactional batch semantics, protected file tokens and JS migrations remain adapter work, because those need Odoo-specific storage, bus and upgrade semantics.
 
 ## Release Gate And Operability
 

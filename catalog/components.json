@@ -1302,6 +1302,8 @@
       "PocketBase compatibility documentation and workflow catalog",
       "PocketBase export to OdooBase contract generation",
       "PocketBase JS SDK compatibility shim",
+      "PocketBase persistent authStore and filter parser",
+      "PocketBase sequential batch and file URL adapters",
       "one-line PocketBase project to Odoo addon zip",
       "backend admin request log",
       "OpenAPI and AsyncAPI contract generation",

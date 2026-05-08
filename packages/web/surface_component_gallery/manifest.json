@@ -1,0 +1,24 @@
+{
+  "key": "surface-component-gallery",
+  "title": "Common Component Gallery Surface",
+  "status": "canonical",
+  "language": "web",
+  "origin_project": "odoo_common",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "component_gallery.js",
+    "component_gallery.css"
+  ],
+  "publish_order": [
+    "component_gallery.js",
+    "component_gallery.css"
+  ],
+  "capabilities": [
+    "storybook-component-menu",
+    "component-detail-inspector",
+    "install-wizard-shell",
+    "install-plan-step-rail",
+    "ai-review-callback"
+  ]
+}

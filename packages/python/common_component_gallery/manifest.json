@@ -1,0 +1,24 @@
+{
+  "key": "common-component-gallery",
+  "title": "Common Component Gallery",
+  "status": "canonical",
+  "language": "python",
+  "origin_project": "odoo_common",
+  "sync_root": "sources",
+  "sync_mode": "tree",
+  "exports": [
+    "__init__.py",
+    "common_component_gallery.py",
+    "component_gallery_cli.py",
+    "component_gallery.py"
+  ],
+  "capabilities": [
+    "common-component-storybook-model",
+    "component-install-wizard-plan",
+    "base-only-gallery-addon-build",
+    "installable-gallery-zip",
+    "target-aware-install-steps",
+    "visual-audit-plan-steps",
+    "ai-preview-review-step"
+  ]
+}

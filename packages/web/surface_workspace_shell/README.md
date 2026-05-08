@@ -26,6 +26,7 @@ Primary classes:
 - `o_surface_premium_command_bar`: command/search/filter/action bar.
 - `o_surface_premium_metric_strip` and `o_surface_premium_metric`: KPI strip.
 - `o_surface_premium_smart_table_shell` and `o_surface_premium_smart_table`: sticky-header data table shell.
+- `o_surface_collapsible_row_toggle`, `o_surface_collapsible_detail_row`, and `o_surface_collapsible_detail_panel`: dense expandable ledger rows.
 - `o_surface_premium_inspector`: right/left drawer with `[data-surface-open="1"]` or `.is-open`.
 - `o_surface_premium_code_modal`: code dialog with `[data-surface-open="1"]` or `.is-open`.
 - `o_surface_premium_status_chip`: neutral/success/warning/danger/info/accent chips via modifier classes or `data-status`/`data-state`.
@@ -33,6 +34,17 @@ Primary classes:
 - `o_surface_premium_empty_state`: dense empty/loading guidance for list and inspector surfaces.
 
 The workspace runtime exposes `buildPremiumWorkspaceToolbarConsoleMarkup`, `buildPremiumWorkspaceListConsoleMarkup`, and `buildPremiumWorkspaceToolbarConsoleController` on both `window.OdooSurfaceLayers` and `window.OdooSurfaceLayers.workspaceRuntime` where consumers need shell-level composition. `buildPremiumWorkspaceListConsoleMarkup` is the preferred list bootstrap helper: pass `commandBar`, `toolbar`/`toolbarMarkup`, `metrics`, `smartTable`, `validationRail`, `emptyState`, and optional `bodyMarkup` to compose dense list workspaces without duplicating console plumbing.
+
+## Collapsible Ledger Rows
+
+`rp-rental-mock` proved a reusable pattern: a root operational row with icon actions, scoped filters, and expandable child documents. The canonical implementation is now generic:
+
+- `buildCollapsibleRowToggleMarkup(config)` renders an accessible icon toggle with stable row keys.
+- `installCollapsibleRowController(config)` delegates click handling and calls consumer-owned `renderDetail(row, context)`.
+- `ensureCollapsibleDetailRow(config)`, `removeCollapsibleDetailRow(config)`, and `toggleCollapsibleDetailRow(config)` own insertion, ARIA state, and dense shell styling.
+- Consumers keep business hydration, RPC, route filters and labels outside common.
+
+No rental labels, no legacy selectors and no inferred RPC are part of this primitive.
 
 ## Design Audit Rules
 
@@ -54,3 +66,8 @@ Granular audits now cover:
 Consumers should sync these rules instead of rebuilding local visual heuristics. If a finding appears, the `action` field tells the consumer whether to hide a duplicate command-bar header, add menu context, use an opaque overlay token, clear managed breadcrumb state, keep list floors on containers instead of table rows, remove empty preview columns, or restore contrast on modal controls.
 
 See `docs/premium_ux_doctrine.md` for the actionable design doctrine used by live deployment audits.
+
+Related planning docs:
+
+- `docs/rp_rental_extraction_audit.md`
+- `docs/component_storybook_wizard.md`

@@ -2358,6 +2358,30 @@ body.o_surface_workspace_active .o_list_renderer table.o_list_table:has(.o_list_
   outline: none;
 }
 
+body.o_surface_workspace_active :where(.o_surface_collapsible_parent--expanded > td) {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+body.o_surface_workspace_active :where(.o_surface_collapsible_detail_row > .o_surface_collapsible_detail_cell) {
+  background: rgba(10, 13, 20, 0.42);
+  border-bottom: 1px solid rgba(164, 174, 197, 0.12);
+  padding: 0 !important;
+}
+
+body.o_surface_workspace_active :where(.o_surface_collapsible_detail_panel) {
+  background: linear-gradient(180deg, rgba(24, 29, 41, 0.96), rgba(17, 21, 30, 0.96));
+  border-block-start: 1px solid rgba(164, 174, 197, 0.1);
+  color: var(--o-surface-theme-ink-soft, #d7deea);
+  display: grid;
+  gap: 0.72rem;
+  padding: 0.82rem 0.95rem;
+}
+
+.o_surface_collapsible_row_toggle[data-surface-busy="1"] {
+  opacity: 0.62;
+  pointer-events: none;
+}
+
 @media (max-width: 900px) {
   body.o_surface_workspace_active.o_surface_workspace_list {
     --o-surface-premium-list-floor: clamp(16rem, calc(100dvh - 12rem), 30rem);

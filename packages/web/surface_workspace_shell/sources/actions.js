@@ -20,8 +20,17 @@
   }
 
   var surfaceLayerApi = requireSurfaceLayerApi();
+  var shared = surfaceLayerApi._shared && typeof surfaceLayerApi._shared === "object"
+    ? surfaceLayerApi._shared
+    : {};
+  surfaceLayerApi._shared = shared;
   var escapeHtml = requireSurfaceLayerFunction(surfaceLayerApi, "escapeHtml");
   var toDataAttributeName = requireSurfaceLayerFunction(surfaceLayerApi, "toDataAttributeName");
+  var DEFAULT_COLLAPSIBLE_TOGGLE_SELECTOR = "[data-surface-collapsible-row-toggle='1'], [data-surface-ledger-toggle='1']";
+  var DEFAULT_COLLAPSIBLE_DETAIL_ROW_CLASS = "o_surface_collapsible_detail_row";
+  var DEFAULT_COLLAPSIBLE_DETAIL_CELL_CLASS = "o_surface_collapsible_detail_cell";
+  var DEFAULT_COLLAPSIBLE_DETAIL_PANEL_CLASS = "o_surface_collapsible_detail_panel";
+  var DEFAULT_COLLAPSIBLE_PARENT_EXPANDED_CLASS = "o_surface_collapsible_parent--expanded";
 
   function joinClassNames(values) {
     var seen = Object.create(null);
@@ -181,6 +190,330 @@
     detailRow.appendChild(cell);
     parentRow.insertAdjacentElement("afterend", detailRow);
     return detailRow;
+  }
+
+  function normalizeCollapsibleRowKey(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function getCollapsibleRowKey(row, config) {
+    var settings = config && typeof config === "object" ? config : {};
+    if (typeof settings.getRowKey === "function") {
+      try {
+        return normalizeCollapsibleRowKey(settings.getRowKey(row, settings));
+      } catch (_error) {}
+    }
+    if (settings.rowKey != null) {
+      return normalizeCollapsibleRowKey(settings.rowKey);
+    }
+    if (!(row instanceof HTMLElement)) {
+      return "";
+    }
+    return normalizeCollapsibleRowKey(
+      row.dataset.surfaceRowKey ||
+      row.dataset.surfaceLedgerKey ||
+      row.dataset.id ||
+      row.dataset.resId ||
+      row.getAttribute("data-id") ||
+      row.getAttribute("data-res-id") ||
+      ""
+    );
+  }
+
+  function getCollapsibleDetailRows(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var root = settings.root instanceof HTMLElement || settings.root instanceof Document
+      ? settings.root
+      : document;
+    return Array.prototype.slice.call(root.querySelectorAll("tr[data-surface-collapsible-detail='1']")).filter(function (row) {
+      return row instanceof HTMLTableRowElement;
+    });
+  }
+
+  function findCollapsibleDetailRow(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var rowKey = normalizeCollapsibleRowKey(settings.rowKey || getCollapsibleRowKey(settings.parentRow, settings));
+    if (!rowKey) {
+      return null;
+    }
+    var parentRow = settings.parentRow instanceof HTMLElement ? settings.parentRow : null;
+    var root = parentRow && parentRow.closest("tbody")
+      ? parentRow.closest("tbody")
+      : settings.root;
+    return getCollapsibleDetailRows({ root: root }).find(function (row) {
+      return normalizeCollapsibleRowKey(row.dataset.surfaceRowKey) === rowKey;
+    }) || null;
+  }
+
+  function syncCollapsibleRowToggleState(parentRow, rowKey, expanded, config) {
+    if (!(parentRow instanceof HTMLElement)) {
+      return;
+    }
+    var settings = config && typeof config === "object" ? config : {};
+    var selector = String(settings.toggleSelector || DEFAULT_COLLAPSIBLE_TOGGLE_SELECTOR).trim();
+    if (!selector) {
+      return;
+    }
+    Array.prototype.slice.call(parentRow.querySelectorAll(selector)).forEach(function (toggle) {
+      if (!(toggle instanceof HTMLElement)) {
+        return;
+      }
+      var toggleKey = normalizeCollapsibleRowKey(toggle.dataset.surfaceRowKey || toggle.dataset.surfaceLedgerKey || "");
+      if (toggleKey && rowKey && toggleKey !== rowKey) {
+        return;
+      }
+      toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+      toggle.dataset.surfaceExpanded = expanded ? "1" : "0";
+      var expandedLabel = String(settings.expandedLabel || toggle.dataset.surfaceExpandedLabel || "").trim();
+      var collapsedLabel = String(settings.collapsedLabel || toggle.dataset.surfaceCollapsedLabel || "").trim();
+      var nextLabel = expanded ? expandedLabel : collapsedLabel;
+      if (nextLabel) {
+        toggle.setAttribute("aria-label", nextLabel);
+        toggle.setAttribute("title", nextLabel);
+      }
+      var icon = toggle.querySelector("i.fa");
+      if (icon instanceof HTMLElement) {
+        var expandedIcon = String(settings.expandedIconClass || toggle.dataset.surfaceExpandedIcon || "fa-chevron-down").trim();
+        var collapsedIcon = String(settings.collapsedIconClass || toggle.dataset.surfaceCollapsedIcon || "fa-chevron-right").trim();
+        String(expandedIcon + " " + collapsedIcon).split(/\s+/).forEach(function (className) {
+          if (className) {
+            icon.classList.remove(className);
+          }
+        });
+        String(expanded ? expandedIcon : collapsedIcon).split(/\s+/).forEach(function (className) {
+          if (className) {
+            icon.classList.add(className);
+          }
+        });
+      }
+    });
+  }
+
+  function buildCollapsibleRowToggleMarkup(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var expanded = settings.expanded === true;
+    var rowKey = normalizeCollapsibleRowKey(settings.rowKey || settings.key || settings.reference);
+    var collapsedLabel = String(settings.collapsedLabel || settings.label || "Expand row details").trim();
+    var expandedLabel = String(settings.expandedLabel || "Collapse row details").trim();
+    return buildIconActionButtonMarkup({
+      action: String(settings.action || "toggle-detail").trim(),
+      iconClass: String(settings.iconClass || (expanded ? "fa-chevron-down" : "fa-chevron-right")).trim(),
+      label: expanded ? expandedLabel : collapsedLabel,
+      className: joinClassNames([
+        "o_surface_collapsible_row_toggle",
+        settings.className,
+      ]),
+      data: Object.assign({}, settings.data, {
+        surfaceCollapsibleRowToggle: "1",
+        surfaceLedgerToggle: "1",
+        surfaceRowKey: rowKey,
+        surfaceExpanded: expanded ? "1" : "0",
+        surfaceCollapsedLabel: collapsedLabel,
+        surfaceExpandedLabel: expandedLabel,
+        surfaceCollapsedIcon: String(settings.collapsedIconClass || "fa-chevron-right").trim(),
+        surfaceExpandedIcon: String(settings.expandedIconClass || "fa-chevron-down").trim(),
+      }),
+      attributes: Object.assign({}, settings.attributes, {
+        "aria-expanded": expanded ? "true" : "false",
+      }),
+    });
+  }
+
+  function ensureCollapsibleDetailRow(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var parentRow = settings.parentRow instanceof HTMLElement ? settings.parentRow : null;
+    if (!(parentRow instanceof HTMLElement)) {
+      return null;
+    }
+    var rowKey = normalizeCollapsibleRowKey(settings.rowKey || getCollapsibleRowKey(parentRow, settings));
+    if (!rowKey) {
+      return null;
+    }
+    var rowClassName = joinClassNames([
+      DEFAULT_COLLAPSIBLE_DETAIL_ROW_CLASS,
+      settings.rowClassName,
+    ]);
+    var cellClassName = joinClassNames([
+      DEFAULT_COLLAPSIBLE_DETAIL_CELL_CLASS,
+      settings.cellClassName,
+    ]);
+    var panelClassName = joinClassNames([
+      DEFAULT_COLLAPSIBLE_DETAIL_PANEL_CLASS,
+      settings.panelClassName,
+    ]);
+    var detailRow = findCollapsibleDetailRow(Object.assign({}, settings, {
+      parentRow: parentRow,
+      rowKey: rowKey,
+    }));
+    if (!(detailRow instanceof HTMLTableRowElement)) {
+      detailRow = insertInjectedDetailRow({
+        parentRow: parentRow,
+        rowClassName: rowClassName,
+        colSpan: settings.colSpan,
+        dataset: Object.assign({}, settings.dataset, {
+          surfaceCollapsibleDetail: "1",
+          surfaceRowKey: rowKey,
+        }),
+        html: "",
+      });
+    }
+    if (!(detailRow instanceof HTMLTableRowElement)) {
+      return null;
+    }
+    detailRow.className = rowClassName;
+    detailRow.dataset.surfaceCollapsibleDetail = "1";
+    detailRow.dataset.surfaceRowKey = rowKey;
+    detailRow.dataset.surfaceExpanded = "1";
+    var cell = detailRow.cells && detailRow.cells.length ? detailRow.cells[0] : null;
+    if (!(cell instanceof HTMLTableCellElement)) {
+      cell = document.createElement("td");
+      detailRow.replaceChildren(cell);
+    }
+    cell.className = cellClassName;
+    cell.colSpan = Math.max(Number(settings.colSpan || 0) || parentRow.children.length || 1, 1);
+    var html = String(settings.html || "");
+    cell.innerHTML = settings.wrap === false
+      ? html
+      : '<div class="' + escapeHtml(panelClassName) + '">' + html + "</div>";
+    parentRow.classList.add(String(settings.parentExpandedClassName || DEFAULT_COLLAPSIBLE_PARENT_EXPANDED_CLASS).trim());
+    parentRow.dataset.surfaceExpanded = "1";
+    syncCollapsibleRowToggleState(parentRow, rowKey, true, settings);
+    return detailRow;
+  }
+
+  function removeCollapsibleDetailRow(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var parentRow = settings.parentRow instanceof HTMLElement ? settings.parentRow : null;
+    var rowKey = normalizeCollapsibleRowKey(settings.rowKey || getCollapsibleRowKey(parentRow, settings));
+    var detailRow = findCollapsibleDetailRow(Object.assign({}, settings, {
+      parentRow: parentRow,
+      rowKey: rowKey,
+    }));
+    if (detailRow instanceof HTMLElement) {
+      detailRow.remove();
+    }
+    if (parentRow instanceof HTMLElement) {
+      parentRow.classList.remove(String(settings.parentExpandedClassName || DEFAULT_COLLAPSIBLE_PARENT_EXPANDED_CLASS).trim());
+      parentRow.dataset.surfaceExpanded = "0";
+      syncCollapsibleRowToggleState(parentRow, rowKey, false, settings);
+    }
+    return true;
+  }
+
+  function toggleCollapsibleDetailRow(config) {
+    var settings = config && typeof config === "object" ? config : {};
+    var parentRow = settings.parentRow instanceof HTMLElement ? settings.parentRow : null;
+    if (!(parentRow instanceof HTMLElement)) {
+      return null;
+    }
+    var rowKey = normalizeCollapsibleRowKey(settings.rowKey || getCollapsibleRowKey(parentRow, settings));
+    var existing = findCollapsibleDetailRow(Object.assign({}, settings, {
+      parentRow: parentRow,
+      rowKey: rowKey,
+    }));
+    var forceExpanded = Object.prototype.hasOwnProperty.call(settings, "expanded")
+      ? settings.expanded === true
+      : !(existing instanceof HTMLElement);
+    if (!forceExpanded) {
+      removeCollapsibleDetailRow(Object.assign({}, settings, {
+        parentRow: parentRow,
+        rowKey: rowKey,
+      }));
+      return { expanded: false, row: null, rowKey: rowKey };
+    }
+    return {
+      expanded: true,
+      row: ensureCollapsibleDetailRow(Object.assign({}, settings, {
+        parentRow: parentRow,
+        rowKey: rowKey,
+      })),
+      rowKey: rowKey,
+    };
+  }
+
+  function installCollapsibleRowController(config) {
+    var settings = config && typeof config === "object" ? Object.assign({}, config) : {};
+    var controllerKey = String(settings.controllerKey || settings.key || "default").trim();
+    if (!controllerKey) {
+      return null;
+    }
+    if (!(shared.collapsibleRowControllers && typeof shared.collapsibleRowControllers === "object")) {
+      shared.collapsibleRowControllers = Object.create(null);
+    }
+    var previous = shared.collapsibleRowControllers[controllerKey];
+    if (previous && previous.root && typeof previous.root.removeEventListener === "function" && typeof previous.listener === "function") {
+      previous.root.removeEventListener("click", previous.listener, true);
+    }
+    var root = settings.root instanceof HTMLElement ? settings.root : document;
+    var rowSelector = String(settings.rowSelector || "tr.o_data_row").trim() || "tr.o_data_row";
+    var toggleSelector = String(settings.toggleSelector || DEFAULT_COLLAPSIBLE_TOGGLE_SELECTOR).trim();
+    var renderDetail = typeof settings.renderDetail === "function"
+      ? settings.renderDetail
+      : function () { return settings.detailHtml || ""; };
+    var listener = function (event) {
+      var target = event.target instanceof HTMLElement ? event.target.closest(toggleSelector) : null;
+      if (!(target instanceof HTMLElement) || !(root === document || root.contains(target))) {
+        return;
+      }
+      var parentRow = target.closest(rowSelector);
+      if (!(parentRow instanceof HTMLElement)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+      var rowKey = normalizeCollapsibleRowKey(target.dataset.surfaceRowKey || getCollapsibleRowKey(parentRow, settings));
+      var existing = findCollapsibleDetailRow(Object.assign({}, settings, {
+        parentRow: parentRow,
+        rowKey: rowKey,
+      }));
+      if (existing instanceof HTMLElement) {
+        removeCollapsibleDetailRow(Object.assign({}, settings, {
+          parentRow: parentRow,
+          rowKey: rowKey,
+        }));
+        if (typeof settings.onToggle === "function") {
+          settings.onToggle({ expanded: false, parentRow: parentRow, rowKey: rowKey, target: target, event: event });
+        }
+        return;
+      }
+      target.dataset.surfaceBusy = "1";
+      Promise.resolve(renderDetail(parentRow, {
+        rowKey: rowKey,
+        target: target,
+        event: event,
+        settings: settings,
+      })).then(function (html) {
+        var result = toggleCollapsibleDetailRow(Object.assign({}, settings, {
+          parentRow: parentRow,
+          rowKey: rowKey,
+          html: html,
+          expanded: true,
+        }));
+        if (typeof settings.onToggle === "function") {
+          settings.onToggle(Object.assign({ parentRow: parentRow, target: target, event: event }, result || {}));
+        }
+      }).finally(function () {
+        target.dataset.surfaceBusy = "0";
+      });
+    };
+    root.addEventListener("click", listener, true);
+    shared.collapsibleRowControllers[controllerKey] = {
+      listener: listener,
+      root: root,
+      settings: settings,
+    };
+    return {
+      key: controllerKey,
+      destroy: function () {
+        root.removeEventListener("click", listener, true);
+        if (shared.collapsibleRowControllers[controllerKey]) {
+          delete shared.collapsibleRowControllers[controllerKey];
+        }
+      },
+    };
   }
 
   function buildIconActionButtonMarkup(config) {
@@ -400,6 +733,13 @@
     setActionHostPlaceholder: setActionHostPlaceholder,
     clearInjectedDetailRows: clearInjectedDetailRows,
     insertInjectedDetailRow: insertInjectedDetailRow,
+    buildCollapsibleRowToggleMarkup: buildCollapsibleRowToggleMarkup,
+    ensureCollapsibleDetailRow: ensureCollapsibleDetailRow,
+    findCollapsibleDetailRow: findCollapsibleDetailRow,
+    getCollapsibleRowKey: getCollapsibleRowKey,
+    installCollapsibleRowController: installCollapsibleRowController,
+    removeCollapsibleDetailRow: removeCollapsibleDetailRow,
+    toggleCollapsibleDetailRow: toggleCollapsibleDetailRow,
     buildIconActionButtonMarkup: buildIconActionButtonMarkup,
     buildPreviewActionButtonMarkup: buildPreviewActionButtonMarkup,
     buildPreviewActionGroupMarkup: buildPreviewActionGroupMarkup,

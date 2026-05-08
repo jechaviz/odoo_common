@@ -1287,9 +1287,26 @@ body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_control_panel 
 }
 
 body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_control_panel .o_control_panel_breadcrumbs > .o_control_panel_main_buttons {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
   justify-self: start;
+  max-width: 100%;
   margin-top: 0;
-  min-width: 0;
+  min-width: max-content;
+  overflow: visible;
+  width: max-content !important;
+}
+
+body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_control_panel .o_control_panel_breadcrumbs:has(> .o_control_panel_main_buttons:not(:empty)) {
+  flex: 0 0 auto !important;
+  max-width: 100%;
+  overflow: visible;
+  width: max-content !important;
+}
+
+body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_control_panel .o_control_panel_actions:has(.o_selection_container) {
+  justify-content: flex-start !important;
 }
 
 body.o_surface_workspace_active .o_control_panel .o_control_panel_actions,

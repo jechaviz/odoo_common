@@ -930,6 +930,11 @@ for (const expectedToken of [
   '"main metrics"',
   "grid-area: metrics",
   "grid-area: main",
+  "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_control_panel .o_control_panel_breadcrumbs:has(> .o_control_panel_main_buttons:not(:empty))",
+  "body.o_surface_workspace_active:not(.o_surface_workspace_form) .o_control_panel .o_control_panel_actions:has(.o_selection_container)",
+  "min-width: max-content",
+  "width: max-content !important",
+  "justify-content: flex-start !important",
 ]) {
   assert.ok(
     surfaceLayerStyles.includes(expectedToken),

@@ -238,12 +238,13 @@ def write_app_bridge_module(
     target_root: str | Path,
     spec: OdooAppBridgeSpec | Mapping[str, Any],
     *,
+    extra_files: Iterable[AppBridgeModuleFile | Mapping[str, Any]] = (),
     overwrite: bool = False,
 ) -> tuple[Path, ...]:
     """Write generated addon files below target_root."""
     root = Path(target_root)
     written: list[Path] = []
-    for file in build_app_bridge_module_files(spec):
+    for file in build_app_bridge_module_files(spec, extra_files=extra_files):
         target = root / file.relative_path
         if target.exists() and not overwrite:
             raise FileExistsError(f"App bridge target already exists: {target}")
@@ -257,6 +258,7 @@ def write_app_bridge_module_zip(
     target_root: str | Path,
     spec: OdooAppBridgeSpec | Mapping[str, Any] | str | Path,
     *,
+    extra_files: Iterable[AppBridgeModuleFile | Mapping[str, Any]] = (),
     overwrite: bool = False,
 ) -> Path:
     """Write the addon and package it as an importable zip."""
@@ -265,7 +267,7 @@ def write_app_bridge_module_zip(
     else:
         bridge_spec = spec if isinstance(spec, OdooAppBridgeSpec) else app_bridge_spec_from_mapping(spec)
     root = Path(target_root)
-    write_app_bridge_module(root, bridge_spec, overwrite=overwrite)
+    write_app_bridge_module(root, bridge_spec, extra_files=extra_files, overwrite=overwrite)
     zip_path = root / f"{bridge_spec.app.module}.zip"
     if zip_path.exists() and not overwrite:
         raise FileExistsError(f"App bridge zip already exists: {zip_path}")
@@ -1030,7 +1032,15 @@ def _render_service_runtime(spec: OdooAppBridgeSpec) -> str:
                                 if spec.get("use_sudo"):
                                     model = model.sudo()
                                 target = model.browse(ids) if ids else model
-                                result = getattr(target, spec["method"])(**params)
+                                method_name = spec["method"]
+                                if method_name == "create":
+                                    result = model.create(params)
+                                elif method_name == "write":
+                                    result = target.write(params)
+                                elif method_name == "unlink":
+                                    result = target.unlink()
+                                else:
+                                    result = getattr(target, method_name)(**params)
                                 data = result if isinstance(result, (dict, list, str, int, float, bool)) or result is None else {{"repr": str(result)}}
                                 ok = True
                 self._log(request_id, ok, status, error, payload, data if ok else details, idempotency_key, "command", spec["path"], user, method, remote_addr)

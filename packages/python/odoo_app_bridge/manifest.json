@@ -14,6 +14,7 @@
     "lint.py",
     "module_builder.py",
     "odoobase.py",
+    "pocketbase_compat.py",
     "security_scanner.py"
   ],
   "capabilities": [
@@ -33,6 +34,10 @@
     "cors-payload-security-header-hardening",
     "hashed-api-keys-and-rate-limits",
     "pocketbase-inspired-odoobase-blueprint",
+    "pocketbase-compatibility-documentation",
+    "pocketbase-export-to-odoobase-contract",
+    "pocketbase-js-sdk-compat-shim",
+    "one-line-pocketbase-to-odoo-module-zip",
     "admin-request-log-generation",
     "openapi-asyncapi-generation",
     "contract-security-lint",

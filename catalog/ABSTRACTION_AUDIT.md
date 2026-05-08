@@ -9,7 +9,7 @@ Scope:
 ## Inventory
 
 - Web packages: 17 total, 17 canonical.
-- Python packages: 35 total, 35 canonical.
+- Python packages: 36 total, 36 canonical.
 - Schema packages: 3 total, 3 canonical.
 - Removed archive web packages live only in git history; active assembly must use canonical packages.
 

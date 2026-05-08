@@ -79,7 +79,7 @@ Scope:
 - Added: `mail-template-upserts` canonicalizes `mail.template` publication through modern `report_template_ids` without XML ID resolution, legacy `report_template` fallback, field detection, or business-specific content.
 - Added: `custom-field-upserts` canonicalizes manual model/field creation, strict existing-field contract validation, and selection row reconciliation without legacy value migrations.
 - Added: `security-upserts` canonicalizes security publication without user assignment, version field detection, missing-metadata ignores, or legacy group absorption.
-- Added: `odoo-module-scaffold` canonicalizes new addon creation through explicit specs, layered files, injected services, thin Odoo adapters, default model/security/view/test scaffolds, and safe non-destructive writes without project config loading, live Odoo introspection, business-policy defaults, or legacy-module cloning.
+- Added: `odoo-module-scaffold` canonicalizes new addon creation through explicit specs, JSON loading, dry-run write plans, layered files, injected services, thin Odoo adapters, default model/security/view/test scaffolds, and safe non-destructive writes without project config loading, live Odoo introspection, business-policy defaults, or legacy-module cloning.
 
 ## Continued Boundary Check
 

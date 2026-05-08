@@ -1,0 +1,61 @@
+{
+  "technical_name": "acme_service_desk",
+  "summary": "Service desk workflow",
+  "description": "Layered service desk addon generated from an explicit common scaffold spec.",
+  "version": "18.0.1.0.0",
+  "category": "Services",
+  "depends": [
+    "base",
+    "mail"
+  ],
+  "application": true,
+  "models": [
+    {
+      "technical_name": "acme.service.ticket",
+      "description": "Service Ticket",
+      "rec_name": "name",
+      "order": "priority desc, id desc",
+      "fields": [
+        {
+          "name": "name",
+          "field_type": "Char",
+          "string": "Reference",
+          "required": true,
+          "index": true
+        },
+        {
+          "name": "partner_id",
+          "field_type": "Many2one",
+          "relation": "res.partner",
+          "string": "Customer",
+          "index": true
+        },
+        {
+          "name": "priority",
+          "field_type": "Selection",
+          "string": "Priority",
+          "selection": [
+            [
+              "0",
+              "Low"
+            ],
+            [
+              "1",
+              "Normal"
+            ],
+            [
+              "2",
+              "High"
+            ]
+          ],
+          "default_literal": "'1'"
+        },
+        {
+          "name": "notes",
+          "field_type": "Text",
+          "string": "Internal Notes"
+        }
+      ]
+    }
+  ]
+}

@@ -531,9 +531,11 @@
     ],
     "use_cases": [
       "new addon creation from explicit contracts",
+      "JSON-driven scaffold specs for templates and CI",
       "layered module architecture",
       "thin Odoo adapters around injected services",
       "declarative model, view, menu and security publication",
+      "dry-run write plans before touching consumer repos",
       "consumer templates without copied project logic"
     ]
   },

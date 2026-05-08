@@ -8,13 +8,16 @@
   "sync_mode": "tree",
   "exports": [
     "__init__.py",
-    "module_scaffold.py"
+    "module_scaffold.py",
+    "module_scaffold_cli.py"
   ],
   "capabilities": [
     "odoo-module-contract-spec",
+    "json-scaffold-spec-loading",
     "layered-addon-file-generation",
     "service-adapter-scaffold",
     "model-view-security-scaffold",
-    "safe-scaffold-write-plan"
+    "safe-scaffold-write-plan",
+    "dry-run-module-scaffold-cli"
   ]
 }

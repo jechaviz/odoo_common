@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -217,6 +219,37 @@ class ModuleScaffoldFile:
         object.__setattr__(self, "layer", _clean_required_text(self.layer, field_name="file layer"))
 
 
+@dataclass(frozen=True)
+class ModuleScaffoldWritePlanEntry:
+    """One target-file decision for a scaffold write pass."""
+
+    relative_path: Path
+    target_path: Path
+    layer: str
+    action: str
+    content_sha1: str
+
+    def __post_init__(self) -> None:
+        action = _clean_required_text(self.action, field_name="write action")
+        if action not in {"create", "update", "unchanged", "blocked"}:
+            raise ValueError(f"Unsupported scaffold write action: {action!r}")
+        object.__setattr__(self, "relative_path", _normalize_relative_path(self.relative_path))
+        object.__setattr__(self, "target_path", Path(self.target_path))
+        object.__setattr__(self, "layer", _clean_required_text(self.layer, field_name="file layer"))
+        object.__setattr__(self, "action", action)
+        object.__setattr__(self, "content_sha1", _clean_required_text(self.content_sha1, field_name="content_sha1"))
+
+    def as_dict(self) -> dict[str, str]:
+        """Serialize a write-plan row for CLI and reports."""
+        return {
+            "relative_path": self.relative_path.as_posix(),
+            "target_path": str(self.target_path),
+            "layer": self.layer,
+            "action": self.action,
+            "content_sha1": self.content_sha1,
+        }
+
+
 def normalize_module_name(value: Any) -> str:
     """Normalize and validate an Odoo addon technical name."""
     clean_value = _clean_required_text(value, field_name="module technical_name").lower()
@@ -319,6 +352,48 @@ def build_module_scaffold_files(spec: ModuleScaffoldSpec | Mapping[str, Any]) ->
     return tuple(files)
 
 
+def load_module_scaffold_spec(spec_path: str | Path) -> ModuleScaffoldSpec:
+    """Load a module scaffold spec from a strict JSON document."""
+    path = Path(spec_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise TypeError("Module scaffold spec JSON must contain an object")
+    return ModuleScaffoldSpec(**dict(payload))
+
+
+def plan_module_scaffold_write(
+    target_root: str | Path,
+    spec: ModuleScaffoldSpec | Mapping[str, Any],
+    *,
+    overwrite: bool = False,
+) -> tuple[ModuleScaffoldWritePlanEntry, ...]:
+    """Return the exact file actions a scaffold write would perform."""
+    root = Path(target_root)
+    plan: list[ModuleScaffoldWritePlanEntry] = []
+    for scaffold_file in build_module_scaffold_files(spec):
+        target_path = root / scaffold_file.relative_path
+        content = _ensure_trailing_newline(scaffold_file.content).encode("utf-8")
+        content_sha1 = hashlib.sha1(content).hexdigest()
+        if not target_path.exists():
+            action = "create"
+        elif target_path.read_bytes() == content:
+            action = "unchanged"
+        elif overwrite:
+            action = "update"
+        else:
+            action = "blocked"
+        plan.append(
+            ModuleScaffoldWritePlanEntry(
+                relative_path=scaffold_file.relative_path,
+                target_path=target_path,
+                layer=scaffold_file.layer,
+                action=action,
+                content_sha1=content_sha1,
+            )
+        )
+    return tuple(plan)
+
+
 def write_module_scaffold(
     target_root: str | Path,
     spec: ModuleScaffoldSpec | Mapping[str, Any],
@@ -331,13 +406,20 @@ def write_module_scaffold(
     templates and migration tooling without destructive cleanup.
     """
     root = Path(target_root)
+    write_plan = plan_module_scaffold_write(root, spec, overwrite=overwrite)
+    blocked = [entry for entry in write_plan if entry.action == "blocked"]
+    if blocked:
+        blocked_paths = ", ".join(str(entry.target_path) for entry in blocked)
+        raise FileExistsError(f"Scaffold target already exists: {blocked_paths}")
+
     written_paths: list[Path] = []
     for scaffold_file in build_module_scaffold_files(spec):
         target_path = root / scaffold_file.relative_path
-        if target_path.exists() and not overwrite:
-            raise FileExistsError(f"Scaffold target already exists: {target_path}")
+        content = _ensure_trailing_newline(scaffold_file.content).encode("utf-8")
+        if target_path.exists() and target_path.read_bytes() == content:
+            continue
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(_ensure_trailing_newline(scaffold_file.content), encoding="utf-8")
+        target_path.write_bytes(content)
         written_paths.append(target_path)
     return tuple(written_paths)
 
@@ -749,8 +831,11 @@ __all__ = [
     "ModelScaffoldSpec",
     "ModuleScaffoldFile",
     "ModuleScaffoldSpec",
+    "ModuleScaffoldWritePlanEntry",
     "build_module_scaffold_files",
+    "load_module_scaffold_spec",
     "normalize_model_name",
     "normalize_module_name",
+    "plan_module_scaffold_write",
     "write_module_scaffold",
 ]

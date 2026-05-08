@@ -1224,10 +1224,12 @@
     ],
     "features": [
       "Odoo module contract specs",
+      "JSON scaffold spec loading",
       "layered addon file generation",
       "service and adapter scaffolds",
       "model, view and security scaffolds",
-      "safe scaffold write plans"
+      "safe scaffold write plans",
+      "dry-run scaffold CLI"
     ]
   },
   {

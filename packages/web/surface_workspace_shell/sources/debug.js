@@ -21,22 +21,41 @@
     {
       key: "prefer-what-matters",
       decision: "When clarity conflicts with completeness, keep the highest-signal control visible and remove redundant copy.",
-      audits: ["command-bar-redundant-title", "command-bar-redundant-description", "zero-value-metric-alert"],
+      audits: [
+        "command-bar-redundant-title",
+        "command-bar-redundant-description",
+        "empty-preview-action-column",
+        "preview-action-column-collapsed",
+        "zero-value-metric-alert",
+      ],
     },
     {
       key: "obvious-easy-possible",
       decision: "Make the primary task obvious, make repeated work fast, and keep advanced work possible through progressive depth.",
-      audits: ["duplicate-menu-label", "redundant-menu-owner-label", "sidebar-flyout-geometry-drift"],
+      audits: [
+        "duplicate-menu-label",
+        "redundant-menu-owner-label",
+        "sidebar-flyout-geometry-drift",
+        "surface-tab-missing-key",
+        "surface-tab-missing-role",
+      ],
     },
     {
       key: "usable-for-edge-benefits-all",
       decision: "Treat contrast, focus, density, and readable overlays as product requirements, not polish.",
-      audits: ["overlay-legibility-weak-separation"],
+      audits: [
+        "list-row-overstretched",
+        "list-table-inherits-empty-floor",
+        "modal-close-filter-inverts-icon",
+        "modal-close-low-contrast",
+        "overlay-legibility-weak-separation",
+        "surface-tab-flat-hit-target",
+      ],
     },
     {
       key: "evidence-over-assumption",
       decision: "A design principle must resolve a trade-off and leave a measurable trace in live UI evidence.",
-      audits: ["breadcrumb-ghost-after-workspace-exit"],
+      audits: ["breadcrumb-ghost-after-workspace-exit", "metric-strip-not-right-anchored"],
     },
   ]);
 
@@ -283,6 +302,21 @@
     );
   }
 
+  function readSurfaceAuditRect(node) {
+    if (!(node instanceof HTMLElement) || !isSurfaceAuditNodeVisible(node)) {
+      return null;
+    }
+    return node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+  }
+
+  function readSurfaceAuditVisibleNodes(rootNode, selector) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    if (!selector || !(root && typeof root.querySelectorAll === "function")) {
+      return [];
+    }
+    return Array.prototype.slice.call(root.querySelectorAll(selector)).filter(isSurfaceAuditNodeVisible);
+  }
+
   function buildSurfaceDesignAuditFinding(rule, message, node, details) {
     return {
       rule: String(rule || "").trim(),
@@ -292,6 +326,196 @@
       selector: details && details.selector ? String(details.selector) : "",
       action: details && details.action ? String(details.action) : "",
     };
+  }
+
+  function auditSurfaceListDensity(rootNode, options) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var settings = options && typeof options === "object" ? options : {};
+    var maxRowHeight = Math.max(Number(settings.maxListRowHeight || 72) || 72, 48);
+    var findings = [];
+    readSurfaceAuditVisibleNodes(root, ".o_content .o_list_renderer, .o_surface_premium_smart_table_shell").forEach(function (listNode) {
+      if (listNode.closest && listNode.closest(".o_form_view")) {
+        return;
+      }
+      var rows = readSurfaceAuditVisibleNodes(listNode, "tbody tr.o_data_row, .o_surface_premium_smart_table tbody tr");
+      rows.forEach(function (rowNode) {
+        var rowRect = readSurfaceAuditRect(rowNode);
+        if (rowRect && rowRect.height > maxRowHeight) {
+          findings.push(buildSurfaceDesignAuditFinding(
+            "list-row-overstretched",
+            "Visible list row is too tall for a dense operational workspace.",
+            rowNode,
+            {
+              selector: "tbody tr.o_data_row",
+              action: "Keep empty-list floor on the renderer/shell and reset table, tbody, tr and td height to auto/min-height 0.",
+              height: Math.round(rowRect.height),
+            }
+          ));
+        }
+      });
+      var tableNode = listNode.querySelector("table.o_list_table, table.o_surface_premium_smart_table");
+      var tbodyNode = tableNode instanceof HTMLElement ? tableNode.querySelector("tbody") : null;
+      var tableRect = readSurfaceAuditRect(tableNode);
+      var tbodyRect = readSurfaceAuditRect(tbodyNode);
+      if (rows.length === 1 && tableRect && tbodyRect && tableRect.height > 180 && tbodyRect.height > 90) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "list-table-inherits-empty-floor",
+          "A sparse list lets the table body absorb the empty floor, creating a megafila.",
+          tableNode,
+          {
+            selector: "table.o_list_table",
+            action: "Move the visual floor to the renderer and force table/tbody/row/cell heights back to auto.",
+            tableHeight: Math.round(tableRect.height),
+            tbodyHeight: Math.round(tbodyRect.height),
+          }
+        ));
+      }
+      var previewHeader = listNode.querySelector(".o_surface_record_preview_header");
+      if (previewHeader instanceof HTMLElement && isSurfaceAuditNodeVisible(previewHeader)) {
+        var previewRect = readSurfaceAuditRect(previewHeader);
+        var previewActions = readSurfaceAuditVisibleNodes(
+          listNode,
+          ".o_surface_record_preview_button, .o_surface_record_preview_cell [data-surface-preview]"
+        );
+        if (previewRect && previewRect.width < 72) {
+          findings.push(buildSurfaceDesignAuditFinding(
+            "preview-action-column-collapsed",
+            "Preview/action column is visible but too narrow to be readable.",
+            previewHeader,
+            {
+              selector: ".o_surface_record_preview_header",
+              action: "Use the shared preview column width token or hide the preview column when no actions are available.",
+              width: Math.round(previewRect.width),
+            }
+          ));
+        }
+        if (!previewActions.length) {
+          findings.push(buildSurfaceDesignAuditFinding(
+            "empty-preview-action-column",
+            "Preview/action column is visible even though no row exposes preview actions.",
+            previewHeader,
+            {
+              selector: ".o_surface_record_preview_header",
+              action: "Do not render managed preview columns unless at least one visible row has an action, or pass keepEmptyColumn only for explicit placeholders.",
+            }
+          ));
+        }
+      }
+    });
+    return findings;
+  }
+
+  function auditSurfaceModalControlContrast(rootNode) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var findings = [];
+    readSurfaceAuditVisibleNodes(root, ".modal .btn-close, .o_dialog .btn-close, .o_technical_modal .btn-close").forEach(function (closeButton) {
+      if (!window.getComputedStyle) {
+        return;
+      }
+      var style = window.getComputedStyle(closeButton);
+      var filter = String(style.filter || "").trim().toLowerCase();
+      var opacity = Number.parseFloat(style.opacity || "1");
+      if (filter && filter !== "none") {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "modal-close-filter-inverts-icon",
+          "Modal close icon uses a CSS filter that can invert an already-white SVG to black.",
+          closeButton,
+          {
+            selector: ".modal .btn-close",
+            action: "Use the shared white close SVG token and keep filter: none for dark modals.",
+          }
+        ));
+      }
+      if (Number.isFinite(opacity) && opacity < 0.85) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "modal-close-low-contrast",
+          "Modal close icon is too faint for a dark dialog surface.",
+          closeButton,
+          {
+            selector: ".modal .btn-close",
+            action: "Raise close-control opacity to at least 0.9 and keep a visible focus state.",
+          }
+        ));
+      }
+    });
+    return findings;
+  }
+
+  function auditSurfaceTabGrammar(rootNode) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var findings = [];
+    readSurfaceAuditVisibleNodes(root, "[data-surface-tab='1'], [data-surface-toolbar-control='tab']").forEach(function (tabNode) {
+      var key = String(tabNode.dataset.surfaceTabKey || tabNode.getAttribute("data-surface-tab-key") || "").trim();
+      var role = String(tabNode.getAttribute("role") || "").trim().toLowerCase();
+      var style = window.getComputedStyle ? window.getComputedStyle(tabNode) : null;
+      var radius = style ? String(style.borderRadius || "").trim().toLowerCase() : "";
+      if (!key) {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "surface-tab-missing-key",
+          "Surface tab is visible without a stable data key.",
+          tabNode,
+          {
+            selector: "[data-surface-tab='1']",
+            action: "Provide data-surface-tab-key so state, analytics, and audit evidence do not depend on labels.",
+          }
+        ));
+      }
+      if (role !== "tab") {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "surface-tab-missing-role",
+          "Surface tab is missing role='tab'.",
+          tabNode,
+          {
+            selector: "[data-surface-tab='1']",
+            action: "Use the shared workspace tab primitive or set role='tab' with aria-selected.",
+          }
+        ));
+      }
+      if (radius === "0px" || radius === "0") {
+        findings.push(buildSurfaceDesignAuditFinding(
+          "surface-tab-flat-hit-target",
+          "Surface tab has a flat zero-radius hit target that breaks the shared tab grammar.",
+          tabNode,
+          {
+            selector: "[data-surface-tab='1']",
+            action: "Use the shared tab radius token so active, hover, and focus states read as one system.",
+          }
+        ));
+      }
+    });
+    return findings;
+  }
+
+  function auditSurfaceMetricPlacement(rootNode, options) {
+    var root = rootNode instanceof Element || rootNode instanceof Document ? rootNode : document;
+    var settings = options && typeof options === "object" ? options : {};
+    var viewportWidth = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
+    if (settings.enforceMetricRightRail === false || viewportWidth < 900) {
+      return [];
+    }
+    var findings = [];
+    readSurfaceAuditVisibleNodes(root, ".o_surface_workspace_toolbar").forEach(function (toolbarNode) {
+      var consoleNode = toolbarNode.querySelector(".o_surface_workspace_console");
+      var metricsNode = toolbarNode.querySelector("[data-surface-console-region='metrics'], .o_surface_premium_metric_strip");
+      var consoleRect = readSurfaceAuditRect(consoleNode);
+      var metricsRect = readSurfaceAuditRect(metricsNode);
+      if (!(consoleRect && metricsRect)) {
+        return;
+      }
+      if (metricsRect.left >= consoleRect.left && metricsRect.right >= consoleRect.right) {
+        return;
+      }
+      findings.push(buildSurfaceDesignAuditFinding(
+        "metric-strip-not-right-anchored",
+        "Metric strip is not anchored as the right rail of the workspace toolbar.",
+        metricsNode,
+        {
+          selector: ".o_surface_premium_metric_strip",
+          action: "Place operational stats in the shared right-side metrics region and keep search/filters in the main command lane.",
+        }
+      ));
+    });
+    return findings;
   }
 
   function auditSurfaceCommandBarRedundancy(rootNode, options) {
@@ -553,8 +777,12 @@
       auditSurfaceCommandBarRedundancy,
       auditSurfaceOverlayLegibility,
       auditSurfaceBreadcrumbGhostState,
+      auditSurfaceListDensity,
       auditSurfaceMenuDuplicateLabels,
+      auditSurfaceMetricPlacement,
+      auditSurfaceModalControlContrast,
       auditSurfaceSidebarFlyoutGeometry,
+      auditSurfaceTabGrammar,
       auditSurfaceMetricSignal,
     ].forEach(function (auditRule) {
       findings = findings.concat(auditRule(root, options));
@@ -658,8 +886,12 @@
     auditSurfaceCommandBarRedundancy: auditSurfaceCommandBarRedundancy,
     auditSurfaceOverlayLegibility: auditSurfaceOverlayLegibility,
     auditSurfaceBreadcrumbGhostState: auditSurfaceBreadcrumbGhostState,
+    auditSurfaceListDensity: auditSurfaceListDensity,
     auditSurfaceMenuDuplicateLabels: auditSurfaceMenuDuplicateLabels,
+    auditSurfaceMetricPlacement: auditSurfaceMetricPlacement,
+    auditSurfaceModalControlContrast: auditSurfaceModalControlContrast,
     auditSurfaceSidebarFlyoutGeometry: auditSurfaceSidebarFlyoutGeometry,
+    auditSurfaceTabGrammar: auditSurfaceTabGrammar,
     auditSurfaceMetricSignal: auditSurfaceMetricSignal,
     auditSurfaceWorkspaceDesign: auditSurfaceWorkspaceDesign,
     isSuppressedEmailLimitNotification: isSuppressedEmailLimitNotification,

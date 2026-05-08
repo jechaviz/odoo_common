@@ -244,6 +244,16 @@ body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_rend
   min-height: 0 !important;
 }
 
+body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_renderer > table.o_list_table > tbody > tr:not([class]),
+body.o_surface_workspace_active.o_surface_workspace_list .o_content .o_list_renderer > table.o_list_table > tbody > tr[class=""] {
+  block-size: 0 !important;
+  border: 0 !important;
+  display: none !important;
+  height: 0 !important;
+  min-block-size: 0 !important;
+  min-height: 0 !important;
+}
+
 body.o_surface_workspace_active :where(.o_surface_premium_command_bar) {
   align-items: stretch;
   display: grid;

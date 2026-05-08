@@ -43,4 +43,14 @@ The shared debug runtime exposes `getSurfaceDesignAuditPrinciples()` and `auditS
 - `usable-for-edge-benefits-all`: contrast, focus, density, and opaque readable overlays are requirements for every workspace.
 - `evidence-over-assumption`: every principle must leave DOM evidence; ghost breadcrumbs after leaving a workspace are treated as product bugs.
 
-Consumers should sync these rules instead of rebuilding local visual heuristics. If a finding appears, the `action` field tells the consumer whether to hide a duplicate command-bar header, add menu context, use an opaque overlay token, or clear managed breadcrumb state.
+Granular audits now cover:
+
+- list density: no megafilas, no table body inheriting empty-state floor, no collapsed/empty preview columns.
+- modal controls: dark dialogs keep readable white close controls without inverting already-white SVGs.
+- tab grammar: every surface tab has a stable key, `role="tab"`, and a shared hit-target shape.
+- metric placement: operational stats sit in the right rail on desktop, while filters and search stay in the main command lane.
+- menu, breadcrumb, command-bar, overlay and metric-signal rules from the original audit set.
+
+Consumers should sync these rules instead of rebuilding local visual heuristics. If a finding appears, the `action` field tells the consumer whether to hide a duplicate command-bar header, add menu context, use an opaque overlay token, clear managed breadcrumb state, keep list floors on containers instead of table rows, remove empty preview columns, or restore contrast on modal controls.
+
+See `docs/premium_ux_doctrine.md` for the actionable design doctrine used by live deployment audits.

@@ -155,6 +155,25 @@
     ]
   },
   {
+    "key": "common_component_gallery",
+    "title": "Common Component Gallery",
+    "components": [
+      "common-component-gallery",
+      "surface-component-gallery",
+      "common-component-sync",
+      "backend-web-assets",
+      "odoo-app-bridge",
+      "feature-catalog"
+    ],
+    "use_cases": [
+      "storybook menu for canonical common components",
+      "wizard-driven component install plans",
+      "target-aware dry-run and live install flows",
+      "AI-assisted preview review loops",
+      "visual audit steps before consumer publication"
+    ]
+  },
+  {
     "key": "view_fragment_assembly",
     "title": "View Fragment Assembly",
     "components": [
@@ -520,6 +539,7 @@
     "title": "Odoo Module Factory",
     "components": [
       "odoo-module-scaffold",
+      "odoo-app-bridge",
       "feature-catalog",
       "resource-config",
       "workflow-config",
@@ -531,6 +551,13 @@
     ],
     "use_cases": [
       "new addon creation from explicit contracts",
+      "complete base-only public apps with admin and HTTP controllers",
+      "app-local login separate from res.users",
+      "PocketBase-style goodies mapped into OdooBase",
+      "function routes, scheduled functions and OAuth2 PKCE app auth",
+      "production release gate with security score and blocking findings",
+      "CI evidence package with generated security report and contract snapshots",
+      "readiness and metrics endpoints for mounted Odoo apps",
       "JSON-driven scaffold specs for templates and CI",
       "layered module architecture",
       "thin Odoo adapters around injected services",

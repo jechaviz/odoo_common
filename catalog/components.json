@@ -20,6 +20,26 @@
     ]
   },
   {
+    "key": "surface-component-gallery",
+    "title": "Common Component Gallery Surface",
+    "runtime": "web",
+    "status": "canonical",
+    "package_path": "packages/web/surface_component_gallery",
+    "origins": [
+      {
+        "project": "odoo_common",
+        "path": "packages/web/surface_component_gallery"
+      }
+    ],
+    "features": [
+      "storybook component menu",
+      "component detail inspector",
+      "install wizard shell",
+      "install plan step rail",
+      "AI review callback"
+    ]
+  },
+  {
     "key": "line-picker-surface",
     "title": "Managed Line Picker Surface",
     "runtime": "web",
@@ -437,6 +457,28 @@
       "Odoo domain literal builders",
       "Python function source extraction",
       "many2one RPC value normalization"
+    ]
+  },
+  {
+    "key": "common-component-gallery",
+    "title": "Common Component Gallery",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/common_component_gallery",
+    "origins": [
+      {
+        "project": "odoo_common",
+        "path": "packages/python/common_component_gallery"
+      }
+    ],
+    "features": [
+      "common component storybook model",
+      "component install wizard plan",
+      "base-only gallery addon build",
+      "installable gallery zip",
+      "target-aware install steps",
+      "visual audit plan steps",
+      "AI preview review step"
     ]
   },
   {
@@ -1230,6 +1272,38 @@
       "model, view and security scaffolds",
       "safe scaffold write plans",
       "dry-run scaffold CLI"
+    ]
+  },
+  {
+    "key": "odoo-app-bridge",
+    "title": "Odoo App Bridge",
+    "runtime": "python",
+    "status": "canonical",
+    "package_path": "packages/python/odoo_app_bridge",
+    "origins": [
+      {
+        "project": "odoo_bridge",
+        "path": "C:\\git\\odoo\\odoo_bridge"
+      }
+    ],
+    "features": [
+      "contract-first base-only Odoo apps",
+      "public HTTP controller without website dependency",
+      "app-local login, users and revocable sessions",
+      "app-scoped social auth provider and external identity models",
+      "OAuth2 PKCE state flow",
+      "contract-declared function routes and scheduled functions",
+      "explicit hook surface",
+      "OWASP-first security scanner and visual Security Center wizard",
+      "auditable security release gate with CI evidence JSON",
+      "generated readiness, metrics and security-report endpoints",
+      "CORS allowlists, payload limits, security headers, API keys and rate limits",
+      "PocketBase-inspired OdooBase blueprint",
+      "backend admin request log",
+      "OpenAPI and AsyncAPI contract generation",
+      "contract security lint",
+      "browser client and simulator generation",
+      "importable module zip generation"
     ]
   },
   {

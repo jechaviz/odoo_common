@@ -18,6 +18,11 @@ Separar la capa reutilizable de la capa de negocio para poder armar otros proyec
 - defaults por modelo y por cliente
 - totales e impuestos
 - layout de secciones, visibilidad y chatter collapse
+- apps completas base-only con admin, controlador publico y contratos API/eventos
+- OdooBase: login propio por app, usuarios app-locales y ruta hacia social login/function routes estilo PocketBase
+- API automatica OWASP-first con scanner, Security Center y wizard visual para revisar riesgos antes de colgar apps
+- Release gate productivo: score de seguridad, evidencia CI, readiness, metrics y bloqueo por findings criticos/altos
+- galeria tipo Storybook y wizard de instalacion para componentes comunes
 
 ## Estructura
 
@@ -54,3 +59,7 @@ Separar la capa reutilizable de la capa de negocio para poder armar otros proyec
 3. prohibir aliases historicos y rescates fallback innecesarios
 4. mantener manifiestos y perfiles como fuente de verdad
 5. crear nuevos modulos desde `odoo-module-scaffold` y adapters delgados, no desde copias historicas de proyectos
+6. crear apps publicas completas desde `odoo-app-bridge` cuando el objetivo sea colgar un modulo instalable con admin + website propio sin depender de `website` ni modulos verticales
+7. para apps independientes montadas sobre Odoo, tratar `OdooBase` como direccion: usuarios separados de `res.users`, sesiones revocables y goodies PocketBase traducidos a contratos Odoo
+8. toda app generada debe pasar por scanner OWASP-first y exponer un Security Center amigable antes de publicarse
+9. ninguna app montada en Odoo cuenta como productiva sin `release_ready=true`, evidencia JSON archivada y smoke operativo verde
